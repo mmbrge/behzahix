@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-vazirmatn), Tahoma, sans-serif;
+
+  --color-ink: #07080c;
+  --color-surface: #0e1017;
+  --color-surface-2: #151822;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-fg: #f3f4f6;
+  --color-muted: #a3a8b6;
+  --color-brand: #ff7a1a;
+  --color-brand-2: #ffa24a;
+  --color-ok: #4ade80;
+  --color-bad: #f87171;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .card {
+    @apply rounded-3xl border border-line bg-surface/80;
+  }
+
+  .glow-border {
+    box-shadow:
+      0 0 0 1px rgb(255 122 26 / 0.25),
+      0 0 40px -10px rgb(255 122 26 / 0.45);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-l from-brand to-brand-2 px-6 py-3 font-bold text-ink transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
+    box-shadow: 0 8px 30px -8px rgb(255 122 26 / 0.7);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line px-5 py-3 font-medium text-fg transition hover:border-brand/60 hover:text-brand-2;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold tracking-[0.2em] text-brand;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
