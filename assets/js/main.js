@@ -105,7 +105,12 @@ const toman = (amount) => `${faDigits(amount.toLocaleString("en-US"))} توما�
     out.discount.textContent = `${faDigits(Math.round(discount * 100))}٪`;
     out.days.textContent = days ? `${faDigits(days)} روز` : "—";
     out.progress.style.width = `${maxDiscount ? (discount / maxDiscount) * 100 : 0}%`;
-    out.total.textContent = toman(total);
+    if (out.total.textContent !== toman(total)) {
+      out.total.textContent = toman(total);
+      out.total.classList.remove("is-bump");
+      void out.total.offsetWidth; // restart the animation
+      out.total.classList.add("is-bump");
+    }
     out.subtotal.textContent = toman(subtotal);
     out.subtotal.hidden = discount === 0;
     out.submit.classList.toggle("is-disabled", chosen.length === 0);
@@ -114,6 +119,124 @@ const toman = (amount) => `${faDigits(amount.toLocaleString("en-US"))} توما�
 
   list.addEventListener("change", update);
   update();
+})();
+
+// ---- Theme toggle (dark / light) ----
+(() => {
+  const root = document.documentElement;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const apply = (theme) => {
+    root.dataset.theme = theme;
+    meta.setAttribute("content", theme === "light" ? "#f5f6fa" : "#07080c");
+  };
+  apply(root.dataset.theme === "light" ? "light" : "dark");
+  document.querySelector(".theme-btn").addEventListener("click", () => {
+    const next = root.dataset.theme === "light" ? "dark" : "light";
+    apply(next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch (e) {
+      /* storage unavailable: theme still applies for this visit */
+    }
+  });
+})();
+
+// ---- Header: docked at the top, floating once scrolled ----
+(() => {
+  const header = document.querySelector(".site-header");
+  let floating = false;
+  const update = () => {
+    // Hysteresis so the bar doesn't flicker around a single threshold.
+    const next = floating ? window.scrollY > 20 : window.scrollY > 60;
+    if (next !== floating) {
+      floating = next;
+      header.classList.toggle("is-floating", floating);
+    }
+  };
+  window.addEventListener("scroll", update, { passive: true });
+  update();
+})();
+
+// ---- Reveal on scroll ----
+(() => {
+  const items = document.querySelectorAll("[data-reveal]");
+  if (!("IntersectionObserver" in window)) {
+    items.forEach((el) => el.classList.add("is-visible"));
+    return;
+  }
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          io.unobserve(entry.target);
+        }
+      }
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+  );
+  items.forEach((el) => io.observe(el));
+})();
+
+// ---- Service card spotlight ----
+document.querySelectorAll(".service").forEach((card) => {
+  card.addEventListener("pointermove", (e) => {
+    const r = card.getBoundingClientRect();
+    card.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    card.style.setProperty("--my", `${e.clientY - r.top}px`);
+  });
+});
+
+// ---- Custom animated cursor (mouse / trackpad only) ----
+(() => {
+  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!finePointer || reducedMotion) return;
+
+  const root = document.documentElement;
+  const dot = document.createElement("div");
+  const ring = document.createElement("div");
+  dot.className = "cursor-dot";
+  ring.className = "cursor-ring";
+  ring.innerHTML = "<span>‹ ›</span>";
+  document.body.append(dot, ring);
+  root.classList.add("has-cursor");
+
+  let x = -100, y = -100; // pointer
+  let rx = x, ry = y;      // ring (eased)
+
+  window.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
+    x = e.clientX;
+    y = e.clientY;
+    dot.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    root.classList.add("cursor-visible");
+    const target = e.target instanceof Element ? e.target : null;
+    root.classList.toggle("cursor-drag", Boolean(target && target.closest(".compare")));
+    root.classList.toggle(
+      "cursor-hover",
+      Boolean(target && target.closest("a, button, label, .service, .float, input"))
+    );
+  });
+  document.addEventListener("pointerleave", () => root.classList.remove("cursor-visible"));
+  window.addEventListener("pointerdown", (e) => {
+    root.classList.add("cursor-down");
+    const ripple = document.createElement("span");
+    ripple.className = "cursor-ripple";
+    ripple.style.left = `${e.clientX}px`;
+    ripple.style.top = `${e.clientY}px`;
+    document.body.appendChild(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove());
+  });
+  window.addEventListener("pointerup", () => root.classList.remove("cursor-down"));
+
+  const tick = () => {
+    rx += (x - rx) * 0.18;
+    ry += (y - ry) * 0.18;
+    ring.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
+    requestAnimationFrame(tick);
+  };
+  tick();
 })();
 
 // ---- Footer year ----
