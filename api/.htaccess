@@ -1,0 +1,21 @@
+# Only the router is reachable; libraries and config are private.
+<IfModule mod_authz_core.c>
+  <FilesMatch "\.(php|json)$">
+    Require all denied
+  </FilesMatch>
+  <Files "index.php">
+    Require all granted
+  </Files>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  <FilesMatch "\.(php|json)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+  <Files "index.php">
+    Order allow,deny
+    Allow from all
+  </Files>
+</IfModule>
+DirectoryIndex index.php
+Options -Indexes

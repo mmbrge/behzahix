@@ -116,7 +116,7 @@ section[id] { scroll-margin-top: 110px; }
 
 .page-glow {
   position: absolute; top: -160px; left: 50%; z-index: -1;
-  width: 900px; height: 600px; transform: translateX(-50%);
+  width: min(900px, 100vw); height: 600px; transform: translateX(-50%);
   border-radius: 50%; background: rgb(255 122 26 / 0.15); filter: blur(140px);
   pointer-events: none;
 }

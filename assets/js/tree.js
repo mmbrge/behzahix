@@ -7,7 +7,8 @@
 
 (function () {
   "use strict";
-  const { CATALOG, icon, faDigits, db } = window.BX;
+  const BX = window.BX;
+  const { icon, faDigits, esc } = BX;
 
   function shortPrice(n) {
     if (n >= 1e6) return `${faDigits(String(+(n / 1e6).toFixed(1)).replace(".", "٫"))} میلیون`;
@@ -19,14 +20,14 @@
       <svg class="tree-lines" aria-hidden="true"></svg>
       <div class="tree-root">
         <span class="tree-root-orb"><span class="logo logo--sm"><span class="logo-a">BEHI</span><span class="logo-x">X</span></span></span>
-        <div><b>طراحی و خدمات دیجیتال</b><small>${faDigits(CATALOG.reduce((n, c) => n + c.services.length, 0))} خدمت در ${faDigits(CATALOG.length)} شاخه</small></div>
+        <div><b>طراحی و خدمات دیجیتال</b><small>${faDigits(BX.CATALOG.reduce((n, c) => n + c.services.length, 0))} خدمت در ${faDigits(BX.CATALOG.length)} شاخه</small></div>
       </div>
       <div class="tree-cats">
-        ${CATALOG.map((c, ci) => `
+        ${BX.CATALOG.map((c, ci) => `
           <div class="tree-branch" data-branch="${c.id}" id="${c.id}" style="--h:${c.hue};--i:${ci}">
             <button type="button" class="tree-cat" aria-expanded="true">
               <span class="tree-cat-icon">${icon(c.icon)}</span>
-              <span class="tree-cat-text"><b>${c.title}</b><small dir="ltr">${c.en}</small></span>
+              <span class="tree-cat-text"><b>${esc(c.title)}</b><small dir="ltr">${esc(c.en)}</small></span>
               <span class="tree-count">${faDigits(c.services.length)}</span>
             </button>
             <ul class="tree-leaves">
@@ -35,9 +36,9 @@
                   <a class="tree-leaf" href="order.html?service=${s.id}">
                     <span class="tree-leaf-icon">${icon(s.icon)}</span>
                     <span class="tree-leaf-body">
-                      <b>${s.title}</b>
-                      <small>از ${shortPrice(db.basePrice(s.id))} تومان · ${faDigits(s.days)} روز</small>
-                      <span class="tree-leaf-desc">${s.desc}</span>
+                      <b>${esc(s.title)}</b>
+                      <small>از ${shortPrice(s.base)} تومان · ${faDigits(s.days)} روز</small>
+                      <span class="tree-leaf-desc">${esc(s.desc)}</span>
                     </span>
                     <span class="tree-leaf-go">${icon("arrow")}</span>
                   </a>
@@ -157,5 +158,5 @@
     }
   }
 
-  document.querySelectorAll("[data-tree]").forEach(init);
+  BX.ready.then(() => document.querySelectorAll("[data-tree]").forEach(init));
 })();

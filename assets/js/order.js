@@ -4,14 +4,17 @@
    validates them, estimates the price live and saves a draft as you type.
    ========================================================================== */
 
-(function () {
+window.BX.ready.then(function () {
   "use strict";
   const BX = window.BX;
-  const { CATALOG, DEADLINES, ADDONS, STYLES, findService, findCategory, db, auth, estimate, icon, toman, faDigits, enDigits, esc, qs, toast } = BX;
+  const { CATALOG, DEADLINES, ADDONS, STYLES, findService, findCategory, auth, estimate, icon, toman, faDigits, enDigits, esc, qs, toast } = BX;
 
   const DRAFT_KEY = "behix:draft";
   const STEPS = ["انتخاب خدمت", "جزئیات پروژه", "سلیقه و منابع", "زمان و بودجه", "اطلاعات تماس", "بازبینی و ثبت"];
-  const BUDGETS = ["هنوز مشخص نیست", "کمتر از ۵ میلیون", "۵ تا ۱۵ میلیون", "۱۵ تا ۴۰ میلیون", "بیش از ۴۰ میلیون"];
+  const BUDGETS = BX.BUDGETS.length ? BX.BUDGETS : ["هنوز مشخص نیست"];
+  // Attachments live in memory only (File objects can't be saved in the draft)
+  const pendingFiles = [];
+  let couponState = { code: "", valid: null, percent: 0 };
 
   const root = document.getElementById("wizard");
   const user = auth.current();
@@ -27,7 +30,7 @@
   let state = blank();
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
-    if (d && d.serviceId) state = { ...blank(), ...d, contact: { ...blank().contact, ...d.contact } };
+    if (d && d.serviceId && findService(d.serviceId)) state = { ...blank(), ...d, contact: { ...blank().contact, ...d.contact }, style: { ...blank().style, ...d.style, files: [] } };
   } catch (e) { /* ignore broken draft */ }
 
   const pre = qs("service");
@@ -62,10 +65,31 @@
   const svc = () => findService(state.serviceId);
   const cat = () => svc() && findCategory(svc().category);
 
+  // Coupon validity comes from the server (checked as the user types)
   function coupon() {
     const code = state.coupon.trim().toUpperCase();
     if (!code) return null;
-    return db.data.coupons.find((c) => c.code === code && c.active && !c.ownerId && (!c.limit || c.uses < c.limit)) || false;
+    if (couponState.code !== code || couponState.valid === null) return null;
+    return couponState.valid ? { code, percent: couponState.percent } : false;
+  }
+  let couponTimer;
+  function checkCoupon() {
+    clearTimeout(couponTimer);
+    const code = state.coupon.trim().toUpperCase();
+    couponState = { code, valid: null, percent: 0 };
+    if (!code) return;
+    couponTimer = setTimeout(async () => {
+      try {
+        const r = await BX.api("coupon.check", { code });
+        if (state.coupon.trim().toUpperCase() !== code) return;
+        couponState = { code, valid: r.valid, percent: r.percent || 0 };
+      } catch (e) {
+        couponState = { code, valid: false, percent: 0 };
+      }
+      const hint = root.querySelector("#coupon-hint");
+      if (hint) hint.innerHTML = couponHint();
+      bumpPrice();
+    }, 400);
   }
   function quote() {
     if (!state.serviceId) return { total: 0, days: 0, discount: 0, final: 0 };
@@ -97,7 +121,7 @@
       }),
       state.desc.trim().length > 30,
       state.style.styles.length > 0,
-      state.style.refs.trim().length > 0 || state.style.files.length > 0,
+      state.style.refs.trim().length > 0 || pendingFiles.length > 0,
       Boolean(state.contact.name && state.contact.phone),
     ];
     return Math.round((checks.filter(Boolean).length / checks.length) * 100);
@@ -121,7 +145,7 @@
         ${f.perUnit ? `<span class="field-hint">${f.included ? `${faDigits(f.included)} ${f.suffix || "مورد"} در قیمت پایه · ` : ""}هر ${f.suffix || "مورد"} اضافه ${shortToman(f.perUnit)} تومان</span>` : ""}`;
     } else if (f.type === "select") {
       control = `<select class="select" id="${name}" data-field="${f.id}">
-        ${f.options.map((o) => `<option value="${o.v}" ${o.v === v ? "selected" : ""}>${o.label}${o.price ? ` (${priceHint(o.price)})` : ""}</option>`).join("")}
+        ${f.options.map((o) => `<option value="${o.v}" ${o.v === v ? "selected" : ""}>${esc(o.label)}${o.price ? ` (${priceHint(o.price)})` : ""}</option>`).join("")}
       </select>`;
     } else if (f.type === "cards") {
       control = `<div class="opt-cards" role="radiogroup">
@@ -129,7 +153,7 @@
           <label class="opt-card">
             <input type="radio" name="${name}" value="${o.v}" data-field="${f.id}" ${o.v === v ? "checked" : ""}>
             <span class="opt-icon">${icon(o.icon || "sparkle")}</span>
-            <b>${o.label}</b>
+            <b>${esc(o.label)}</b>
             ${o.price ? `<small>${priceHint(o.price)} تومان</small>` : "<small>بدون هزینه اضافه</small>"}
           </label>`).join("")}
       </div>`;
@@ -139,7 +163,7 @@
         ${f.options.map((o) => `
           <label class="chip">
             <input type="checkbox" value="${o.v}" data-field="${f.id}" data-kind="multi" ${arr.includes(o.v) ? "checked" : ""}>
-            <span class="chip-check">${icon("check")}</span>${o.label}
+            <span class="chip-check">${icon("check")}</span>${esc(o.label)}
             ${o.price ? `<span class="chip-price">${priceHint(o.price)}</span>` : ""}
           </label>`).join("")}
       </div>`;
@@ -150,7 +174,7 @@
     }
     const labelFor = ["cards", "chips"].includes(f.type) ? "" : ` for="${name}"`;
     const tag = ["cards", "chips"].includes(f.type) ? "span" : "label";
-    return `<div class="field" data-wrap="${f.id}"><${tag} class="field-label"${labelFor}>${f.label}${req}</${tag}>${control}</div>`;
+    return `<div class="field" data-wrap="${f.id}"><${tag} class="field-label"${labelFor}>${esc(f.label)}${req}</${tag}>${control}</div>`;
   }
 
   // ---------------------------------------------------------------- Steps
@@ -160,16 +184,16 @@
       <h2>چه خدمتی لازم دارید؟</h2>
       <p class="muted">یک شاخه و سپس خدمت مورد نظرتان را انتخاب کنید.</p>
       <div class="svc-tabs" role="tablist">
-        ${CATALOG.map((c) => `<button type="button" class="svc-tab ${c.id === activeCat ? "is-active" : ""}" data-cat="${c.id}" style="--h:${c.hue}" role="tab" aria-selected="${c.id === activeCat}">${icon(c.icon)}${c.title}</button>`).join("")}
+        ${CATALOG.map((c) => `<button type="button" class="svc-tab ${c.id === activeCat ? "is-active" : ""}" data-cat="${c.id}" style="--h:${c.hue}" role="tab" aria-selected="${c.id === activeCat}">${icon(c.icon)}${esc(c.title)}</button>`).join("")}
       </div>
       <div class="svc-pick" role="radiogroup">
         ${findCategory(activeCat).services.map((s) => `
           <label class="svc-card" style="--h:${findCategory(activeCat).hue}">
             <input type="radio" name="service" value="${s.id}" ${s.id === state.serviceId ? "checked" : ""}>
             <span class="svc-icon">${icon(s.icon)}</span>
-            <b>${s.title}</b>
-            <small>${s.desc}</small>
-            <span class="svc-price">از ${shortToman(db.basePrice(s.id))} تومان · ${faDigits(s.days)} روز</span>
+            <b>${esc(s.title)}</b>
+            <small>${esc(s.desc)}</small>
+            <span class="svc-price">از ${shortToman(s.base)} تومان · ${faDigits(s.days)} روز</span>
           </label>`).join("")}
       </div>`;
   }
@@ -177,8 +201,8 @@
   function stepDetails() {
     const s = svc();
     return `
-      <h2>${s.title}</h2>
-      <p class="muted">${s.desc}</p>
+      <h2>${esc(s.title)}</h2>
+      <p class="muted">${esc(s.desc)}</p>
       <div class="form-grid mt-3">
         ${s.fields.map(renderField).join("")}
         <div class="field">
@@ -200,7 +224,7 @@
       <div class="form-grid mt-3">
         <div class="field">
           <span class="field-label">حس و سبک مورد علاقه</span>
-          <div class="chips">${STYLES.map((x) => `<label class="chip"><input type="checkbox" value="${x}" data-style="styles" ${st.styles.includes(x) ? "checked" : ""}><span class="chip-check">${icon("check")}</span>${x}</label>`).join("")}</div>
+          <div class="chips">${STYLES.map((x) => `<label class="chip"><input type="checkbox" value="${esc(x)}" data-style="styles" ${st.styles.includes(x) ? "checked" : ""}><span class="chip-check">${icon("check")}</span>${esc(x)}</label>`).join("")}</div>
         </div>
         <div class="field">
           <span class="field-label">رنگ‌های سازمانی</span>
@@ -227,7 +251,7 @@
             <small>لوگو، محتوا، عکس‌ها، اسکرین‌شات‌ها (حداکثر ۵۰ مگابایت)</small>
             <input type="file" multiple data-files>
           </label>
-          <div class="file-list">${st.files.map((f, i) => `<span class="file-pill">${icon("file")}${esc(f.name)} <small class="muted">${faDigits(Math.max(1, Math.round(f.size / 1024)))}KB</small><button type="button" data-remove-file="${i}" aria-label="حذف">${icon("cross")}</button></span>`).join("")}</div>
+          <div class="file-list">${pendingFiles.map((f, i) => `<span class="file-pill">${icon("file")}${esc(f.name)} <small class="muted">${faDigits(Math.max(1, Math.round(f.size / 1024)))}KB</small><button type="button" data-remove-file="${i}" aria-label="حذف">${icon("cross")}</button></span>`).join("")}</div>
         </div>
       </div>`;
   }
@@ -245,19 +269,19 @@
               <label class="opt-card">
                 <input type="radio" name="deadline" value="${d.v}" data-top="deadline" ${state.deadline === d.v ? "checked" : ""}>
                 <span class="opt-icon">${icon(d.icon)}</span>
-                <b>${d.label} · ${faDigits(Math.max(1, Math.round(s.days * d.daysMult)))} روز</b>
+                <b>${esc(d.label)} · ${faDigits(Math.max(1, Math.round(s.days * d.daysMult)))} روز</b>
                 <small>${d.mult === 1 ? "بدون هزینه اضافه" : `+${faDigits(Math.round((d.mult - 1) * 100))}٪ هزینه`}</small>
               </label>`).join("")}
           </div>
         </div>
         <div class="field">
           <span class="field-label">خدمات تکمیلی</span>
-          <div class="chips">${ADDONS.map((a) => `<label class="chip"><input type="checkbox" value="${a.v}" data-addon ${state.addons.includes(a.v) ? "checked" : ""}><span class="chip-check">${icon("check")}</span>${a.label}<span class="chip-price">+${faDigits(Math.round(a.pct * 100))}٪</span></label>`).join("")}</div>
+          <div class="chips">${ADDONS.map((a) => `<label class="chip"><input type="checkbox" value="${a.v}" data-addon ${state.addons.includes(a.v) ? "checked" : ""}><span class="chip-check">${icon("check")}</span>${esc(a.label)}<span class="chip-price">+${faDigits(Math.round(a.pct * 100))}٪</span></label>`).join("")}</div>
         </div>
         <div class="form-grid form-grid-2">
           <div class="field">
             <label class="field-label" for="budget">بودجه شما</label>
-            <select class="select" id="budget" data-top="budget">${BUDGETS.map((b) => `<option ${b === state.budget ? "selected" : ""}>${b}</option>`).join("")}</select>
+            <select class="select" id="budget" data-top="budget">${BUDGETS.map((b) => `<option ${b === state.budget ? "selected" : ""}>${esc(b)}</option>`).join("")}</select>
           </div>
           <div class="field">
             <label class="field-label" for="coupon">کد تخفیف</label>
@@ -269,7 +293,7 @@
   }
   function couponHint() {
     const c = coupon();
-    if (c === null) return "اگر کد تخفیف دارید وارد کنید.";
+    if (c === null) return state.coupon.trim() ? "در حال بررسی کد…" : "اگر کد تخفیف دارید وارد کنید.";
     if (c === false) return '<span class="bad">کد تخفیف معتبر نیست.</span>';
     return `<span class="ok">${faDigits(c.percent)}٪ تخفیف اعمال شد.</span>`;
   }
@@ -299,7 +323,7 @@
       ...s.fields.map((f) => [f.label, fieldValueText(f, state.details[f.id])]),
       ["سبک", st.styles.join("، ") || "—"],
       ["رنگ‌ها", st.noColors ? "به انتخاب طراح" : st.colors.map((c) => `<span class="dot" style="background:${c}"></span>`).join(" ")],
-      ["پیوست‌ها", st.files.length ? `${faDigits(st.files.length)} فایل` : "—"],
+      ["پیوست‌ها", pendingFiles.length ? `${faDigits(pendingFiles.length)} فایل` : "—"],
       ["سرعت تحویل", `${DEADLINES.find((d) => d.v === state.deadline).label} (${faDigits(q.days)} روز)`],
       ["خدمات تکمیلی", state.addons.map((a) => ADDONS.find((x) => x.v === a).label).join("، ") || "—"],
       ["بودجه", state.budget],
@@ -323,7 +347,7 @@
       for (const f of svc().fields) {
         const v = state.details[f.id];
         const empty = v == null || v === "" || (Array.isArray(v) && !v.length);
-        if (f.required && empty) errors.push([f.id, `«${f.label}» را مشخص کنید.`]);
+        if (f.required && empty) errors.push([f.id, `«${esc(f.label)}» را مشخص کنید.`]);
       }
     }
     if (step === 4) {
@@ -344,12 +368,12 @@
     }
     const q = quote();
     const pct = completeness();
-    const keyRows = s.fields.filter((f) => f.type !== "textarea").slice(0, 4).map((f) => `<li><span>${f.label}</span><span>${fieldValueText(f, state.details[f.id])}</span></li>`).join("");
+    const keyRows = s.fields.filter((f) => f.type !== "textarea").slice(0, 4).map((f) => `<li><span>${esc(f.label)}</span><span>${fieldValueText(f, state.details[f.id])}</span></li>`).join("");
     box.innerHTML = `
       <h3>خلاصه سفارش</h3>
       <div class="summary-svc" style="--h:${cat().hue}">
         <span class="svc-icon">${icon(s.icon)}</span>
-        <div><b class="small">${s.title}</b><br><small class="muted">${cat().title}</small></div>
+        <div><b class="small">${esc(s.title)}</b><br><small class="muted">${esc(cat().title)}</small></div>
       </div>
       <ul class="summary-list">
         ${keyRows}
@@ -448,8 +472,8 @@
       root.querySelector(".svc-pick").innerHTML = c.services.map((s) => `
         <label class="svc-card" style="--h:${c.hue}">
           <input type="radio" name="service" value="${s.id}" ${s.id === state.serviceId ? "checked" : ""}>
-          <span class="svc-icon">${icon(s.icon)}</span><b>${s.title}</b><small>${s.desc}</small>
-          <span class="svc-price">از ${shortToman(db.basePrice(s.id))} تومان · ${faDigits(s.days)} روز</span>
+          <span class="svc-icon">${icon(s.icon)}</span><b>${esc(s.title)}</b><small>${esc(s.desc)}</small>
+          <span class="svc-price">از ${shortToman(s.base)} تومان · ${faDigits(s.days)} روز</span>
         </label>`).join("");
       return;
     }
@@ -462,7 +486,7 @@
     }
     const rm = t.closest("[data-remove-file]");
     if (rm) {
-      state.style.files.splice(Number(rm.dataset.removeFile), 1);
+      pendingFiles.splice(Number(rm.dataset.removeFile), 1);
       renderPane();
       renderSummary();
       saveDraft();
@@ -503,6 +527,7 @@
     if (el.dataset.top && el.tagName !== "SELECT" && el.type !== "radio") {
       state[el.dataset.top] = el.value;
       if (el.dataset.top === "coupon") {
+        checkCoupon();
         root.querySelector("#coupon-hint").innerHTML = couponHint();
         bumpPrice();
       } else saveDraft();
@@ -595,7 +620,14 @@
     addFiles(e.dataTransfer.files);
   });
   function addFiles(list) {
-    for (const f of list) state.style.files.push({ name: f.name, size: f.size });
+    const maxMB = BX.settings.uploads?.maxMB || 50;
+    const allowed = String(BX.settings.uploads?.ext || "").split(",").map((x) => x.trim());
+    for (const f of list) {
+      const ext = f.name.split(".").pop().toLowerCase();
+      if (f.size > maxMB * 1024 * 1024) { toast(`«${f.name}» بیشتر از ${faDigits(maxMB)} مگابایت است.`, "bad"); continue; }
+      if (allowed.length && !allowed.includes(ext)) { toast(`پسوند «${ext}» مجاز نیست.`, "bad"); continue; }
+      pendingFiles.push(f);
+    }
     renderPane();
     renderSummary();
     saveDraft();
@@ -609,11 +641,11 @@
     for (const f of s.fields) {
       const v = state.details[f.id];
       if (v == null || v === "" || (Array.isArray(v) && !v.length)) continue;
-      parts.push(`${f.label}: ${fieldValueText(f, v)}`);
+      parts.push(`${esc(f.label)}: ${fieldValueText(f, v)}`);
     }
     const biz = state.contact.business || "کسب‌وکار ما";
     const styles = state.style.styles.length ? ` حس کلی کار ${state.style.styles.join(" و ")} باشد.` : "";
-    const text = `برای ${biz} به «${s.title}» نیاز داریم. ${parts.join("؛ ")}.${styles} مخاطب اصلی ما … است و مهم‌ترین هدف این پروژه … است. نمونه‌هایی که دوست داریم را در مرحله بعد پیوست می‌کنیم.`;
+    const text = `برای ${biz} به «${esc(s.title)}» نیاز داریم. ${parts.join("؛ ")}.${styles} مخاطب اصلی ما … است و مهم‌ترین هدف این پروژه … است. نمونه‌هایی که دوست داریم را در مرحله بعد پیوست می‌کنیم.`;
     state.desc = state.desc ? `${state.desc}\n\n${text}` : text;
     const ta = root.querySelector("#desc");
     ta.value = state.desc;
@@ -625,7 +657,8 @@
   }
 
   // ---------------------------------------------------------------- Submit
-  function submit() {
+  let submitting = false;
+  async function submit() {
     for (let i = 0; i < STEPS.length; i++) {
       const errs = validate(i);
       if (errs.length) {
@@ -633,45 +666,46 @@
         return setTimeout(() => showErrors(errs), 50);
       }
     }
-    const data = db.data;
-    const phone = enDigits(state.contact.phone).trim();
-    let customer = user;
-    let created = false;
-    if (!customer) {
-      customer = data.users.find((u) => u.phone === phone);
-      if (!customer) {
-        customer = { id: db.uid("u"), name: state.contact.name.trim(), phone, password: "1234", role: "customer", status: "active", email: state.contact.email, business: state.contact.business, createdAt: Date.now(), wallet: 0, hue: Math.floor(Math.random() * 360) };
-        data.users.push(customer);
-        created = true;
+    if (submitting) return;
+    submitting = true;
+    const btn = root.querySelector('[data-action="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${icon("loader")} در حال ثبت…`; }
+    let res;
+    try {
+      res = await BX.api("order.submit", {
+        serviceId: state.serviceId, details: state.details, desc: state.desc,
+        style: { ...state.style, files: undefined }, deadline: state.deadline, addons: state.addons,
+        budget: state.budget, coupon: coupon() ? state.coupon : "", contact: { ...state.contact, phone: enDigits(state.contact.phone).trim() },
+      });
+    } catch (err) {
+      submitting = false;
+      if (btn) { btn.disabled = false; btn.innerHTML = `${icon("send")} ثبت سفارش`; }
+      if (err.code === "exists") {
+        BX.modal({
+          title: "این شماره حساب دارد",
+          body: `<p class="lh">${esc(err.message)}</p>`,
+          actions: [{ label: "بستن" }, { label: "ورود و ادامه", primary: true, onClick: () => { location.href = "auth.html?next=order.html"; } }],
+        });
+      } else toast(err.message, "bad");
+      return;
+    }
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
+    let uploadNote = "";
+    if (pendingFiles.length) {
+      toast("در حال آپلود فایل‌ها…", "info");
+      try {
+        await BX.api("order.attach", { id: res.id }, pendingFiles);
+      } catch (err) {
+        uploadNote = `<br><span class="bad">آپلود پیوست‌ها ناموفق بود (${esc(err.message)})؛ می‌توانید در گفتگوی سفارش دوباره بفرستید.</span>`;
       }
     }
-    const q = quote();
-    const lastNo = Math.max(1000, ...data.orders.map((o) => Number(String(o.code).replace(/\D/g, "")) || 0));
-    const s = svc();
-    const order = {
-      id: db.uid("o"), code: `BX-${lastNo + 1}`, userId: customer.id, serviceId: s.id,
-      title: `${s.title}${state.contact.business ? ` — ${state.contact.business}` : ""}`,
-      status: "new", designerId: null, estimate: q.final, discount: q.discount, deadline: state.deadline, addons: state.addons,
-      budget: state.budget, details: state.details, desc: state.desc, style: { ...state.style, files: undefined }, files: state.style.files,
-      contact: state.contact, coupon: coupon() ? state.coupon.toUpperCase() : null, createdAt: Date.now(),
-      timeline: [{ status: "new", at: Date.now() }], messages: [], deliverables: [], paid: false,
-    };
-    data.orders.unshift(order);
-    const c = coupon();
-    if (c) c.uses++;
-    db.notify("u-admin", `سفارش جدید ${order.code} — ${s.title}`, "orders");
-    db.notify(customer.id, `سفارش ${order.code} ثبت شد و در صف بررسی است.`, "orders");
-    db.save();
-    if (created) auth.start(customer.id);
-    try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
-
     root.innerHTML = `
       <div class="card success" style="grid-column:1/-1">
         <span class="success-icon">${icon("check")}</span>
         <h2 class="h2-sm mt-2">سفارش شما ثبت شد!</h2>
         <p class="muted lh mt-1">کد پیگیری سفارش:</p>
-        <span class="track-code" dir="ltr">${order.code}</span>
-        <p class="muted lh mt-2">کارشناس ما ظرف ۲ ساعت کاری بریف را بررسی و پیش‌فاکتور را در پنل شما ثبت می‌کند.${created ? `<br>حساب کاربری شما با شماره <b dir="ltr">${faDigits(phone)}</b> ساخته شد (رمز موقت: <b>۱۲۳۴</b>).` : ""}</p>
+        <span class="track-code" dir="ltr">${esc(res.code)}</span>
+        <p class="muted lh mt-2">کارشناس ما بریف را بررسی می‌کند و پیش‌فاکتور را در پنل شما ثبت می‌کند.${res.createdAccount ? `<br>حساب کاربری شما با شماره <b dir="ltr">${faDigits(res.phone)}</b> ساخته شد. رمز موقت: <b dir="ltr">${faDigits(res.tempPassword)}</b> — آن را یادداشت کنید و از پروفایل تغییر دهید.` : ""}${uploadNote}</p>
         <div class="cta-actions">
           <a href="dashboard.html#orders" class="btn btn-primary">پیگیری در پنل ${icon("arrow")}</a>
           <a href="order.html" class="btn btn-ghost">ثبت سفارش دیگر</a>
@@ -688,5 +722,6 @@
     </div>
     <aside class="card summary glow" data-summary aria-live="polite"></aside>`;
   renderAll();
+  if (state.coupon) checkCoupon();
   if (state.step > 0 && !pre) toast("پیش‌نویس قبلی شما بازیابی شد.", "info");
-})();
+});

@@ -552,3 +552,55 @@
 .contact-line:hover { background: var(--hover); }
 .contact-line:hover .service-icon { transform: rotate(-10deg) scale(1.08); }
 .service-icon { transition: transform .45s var(--ease-spring); }
+
+/* ---------- Announcement bar & full-screen notices ---------- */
+.announce {
+  position: relative; z-index: 60; display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 8px 44px; font-size: .85rem; text-align: center; color: var(--on-brand);
+  background: linear-gradient(to left, var(--brand), var(--brand-2));
+}
+.announce a { text-decoration: underline; text-underline-offset: 3px; }
+.announce .icon { width: 16px; height: 16px; flex-shrink: 0; }
+.announce button { position: absolute; left: 12px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; }
+.announce button:hover { background: rgb(0 0 0 / .12); }
+.fullscreen-notice { position: fixed; inset: 0; z-index: 500; display: grid; place-items: center; padding: 24px; text-align: center; background: var(--ink); }
+.fullscreen-notice h1 { margin-top: 20px; font-size: 2rem; font-weight: 900; }
+.fullscreen-notice p { margin-top: 10px; color: var(--muted); line-height: 2; max-width: 32rem; }
+
+/* ---------- Footer extras ---------- */
+.footer-contact-list li { margin-bottom: 10px; font-size: .88rem; color: var(--muted); }
+.footer-contact-list a, .footer-contact-list span { display: inline-flex; align-items: center; gap: 8px; transition: color .2s; }
+.footer-contact-list a:hover { color: var(--accent); }
+.footer-contact-list .icon { width: 16px; height: 16px; color: var(--brand); flex-shrink: 0; }
+.trust-badges { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 16px; margin-top: 32px; padding: 16px; border-radius: 20px; background: rgb(255 255 255 / .03); border: 1px dashed var(--line); }
+.trust-badges img { max-height: 110px; width: auto; border-radius: 12px; background: #fff; padding: 4px; }
+
+/* ---------- Loading & misc ---------- */
+.skeleton { min-height: 260px; border-radius: 22px; background: linear-gradient(100deg, var(--hover) 30%, rgb(255 255 255 / .07) 50%, var(--hover) 70%); background-size: 300% 100%; animation: skel 1.4s ease-in-out infinite; }
+@keyframes skel { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.filter-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; max-width: 100%; }
+.filter-chips::-webkit-scrollbar { display: none; }
+.filter-chip { flex-shrink: 0; }
+.sort-select { width: auto; min-width: 150px; }
+@media (max-width: 640px) {
+  .filters { gap: 8px; }
+  .search { max-width: none; min-width: 0; flex: 1 1 100%; margin-right: 0; order: -1; }
+  .sort-select { flex: 1; }
+}
+.coupon-row { display: flex; gap: 8px; margin-top: 4px; }
+.coupon-row .input { padding: 9px 12px; }
+.prose { padding: 28px; line-height: 2.1; }
+.prose h2 { margin: 22px 0 8px; font-size: 1.15rem; font-weight: 800; }
+.prose h2:first-child { margin-top: 0; }
+.prose p, .prose ul { margin-bottom: 12px; color: var(--muted); }
+.prose ul { padding-right: 20px; list-style: disc; }
+.prose a { color: var(--accent); text-decoration: underline; }
+.legal-title { color: var(--fg); font-size: 1.4rem !important; }
+.legal-layout { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 900px) { .legal-layout { grid-template-columns: 220px 1fr; } }
+.legal-nav { position: sticky; top: 100px; display: flex; flex-direction: column; gap: 4px; padding: 10px; }
+.legal-nav a { padding: 10px 14px; border-radius: 12px; color: var(--muted); transition: .2s; }
+.legal-nav a:hover, .legal-nav a.is-active { background: var(--hover); color: var(--fg); }
+.legal-nav a.is-active { box-shadow: inset -3px 0 0 var(--brand); }
+@media (max-width: 899px) { .legal-nav { position: static; flex-direction: row; } }
+.wizard > *, .dash-grid > *, .split > *, .legal-layout > * { min-width: 0; }

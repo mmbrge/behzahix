@@ -104,6 +104,9 @@
     instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="0.8" fill="currentColor"/>',
     linkedin: '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 10.5V16M8 7.8v.01M11.5 16v-5.5M11.5 13c0-1.7 1-2.5 2.3-2.5S16 11.3 16 13v3"/>',
     telegram: '<path d="M21 4 3 11l6 2.2M21 4l-3 16-7.5-6.5M21 4 9 13.2m0 0V19l3-3"/>',
+    whatsapp: '<path d="M3.5 20.5 5 16a8.5 8.5 0 1 1 3.2 3.1Z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1.2-1.4-2-1-1 .8a4 4 0 0 1-2.1-2.1l.8-1-1-2Z"/>',
+    aparat: '<circle cx="12" cy="12" r="8.5"/><path d="m10 9 5 3-5 3z" fill="currentColor"/>',
+    x: '<path d="M4 4l16 16M20 4 4 20"/>',
     youtube: '<rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="m10 9.5 5 2.5-5 2.5z" fill="currentColor"/>',
   };
 
@@ -115,7 +118,7 @@
     .join("")}</defs>`;
   document.body.prepend(sprite);
 
-  const icon = (name, cls = "") => `<svg class="icon ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+  const icon = (name, cls = "") => `<svg class="icon ${cls}" aria-hidden="true"><use href="#i-${String(name).replace(/[^a-z0-9-]/g, "")}"/></svg>`;
 
   // ---------------------------------------------------------------- Format
   const faDigits = (v) => String(v).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
@@ -166,9 +169,9 @@
           <div class="mega-col" style="--h:${c.hue}">
             <a class="mega-head" href="services.html#${c.id}">
               <span class="mega-icon">${icon(c.icon)}</span>
-              <span><b>${c.title}</b><small dir="ltr">${c.en}</small></span>
+              <span><b>${esc(c.title)}</b><small dir="ltr">${esc(c.en)}</small></span>
             </a>
-            <ul>${c.services.map((s) => `<li><a href="order.html?service=${s.id}">${icon(s.icon)}${s.title}</a></li>`).join("")}</ul>
+            <ul>${c.services.map((s) => `<li><a href="order.html?service=${s.id}">${icon(s.icon)}${esc(s.title)}</a></li>`).join("")}</ul>
           </div>`).join("")}
       </div>
       <div class="mega-foot">
@@ -212,8 +215,8 @@
           <summary>خدمات ${icon("chevron-down", "chev")}</summary>
           ${BX.CATALOG.map((c) => `
             <div class="m-cat" style="--h:${c.hue}">
-              <a href="services.html#${c.id}" class="m-cat-head">${icon(c.icon)}${c.title}</a>
-              ${c.services.map((s) => `<a href="order.html?service=${s.id}">${s.title}</a>`).join("")}
+              <a href="services.html#${c.id}" class="m-cat-head">${icon(c.icon)}${esc(c.title)}</a>
+              ${c.services.map((s) => `<a href="order.html?service=${s.id}">${esc(s.title)}</a>`).join("")}
             </div>`).join("")}
         </details>
         ${NAV.filter((n) => !n.mega).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}
@@ -256,36 +259,46 @@
     update();
   }
 
+  const SOCIALS = [
+    ["instagram", "اینستاگرام"], ["telegram", "تلگرام"], ["whatsapp", "واتساپ"], ["linkedin", "لینکدین"],
+    ["youtube", "یوتیوب"], ["aparat", "آپارات"], ["x", "ایکس"],
+  ];
+  function socialLinks() {
+    const so = BX.settings.socials || {};
+    return SOCIALS.filter(([k]) => so[k]).map(([k, l]) => `<li><a href="${esc(so[k])}" aria-label="${l}" title="${l}" target="_blank" rel="noopener">${icon(k)}</a></li>`).join("");
+  }
+
   function renderFooter() {
     const el = document.getElementById("site-footer");
     if (!el) return;
-    const s = BX.db.data.settings;
+    const st = BX.settings;
+    const c = st.contact || {};
+    const g = st.general || {};
+    const legal = st.legal || {};
+    const badges = [legal.enamadCode, legal.samandehiCode, legal.extraBadgesCode].filter(Boolean);
     el.className = "site-footer";
     el.innerHTML = `
       <div class="container">
         <div class="footer-grid">
           <div class="footer-about">
             <span class="logo logo--md"><span class="logo-a">BEHI</span><span class="logo-x">X</span></span>
-            <p class="muted lh">بهیکس؛ استودیو خلاقیت دیجیتال با هوش مصنوعی. از ایده تا اتوماسیون، کنار کسب‌وکار شما.</p>
-            <ul class="socials">
-              <li><a href="#" aria-label="اینستاگرام">${icon("instagram")}</a></li>
-              <li><a href="#" aria-label="لینکدین">${icon("linkedin")}</a></li>
-              <li><a href="${esc(s.telegram)}" aria-label="تلگرام" target="_blank" rel="noreferrer">${icon("telegram")}</a></li>
-              <li><a href="#" aria-label="یوتیوب">${icon("youtube")}</a></li>
-            </ul>
+            <p class="muted lh">${esc(g.siteNameFa || "بهیکس")}؛ ${esc(g.tagline || "")}. از ایده تا اتوماسیون، کنار کسب‌وکار شما.</p>
+            <ul class="socials">${socialLinks()}</ul>
           </div>
           <div>
             <h4>خدمات</h4>
-            <ul class="footer-links">${BX.CATALOG.map((c) => `<li><a href="services.html#${c.id}">${c.title}</a></li>`).join("")}</ul>
+            <ul class="footer-links">${BX.CATALOG.map((cat) => `<li><a href="services.html#${cat.id}">${esc(cat.title)}</a></li>`).join("")}</ul>
           </div>
           <div>
-            <h4>بهیکس</h4>
+            <h4>${esc(g.siteNameFa || "بهیکس")}</h4>
             <ul class="footer-links">
               <li><a href="portfolio.html">نمونه‌کارها</a></li>
-              <li><a href="shop.html">فروشگاه فایل</a></li>
+              ${st.shop?.enabled !== false ? '<li><a href="shop.html">فروشگاه فایل</a></li>' : ""}
               <li><a href="designers.html">طراحان</a></li>
               <li><a href="about.html">درباره ما</a></li>
               <li><a href="about.html#faq">سوالات متداول</a></li>
+              <li><a href="terms.html">قوانین و مقررات</a></li>
+              <li><a href="terms.html#privacy">حریم خصوصی</a></li>
             </ul>
           </div>
           <div>
@@ -298,28 +311,60 @@
             </ul>
           </div>
           <div>
-            <h4>خبرنامه</h4>
-            <p class="muted small lh">تخفیف‌ها و قالب‌های رایگان را زودتر از همه دریافت کنید.</p>
+            <h4>ارتباط با ما</h4>
+            <ul class="footer-contact-list">
+              ${c.phone ? `<li><a href="tel:${esc(c.phone)}">${icon("phone")}<span dir="ltr">${faDigits(c.phone)}</span></a></li>` : ""}
+              ${c.phone2 ? `<li><a href="tel:${esc(c.phone2)}">${icon("phone")}<span dir="ltr">${faDigits(c.phone2)}</span></a></li>` : ""}
+              ${c.email ? `<li><a href="mailto:${esc(c.email)}">${icon("mail")}<span dir="ltr">${esc(c.email)}</span></a></li>` : ""}
+              ${c.address ? `<li><span>${icon("home")}${esc(c.address)}</span></li>` : ""}
+              ${c.hours ? `<li><span>${icon("clock")}${esc(c.hours)}</span></li>` : ""}
+            </ul>
             <form class="newsletter" data-newsletter>
-              <input type="email" required placeholder="ایمیل شما" aria-label="ایمیل" dir="ltr">
+              <input type="email" required placeholder="ایمیل برای خبرنامه" aria-label="ایمیل" dir="ltr">
               <button class="btn btn-primary btn-sm" type="submit">عضویت</button>
             </form>
-            <p class="small muted footer-contact">${icon("phone")}<span dir="ltr">${faDigits(s.phone)}</span></p>
           </div>
         </div>
+        ${badges.length ? `<div class="trust-badges">${badges.join("")}</div>` : ""}
         <div class="footer-bottom">
-          <p>خلاقیت + تکنولوژی + رشد پایدار</p>
-          <p dir="ltr">© BEHIX ${faDigits(new Date().getFullYear())}</p>
+          <p>تمامی حقوق برای ${esc(g.siteNameFa || "بهیکس")} محفوظ است.</p>
+          <p dir="ltr">© ${esc(g.siteName || "BEHIX")} ${faDigits(new Date().getFullYear())}</p>
         </div>
       </div>`;
-    el.querySelector("[data-newsletter]").addEventListener("submit", (e) => {
+    el.querySelector("[data-newsletter]").addEventListener("submit", async (e) => {
       e.preventDefault();
       const input = e.target.querySelector("input");
-      BX.db.data.leads.push({ email: input.value, at: Date.now(), source: "newsletter" });
-      BX.db.save();
-      input.value = "";
-      toast("عضویت شما در خبرنامه ثبت شد.", "ok");
+      try {
+        await BX.api("newsletter", { email: input.value });
+        input.value = "";
+        toast("عضویت شما در خبرنامه ثبت شد.", "ok");
+      } catch (err) {
+        toast(err.message, "bad");
+      }
     });
+  }
+
+  function renderAnnouncement() {
+    const g = BX.settings.general || {};
+    if (!g.announcement || document.body.dataset.page === "dashboard") return;
+    let closed = null;
+    try { closed = sessionStorage.getItem("bx-ann"); } catch (e) { /* ignore */ }
+    if (closed === g.announcement) return;
+    const bar = document.createElement("div");
+    bar.className = "announce";
+    bar.innerHTML = `${icon("sparkle")}${g.announcementLink ? `<a href="${esc(g.announcementLink)}">${esc(g.announcement)}</a>` : `<span>${esc(g.announcement)}</span>`}<button type="button" aria-label="بستن">${icon("cross")}</button>`;
+    bar.querySelector("button").addEventListener("click", () => {
+      bar.remove();
+      try { sessionStorage.setItem("bx-ann", g.announcement); } catch (e) { /* ignore */ }
+    });
+    document.body.prepend(bar);
+  }
+
+  function fullScreenNotice(title, text) {
+    const d = document.createElement("div");
+    d.className = "fullscreen-notice";
+    d.innerHTML = `<div><span class="logo logo--md"><span class="logo-a">BEHI</span><span class="logo-x">X</span></span><h1>${esc(title)}</h1><p>${esc(text)}</p></div>`;
+    document.body.appendChild(d);
   }
 
   // ---------------------------------------------------------------- Theme
@@ -465,10 +510,30 @@
   // ---------------------------------------------------------------- Boot
   Object.assign(BX, { ICONS, icon, faDigits, enDigits, num, toman, date, ago, esc, qs, art, avatar, toast, modal, initReveal });
 
-  renderHeader();
-  renderFooter();
+  // Pages that keep working during maintenance (so the admin can sign in)
+  const ALWAYS_OPEN = ["auth", "dashboard"];
+
+  BX.ready
+    .then(() => {
+      const g = BX.settings.general || {};
+      if (g.maintenance && BX.me?.role !== "admin" && !ALWAYS_OPEN.includes(document.body.dataset.page)) {
+        fullScreenNotice("به‌زودی برمی‌گردیم", g.maintenanceText || "");
+        return;
+      }
+      if (BX.settings.theme?.cursor !== false) initCursor();
+      const seo = BX.settings.seo || {};
+      if (document.body.dataset.page === "home" && seo.title) document.title = seo.title;
+      if (document.body.dataset.page === "home" && seo.description) document.querySelector('meta[name="description"]')?.setAttribute("content", seo.description);
+      renderAnnouncement();
+      renderHeader();
+      renderFooter();
+      initReveal();
+      document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = faDigits(new Date().getFullYear())));
+    })
+    .catch((err) => {
+      initReveal();
+      if (!BX.installed) fullScreenNotice("سایت در حال راه‌اندازی است", "نصب سایت هنوز کامل نشده است. مدیر سایت: فایل install.php را باز کنید.");
+      else toast(err.message, "bad");
+    });
   initTheme();
-  initReveal();
-  initCursor();
-  document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = faDigits(new Date().getFullYear())));
 })();
