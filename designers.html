@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>طراحان | بهیکس</title>
+  <meta name="description" content="با طراحان و متخصصان بهیکس آشنا شوید یا به عنوان طراح به تیم ما بپیوندید.">
+  <meta name="theme-color" content="#07080c">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="favicon.ico">
+  <link rel="preload" href="assets/fonts/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (function () {
+      var root = document.documentElement;
+      root.classList.add("js");
+      try { var t = localStorage.getItem("theme"); if (t) root.dataset.theme = t; } catch (e) {}
+    })();
+  </script>
+</head>
+<body data-page="designers">
+<div class="page-glow" aria-hidden="true"></div>
+<header id="site-header"></header>
+<main id="main">
+  <section class="container page-hero" data-reveal>
+    <nav class="crumbs" aria-label="مسیر"><a href="index.html">خانه</a><svg class="icon"><use href="#i-chevron-left"/></svg><span>طراحان</span></nav>
+    <h1>تیم <span class="grad">طراحان</span> بهیکس</h1>
+    <p>متخصصانی که پشت هر پروژه هستند. هر طراح پس از بررسی نمونه‌کار و آزمون مهارت به تیم اضافه می‌شود.</p>
+  </section>
+  <section class="container section-sm" style="padding-top:8px"><div data-view="designers"></div></section>
+  <section class="container section-sm">
+    <div class="card split" data-reveal style="align-items:center">
+      <div>
+        <p class="eyebrow">JOIN US</p>
+        <h2 class="h2-sm">طراح هستید؟ با بهیکس کار کنید</h2>
+        <p class="muted lh">پروژه‌های منظم، پرداخت به‌موقع، پنل اختصاصی مدیریت پروژه و تسویه، بدون درگیری با پیدا کردن مشتری.</p>
+        <ul class="svc-fields mt-2" style="font-size:.9rem">
+          <li><svg class="icon"><use href="#i-check"/></svg>پروژه متناسب با مهارت شما</li>
+          <li><svg class="icon"><use href="#i-check"/></svg>تسویه هفتگی</li>
+          <li><svg class="icon"><use href="#i-check"/></svg>پروفایل و نمونه‌کار عمومی</li>
+        </ul>
+        <a href="auth.html?mode=register&role=designer" class="btn btn-primary mt-3">درخواست همکاری <svg class="icon"><use href="#i-arrow"/></svg></a>
+      </div>
+      <div class="stats-strip">
+        <div class="card stat-box"><b>۸۰٪</b><span>سهم طراح از هر پروژه</span></div>
+        <div class="card stat-box"><b>۷ روز</b><span>چرخه تسویه</span></div>
+        <div class="card stat-box"><b>۲۲</b><span>نوع خدمت</span></div>
+        <div class="card stat-box"><b>۲۴/۷</b><span>پشتیبانی</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/js/data.js" defer></script>
+<script src="assets/js/core.js" defer></script>
+<script src="assets/js/catalog-pages.js" defer></script>
+</body>
+</html>

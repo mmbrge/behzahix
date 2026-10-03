@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>خدمات بهیکس | درخت خدمات طراحی و دیجیتال</title>
+  <meta name="description" content="همه خدمات بهیکس: آفیس، طراحی وب، ویدیو و موشن، گرافیک و تصویر، هوش مصنوعی و اتوماسیون.">
+  <meta name="theme-color" content="#07080c">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="favicon.ico">
+  <link rel="preload" href="assets/fonts/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (function () {
+      var root = document.documentElement;
+      root.classList.add("js");
+      try { var t = localStorage.getItem("theme"); if (t) root.dataset.theme = t; } catch (e) {}
+    })();
+  </script>
+</head>
+<body data-page="services">
+<div class="page-glow" aria-hidden="true"></div>
+<header id="site-header"></header>
+<main id="main">
+  <section class="container page-hero" data-reveal>
+    <nav class="crumbs" aria-label="مسیر"><a href="index.html">خانه</a><svg class="icon"><use href="#i-chevron-left"/></svg><span>خدمات</span></nav>
+    <h1>هر چیزی که کسب‌وکارتان <span class="grad">طراحی</span> لازم دارد</h1>
+    <p>خدمات بهیکس در پنج شاخه اصلی. روی هر شاخه بروید تا مسیرش روشن شود و روی هر خدمت کلیک کنید تا بریف و قیمت تقریبی را همان لحظه ببینید.</p>
+  </section>
+
+  <section class="container">
+    <div class="card" style="padding:24px 16px" data-reveal>
+      <div data-tree></div>
+    </div>
+  </section>
+
+  <div id="service-sections"></div>
+
+  <section class="container section-sm">
+    <div class="section-head" data-reveal>
+      <p class="eyebrow">HOW IT WORKS</p>
+      <h2>سفارش در ۴ قدم</h2>
+    </div>
+    <div class="process mt-3">
+      <div class="card process-step" data-reveal><span class="service-icon"><svg class="icon"><use href="#i-file"/></svg></span><h3>بریف هوشمند</h3><p>فرم مخصوص هر خدمت را پر کنید؛ قیمت و زمان تقریبی را همان لحظه می‌بینید.</p></div>
+      <div class="card process-step" data-reveal style="--d:100ms"><span class="service-icon"><svg class="icon"><use href="#i-search"/></svg></span><h3>بررسی و پیش‌فاکتور</h3><p>کارشناس ما بریف را بررسی می‌کند و پیش‌فاکتور نهایی را در پنل شما قرار می‌دهد.</p></div>
+      <div class="card process-step" data-reveal style="--d:200ms"><span class="service-icon"><svg class="icon"><use href="#i-pen"/></svg></span><h3>طراحی و گفتگو</h3><p>طراح متخصص کار را شروع می‌کند و در پنل با شما در ارتباط است.</p></div>
+      <div class="card process-step" data-reveal style="--d:300ms"><span class="service-icon"><svg class="icon"><use href="#i-check-circle"/></svg></span><h3>تحویل و اصلاحات</h3><p>نسخه‌ها را بررسی و تأیید می‌کنید و فایل نهایی را دانلود می‌کنید.</p></div>
+    </div>
+  </section>
+
+  <section class="container section-sm">
+    <div class="cta glow" data-reveal>
+      <h2 class="h2-sm">نمی‌دانید کدام خدمت مناسب شماست؟</h2>
+      <p class="muted lh">مشاوره رایگان بگیرید؛ با هم بهترین مسیر را انتخاب می‌کنیم.</p>
+      <div class="cta-actions">
+        <a href="order.html" class="btn btn-primary">شروع بریف هوشمند <svg class="icon"><use href="#i-arrow"/></svg></a>
+        <a href="about.html#contact" class="btn btn-ghost">درخواست مشاوره</a>
+      </div>
+    </div>
+  </section>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/js/data.js" defer></script>
+<script src="assets/js/core.js" defer></script>
+<script src="assets/js/tree.js" defer></script>
+<script src="assets/js/services.js" defer></script>
+</body>
+</html>

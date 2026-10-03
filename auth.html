@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ورود و ثبت‌نام | بهیکس</title>
+  <meta name="description" content="ورود و ثبت‌نام مشتریان، طراحان و فروشندگان بهیکس.">
+  <meta name="theme-color" content="#07080c">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="favicon.ico">
+  <link rel="preload" href="assets/fonts/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (function () {
+      var root = document.documentElement;
+      root.classList.add("js");
+      try { var t = localStorage.getItem("theme"); if (t) root.dataset.theme = t; } catch (e) {}
+    })();
+  </script>
+</head>
+<body data-page="auth">
+<div class="page-glow" aria-hidden="true"></div>
+<header id="site-header"></header>
+<main id="main">
+  <section class="container auth">
+    <div class="card auth-card glow" data-reveal>
+      <aside class="auth-side">
+        <div>
+          <span class="logo logo--md"><span class="logo-a" style="background-image:linear-gradient(#fff,#a1a1aa)">BEHI</span><span class="logo-x">X</span></span>
+          <h2 class="mt-3">یک حساب، همه چیز<br>در یک پنل</h2>
+          <ul>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg>پیگیری لحظه‌ای سفارش‌ها و گفتگو با طراح</li>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg>دانلود دائمی فایل‌های خریداری‌شده</li>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg>پنل اختصاصی طراحان و فروشندگان</li>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg>کیف پول، تخفیف‌ها و باشگاه مشتریان</li>
+          </ul>
+        </div>
+        <p class="small" style="color:#9ca3af">نسخه نمایشی: اطلاعات فقط در همین مرورگر ذخیره می‌شود.</p>
+      </aside>
+      <div class="auth-main" id="auth-main"></div>
+    </div>
+  </section>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/js/data.js" defer></script>
+<script src="assets/js/core.js" defer></script>
+<script src="assets/js/auth.js" defer></script>
+</body>
+</html>

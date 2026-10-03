@@ -205,14 +205,15 @@ a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
 .site-header.is-floating .mobile-nav { margin-inline: 16px; }
 
 .nav { display: none; gap: 4px; }
-.nav a { position: relative; padding: 8px 14px; border-radius: 999px; font-size: 0.875rem; color: var(--muted); transition: color .2s, background-color .2s; }
-.nav a::after {
+.nav { align-items: center; }
+.nav > a, .nav-item > a { display: inline-flex; align-items: center; gap: 4px; position: relative; padding: 8px 14px; border-radius: 999px; font-size: 0.875rem; color: var(--muted); transition: color .2s, background-color .2s; }
+.nav > a::after, .nav-item > a::after {
   content: ""; position: absolute; right: 14px; left: 14px; bottom: 4px; height: 2px; border-radius: 2px;
   background: linear-gradient(to left, var(--brand), var(--brand-2));
   transform: scaleX(0); transition: transform .35s var(--ease-out);
 }
-.nav a:hover { color: var(--fg); background: var(--hover); }
-.nav a:hover::after { transform: scaleX(1); }
+.nav > a:hover, .nav-item:hover > a, .nav .is-active { color: var(--fg); background: var(--hover); }
+.nav > a:hover::after, .nav-item:hover > a::after, .nav .is-active::after { transform: scaleX(1); }
 .header-actions { display: flex; align-items: center; gap: 8px; }
 .header-cta { display: none; flex-direction: column; align-items: center; gap: 4px; }
 .live-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
@@ -448,12 +449,6 @@ a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
 .cta-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
 
 /* ---------- Footer ---------- */
-.footer {
-  display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 24px;
-  margin-top: 32px; padding-top: 32px; padding-bottom: 40px;
-  border-top: 1px solid var(--line); font-size: 0.875rem; color: var(--muted);
-}
-.footer-brand { display: flex; align-items: center; gap: 16px; }
 .socials { display: flex; gap: 8px; }
 .socials a { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%; transition: transform .4s var(--ease-spring), border-color .2s, color .2s, background-color .2s, box-shadow .3s; }
 .socials a:hover { transform: translateY(-5px) rotate(-8deg); border-color: var(--brand); color: var(--on-brand); background: var(--brand); box-shadow: 0 10px 20px -8px rgb(255 122 26 / 0.8); }

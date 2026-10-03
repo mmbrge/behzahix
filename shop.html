@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>فروشگاه فایل | بهیکس</title>
+  <meta name="description" content="قالب پاورپوینت، رزومه، سایت، پک موشن و فایل‌های آماده از فروشندگان بهیکس.">
+  <meta name="theme-color" content="#07080c">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="favicon.ico">
+  <link rel="preload" href="assets/fonts/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (function () {
+      var root = document.documentElement;
+      root.classList.add("js");
+      try { var t = localStorage.getItem("theme"); if (t) root.dataset.theme = t; } catch (e) {}
+    })();
+  </script>
+</head>
+<body data-page="shop">
+<div class="page-glow" aria-hidden="true"></div>
+<header id="site-header"></header>
+<main id="main">
+  <section class="container page-hero" data-reveal>
+    <nav class="crumbs" aria-label="مسیر"><a href="index.html">خانه</a><svg class="icon"><use href="#i-chevron-left"/></svg><span>فروشگاه</span></nav>
+    <h1>فروشگاه <span class="grad">فایل‌های آماده</span></h1>
+    <p>قالب‌ها و پک‌های حرفه‌ای از طراحان و فروشندگان بهیکس؛ خرید آنی و دانلود دائمی از پنل.</p>
+    <div class="shop-hero-strip"><span class="badge badge--ok"><svg class="icon"><use href="#i-download"/></svg>دانلود آنی</span><span class="badge badge--info"><svg class="icon"><use href="#i-shield"/></svg>پرداخت امن</span><span class="badge badge--brand"><svg class="icon"><use href="#i-store"/></svg>فروشنده شوید و درآمد بسازید</span></div>
+  </section>
+  <section class="container section-sm" style="padding-top:8px"><div data-view="shop"></div></section>
+  <section class="container section-sm">
+    <div class="cta glow" data-reveal>
+      <h2 class="h2-sm">فایل‌های خودتان را بفروشید</h2>
+      <p class="muted lh">قالب، پک و فایل‌های طراحی‌تان را در بهیکس بفروشید؛ ما بازاریابی و پرداخت را انجام می‌دهیم.</p>
+      <div class="cta-actions"><a href="auth.html?mode=register&role=seller" class="btn btn-primary">ثبت‌نام فروشنده <svg class="icon"><use href="#i-arrow"/></svg></a></div>
+    </div>
+  </section>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/js/data.js" defer></script>
+<script src="assets/js/core.js" defer></script>
+<script src="assets/js/catalog-pages.js" defer></script>
+</body>
+</html>

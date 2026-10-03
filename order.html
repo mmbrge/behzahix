@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ثبت سفارش | بهیکس</title>
+  <meta name="description" content="بریف هوشمند بهیکس: خدمت را انتخاب کنید، جزئیات را وارد کنید و قیمت تقریبی را همان لحظه ببینید.">
+  <meta name="theme-color" content="#07080c">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="favicon.ico">
+  <link rel="preload" href="assets/fonts/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (function () {
+      var root = document.documentElement;
+      root.classList.add("js");
+      try { var t = localStorage.getItem("theme"); if (t) root.dataset.theme = t; } catch (e) {}
+    })();
+  </script>
+</head>
+<body data-page="order">
+<div class="page-glow" aria-hidden="true"></div>
+<header id="site-header"></header>
+<main id="main">
+  <section class="container page-hero" style="padding-bottom:8px">
+    <nav class="crumbs" aria-label="مسیر"><a href="index.html">خانه</a><svg class="icon"><use href="#i-chevron-left"/></svg><a href="services.html">خدمات</a><svg class="icon"><use href="#i-chevron-left"/></svg><span>ثبت سفارش</span></nav>
+    <h1>بریف <span class="grad">هوشمند</span> سفارش</h1>
+    <p>چند سوال ساده مخصوص همان خدمت؛ قیمت و زمان تحویل همان لحظه محاسبه می‌شود و پیش‌نویس شما خودکار ذخیره می‌شود.</p>
+  </section>
+  <section class="container section-sm" style="padding-top:16px">
+    <div class="wizard" id="wizard"></div>
+  </section>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/js/data.js" defer></script>
+<script src="assets/js/core.js" defer></script>
+<script src="assets/js/order.js" defer></script>
+</body>
+</html>
