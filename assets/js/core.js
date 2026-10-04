@@ -612,7 +612,7 @@
     const mark = document.createElement("div");
     dot.className = "cursor-dot";
     mark.className = "cursor-x";
-    mark.innerHTML = '<div class="cx"><span class="cx-x">X</span><b><span>‹</span><span>›</span></b></div>';
+    mark.innerHTML = '<div class="cx"><i></i><i></i><b><span>‹</span><span>›</span></b></div>';
     document.body.append(mark, dot);
     root.classList.add("has-cursor");
     let x = -100, y = -100, mx = x, my = y, idleT;

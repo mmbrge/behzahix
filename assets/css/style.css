@@ -457,27 +457,26 @@ a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
 .cursor-visible .cursor-x, .cursor-visible .cursor-dot { opacity: 1; }
 .cursor-dot { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--fg); transition: opacity .3s, scale .3s var(--ease-spring); }
 .cursor-x { width: 0; height: 0; }
-.cx { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; display: grid; place-items: center; transition: transform .45s var(--ease-spring); }
-/* The same "X" as the logo: Vazirmatn black, orange gradient, soft glow */
-.cx-x { display: block; font: 900 27px/1 Vazirmatn, Tahoma, sans-serif; translate: 0 -1px;
-  background-image: linear-gradient(var(--brand-2), var(--brand)); -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 0 7px rgb(255 122 26 / .65)); transition: opacity .25s, scale .35s var(--ease-spring); }
-.cx::after { content: ""; position: absolute; left: 50%; top: 50%; width: 2px; height: 22px; margin: -11px 0 0 -1px; border-radius: 2px;
-  background: var(--brand); box-shadow: 0 0 8px rgb(255 122 26 / .7); opacity: 0; scale: 1 .3; transition: opacity .2s, scale .3s var(--ease-spring); }
+.cx { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; transition: transform .45s var(--ease-spring); }
+/* Two thin bars at a steep angle — narrower than wide, like the logo X */
+.cx i { position: absolute; left: 50%; top: 50%; width: 20px; height: 2px; margin: -1px 0 0 -10px; border-radius: 2px; background: var(--brand); box-shadow: 0 0 8px rgb(255 122 26 / .7);
+  transition: width .4s var(--ease-spring), margin .4s var(--ease-spring), transform .45s var(--ease-spring), opacity .25s, background-color .3s; }
+.cx i:nth-child(1) { transform: rotate(62deg); }
+.cx i:nth-child(2) { transform: rotate(-62deg); }
 .cx b { position: absolute; inset: 0 -12px; display: flex; direction: ltr; align-items: center; justify-content: space-between; font: 800 16px/1 Vazirmatn, sans-serif; color: var(--brand); opacity: 0; transition: opacity .2s, inset .35s var(--ease-spring); }
 /* idle: the X breathes slowly like the logo mark */
 .cursor-idle:not(.cursor-hover):not(.cursor-text):not(.cursor-drag) .cx { animation: cx-breathe 2.4s ease-in-out infinite; }
-@keyframes cx-breathe { 50% { transform: rotate(90deg) scale(.85); } }
-/* hover: the logo's own hover move — a quarter turn and a little bigger */
-.cursor-hover .cx { transform: rotate(90deg) scale(1.3); }
-.cursor-hover .cx-x { filter: drop-shadow(0 0 10px rgb(255 122 26 / .9)); }
+@keyframes cx-breathe { 50% { transform: rotate(180deg) scale(.85); } }
+/* hover: a half turn (stays upright) and a little bigger — no halo */
+.cursor-hover .cx { transform: rotate(180deg) scale(1.3); }
+.cursor-hover .cx i { background: var(--fg); box-shadow: 0 0 6px rgb(255 122 26 / .9); }
 .cursor-hover .cursor-dot { scale: 0; }
 /* press: quick spin + shrink */
 .cursor-down .cx { transform: rotate(180deg) scale(.75); transition-duration: .25s; }
-.cursor-hover.cursor-down .cx { transform: rotate(180deg) scale(1.05); }
+.cursor-hover.cursor-down .cx { transform: rotate(360deg) scale(1.05); }
 /* text fields: the X folds into a blinking caret */
-.cursor-text .cx-x { opacity: 0; scale: .3; }
-.cursor-text .cx::after { opacity: 1; scale: 1; animation: blink 1s steps(1) infinite; }
+.cursor-text .cx i:nth-child(1) { transform: rotate(90deg); animation: blink 1s steps(1) infinite; }
+.cursor-text .cx i:nth-child(2) { opacity: 0; transform: rotate(90deg); }
 .cursor-text .cursor-dot { scale: 0; }
 /* before/after slider: arrows either side of the X */
 .cursor-drag .cx b { opacity: 1; inset: 0 -16px; }
