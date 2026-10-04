@@ -368,6 +368,8 @@ window.BX.ready.then(function () {
     }
     const q = quote();
     const pct = completeness();
+    const np = root.querySelector("[data-wnav-price]");
+    if (np) np.textContent = toman(q.final);
     const keyRows = s.fields.filter((f) => f.type !== "textarea").slice(0, 4).map((f) => `<li><span>${esc(f.label)}</span><span>${fieldValueText(f, state.details[f.id])}</span></li>`).join("");
     box.innerHTML = `
       <h3>خلاصه سفارش</h3>
@@ -391,14 +393,14 @@ window.BX.ready.then(function () {
 
   function renderPane() {
     const pane = root.querySelector("[data-pane]");
-    pane.innerHTML = `
-      ${STEP_RENDER[state.step]()}
-      <div class="wizard-nav">
-        ${state.step > 0 ? `<button type="button" class="btn btn-ghost" data-action="prev">${icon("arrow-right")} مرحله قبل</button>` : "<span></span>"}
-        ${state.step < STEPS.length - 1
-          ? `<button type="button" class="btn btn-primary" data-action="next">مرحله بعد ${icon("arrow")}</button>`
-          : `<button type="button" class="btn btn-primary" data-action="submit">${icon("send")} ثبت سفارش</button>`}
-      </div>`;
+    pane.innerHTML = STEP_RENDER[state.step]();
+    // The nav lives outside the animated pane so it can be a fixed bottom bar on phones
+    root.querySelector("[data-nav]").innerHTML = `
+      ${state.step > 0 ? `<button type="button" class="btn btn-ghost" data-action="prev" aria-label="مرحله قبل">${icon("arrow-right")}<span>مرحله قبل</span></button>` : "<span></span>"}
+      <div class="wnav-price"><small>برآورد · مرحله ${faDigits(state.step + 1)} از ${faDigits(STEPS.length)}</small><b data-wnav-price>—</b></div>
+      ${state.step < STEPS.length - 1
+        ? `<button type="button" class="btn btn-primary" data-action="next">مرحله بعد ${icon("arrow")}</button>`
+        : `<button type="button" class="btn btn-primary" data-action="submit">${icon("send")} ثبت سفارش</button>`}`;
     pane.classList.remove("wizard-pane");
     void pane.offsetWidth; // replay the enter animation
     pane.classList.add("wizard-pane");
@@ -718,7 +720,7 @@ window.BX.ready.then(function () {
   root.innerHTML = `
     <div>
       <div class="steps" data-steps></div>
-      <div class="card" data-pane></div>
+      <div class="card wizard-card"><div data-pane></div><div class="wizard-nav" data-nav></div></div>
     </div>
     <aside class="card summary glow" data-summary aria-live="polite"></aside>`;
   renderAll();

@@ -40,16 +40,21 @@
   // ------------------------------------------------------------ shapes
   function sampleText(text, isLogo) {
     const off = document.createElement("canvas");
+    // Phones: long multi-word phrases wrap onto two lines so letters stay big
+    const words = String(text).trim().split(/\s+/);
+    const twoLines = !isLogo && W < 640 && words.length > 1;
+    const lines = twoLines ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : [text];
     const ow = Math.round(Math.min(1500, W * 0.92));
-    const oh = Math.round(Math.min(H * 0.5, ow * 0.5));
+    const oh = Math.round(twoLines ? Math.min(H * 0.46, ow * 0.95) : Math.min(H * 0.5, ow * 0.5));
     off.width = ow;
     off.height = oh;
     const o = off.getContext("2d", { willReadFrequently: true });
     const latin = /^[A-Za-z0-9 .&+-]+$/.test(text);
-    let size = oh * 0.92;
+    let size = (oh / lines.length) * 0.92;
     const font = (s) => `900 ${s}px Vazirmatn, Tahoma, sans-serif`;
     o.font = font(size);
-    while (o.measureText(text).width > ow * 0.94 && size > 18) {
+    const widest = () => Math.max(...lines.map((l) => o.measureText(l).width));
+    while (widest() > ow * 0.94 && size > 18) {
       size *= 0.94;
       o.font = font(size);
     }
@@ -71,7 +76,8 @@
       g.addColorStop(0.55, "#ff9a3c");
       g.addColorStop(1, "#ff7a1a");
       o.fillStyle = g;
-      o.fillText(text, ow / 2, oh / 2);
+      const lh = size * 1.12;
+      lines.forEach((l, k) => o.fillText(l, ow / 2, oh / 2 + (k - (lines.length - 1) / 2) * lh));
     }
     const data = o.getImageData(0, 0, ow, oh).data;
     let filled = 0;
@@ -313,6 +319,33 @@
       mouse.ny = (mouse.y / H - 0.5) * 2;
     });
     section.addEventListener("pointerleave", () => { mouse.x = mouse.y = -9999; mouse.nx = mouse.ny = 0; });
+    // Touch: drag a finger through the particles; tap to blast them apart
+    const touchAt = (t) => {
+      const r = canvas.getBoundingClientRect();
+      mouse.x = t.clientX - r.left;
+      mouse.y = t.clientY - r.top;
+    };
+    section.addEventListener("touchstart", (e) => touchAt(e.touches[0]), { passive: true });
+    section.addEventListener("touchmove", (e) => touchAt(e.touches[0]), { passive: true });
+    section.addEventListener("touchend", () => { mouse.x = mouse.y = -9999; }, { passive: true });
+    section.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("a, button")) return;
+      const r = canvas.getBoundingClientRect();
+      const bx = e.clientX - r.left, by = e.clientY - r.top, R = W < 640 ? 150 : 220;
+      for (const p of P) {
+        const dx = p.x - bx, dy = p.y - by, d = Math.hypot(dx, dy) || 1;
+        if (d < R) { const f = (1 - d / R) * (W < 640 ? 110 : 160); p.x += (dx / d) * f; p.y += (dy / d) * f; }
+      }
+      navigator.vibrate?.(10);
+    });
+    // Tilt the orb with the phone (where the browser allows it without a prompt)
+    if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission !== "function" && matchMedia("(pointer: coarse)").matches) {
+      window.addEventListener("deviceorientation", (e) => {
+        if (e.gamma == null) return;
+        mouse.nx = Math.max(-1, Math.min(1, e.gamma / 30));
+        mouse.ny = Math.max(-1, Math.min(1, (e.beta - 45) / 40));
+      });
+    }
     if ("IntersectionObserver" in window) new IntersectionObserver((e) => (visible = e[0].isIntersecting)).observe(section);
   }
 

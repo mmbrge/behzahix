@@ -210,34 +210,10 @@
           </div>
           <button type="button" class="icon-btn menu-btn" aria-label="باز کردن منو" aria-expanded="false" aria-controls="mobile-nav">${icon("menu")}</button>
         </div>
-      </div>
-      <nav class="mobile-nav" id="mobile-nav" aria-label="منوی موبایل" hidden>
-        <details class="m-services">
-          <summary>خدمات ${icon("chevron-down", "chev")}</summary>
-          ${BX.CATALOG.map((c) => `
-            <div class="m-cat" style="--h:${c.hue}">
-              <a href="services.html#${c.id}" class="m-cat-head">${icon(c.icon)}${esc(c.title)}</a>
-              ${c.services.map((s) => `<a href="order.html?service=${s.id}">${esc(s.title)}</a>`).join("")}
-            </div>`).join("")}
-        </details>
-        ${NAV.filter((n) => !n.mega).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}
-        <a href="${user ? "dashboard.html" : "auth.html"}">${user ? "پنل کاربری" : "ورود / ثبت‌نام"}</a>
-        <a href="order.html" class="btn btn-primary">ثبت سفارش</a>
-      </nav>`;
+      </div>`;
 
-    // Mobile menu
-    const btn = el.querySelector(".menu-btn");
-    const menu = el.querySelector("#mobile-nav");
-    const setOpen = (open) => {
-      menu.hidden = !open;
-      btn.setAttribute("aria-expanded", String(open));
-      btn.setAttribute("aria-label", open ? "بستن منو" : "باز کردن منو");
-      btn.querySelector("use").setAttribute("href", open ? "#i-cross" : "#i-menu");
-    };
-    btn.addEventListener("click", () => setOpen(menu.hidden));
-    menu.addEventListener("click", (e) => {
-      if (e.target.closest("a")) setOpen(false);
-    });
+    renderMenuSheet(user);
+    renderTabbar(user);
 
     // Mega menu: keyboard / touch friendly toggle on top of CSS hover
     const mega = el.querySelector(".has-mega");
@@ -260,6 +236,196 @@
     update();
   }
 
+  // ---------------------------------------------------------------- Mobile: menu sheet
+  // Full-screen menu that grows out of the menu button (phones & tablets).
+  let installPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    installPrompt = e;
+    document.querySelectorAll("[data-install]").forEach((b) => (b.hidden = false));
+  });
+  const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
+  function quickActions() {
+    const c = BX.settings.contact || {};
+    const so = BX.settings.socials || {};
+    const tg = so.telegram || (c.telegramId ? `https://t.me/${c.telegramId}` : "");
+    return [
+      c.phone && [`tel:${c.phone}`, "phone", "تماس"],
+      tg && [tg, "telegram", "تلگرام"],
+      so.whatsapp && [so.whatsapp, "whatsapp", "واتساپ"],
+      so.instagram && [so.instagram, "instagram", "اینستاگرام"],
+      c.email && [`mailto:${c.email}`, "mail", "ایمیل"],
+    ].filter(Boolean).slice(0, 4);
+  }
+
+  function renderMenuSheet(user) {
+    document.getElementById("mobile-nav")?.remove();
+    const shopOn = BX.settings.shop?.enabled !== false;
+    const links = [
+      ["index.html", "home", "خانه", "home"],
+      ["services.html", "grid", "همه خدمات", "services"],
+      ["portfolio.html", "image", "نمونه‌کارها", "portfolio"],
+      shopOn && ["shop.html", "store", "فروشگاه فایل", "shop"],
+      ["designers.html", "users", "طراحان", "designers"],
+      ["index.html#packages", "percent", "تعرفه‌ها و پکیج‌ها", "pricing"],
+      ["about.html", "info", "درباره ما و سوالات", "about"],
+      [user ? "dashboard.html" : "auth.html", user ? "layout" : "user", user ? "پنل کاربری" : "ورود / ثبت‌نام", "auth"],
+    ].filter(Boolean);
+    let i = 0;
+    const sheet = document.createElement("div");
+    sheet.className = "msheet";
+    sheet.id = "mobile-nav";
+    sheet.hidden = true;
+    sheet.setAttribute("role", "dialog");
+    sheet.setAttribute("aria-modal", "true");
+    sheet.setAttribute("aria-label", "منوی سایت");
+    sheet.innerHTML = `
+      <div class="msheet-deco" aria-hidden="true"><span>X</span></div>
+      <div class="msheet-inner">
+        <div class="msheet-top ms-anim" style="--i:${i++}">
+          <a href="index.html" class="logo logo--md"><span class="logo-a">BEHI</span><span class="logo-x">X</span></a>
+          <code class="msheet-path" dir="ltr">~/behix/<b>menu</b></code>
+          <button type="button" class="icon-btn msheet-close" aria-label="بستن منو">${icon("cross")}</button>
+        </div>
+        ${user ? `<a href="dashboard.html" class="msheet-user ms-anim" style="--i:${i++}">${avatar(user, "avatar-lg")}<span><b>${esc(user.name)}</b><small>ورود به پنل کاربری</small></span>${icon("chevron-left")}</a>` : ""}
+        <p class="msheet-label ms-anim" style="--i:${i++}"><span dir="ltr">// services</span> خدمات</p>
+        <div class="msheet-cats">
+          ${BX.CATALOG.map((c) => `<a href="services.html#${c.id}" class="mcat ms-anim" style="--h:${c.hue};--i:${i++}">
+            <span class="mcat-ic">${icon(c.icon)}</span><b>${esc(c.title)}</b><small dir="ltr">${esc(c.en)} · ${faDigits(c.services.length)}</small></a>`).join("")}
+        </div>
+        <p class="msheet-label ms-anim" style="--i:${i++}"><span dir="ltr">// pages</span> صفحات</p>
+        <nav class="msheet-links" aria-label="صفحات">
+          ${links.map(([href, ic, label, id], k) => `<a href="${href}" class="ms-anim ${page === id ? "is-active" : ""}" style="--i:${i++}">
+            <span class="idx" dir="ltr">${String(k + 1).padStart(2, "0")}</span>${icon(ic)}<span class="grow">${label}</span>${icon("chevron-left", "go")}</a>`).join("")}
+        </nav>
+        ${quickActions().length ? `<div class="msheet-quick ms-anim" style="--i:${i++}">${quickActions().map(([href, ic, l]) => `<a href="${esc(href)}" ${/^https?:/.test(href) ? 'target="_blank" rel="noopener"' : ""}>${icon(ic)}<span>${l}</span></a>`).join("")}</div>` : ""}
+        <div class="msheet-foot ms-anim" style="--i:${i++}">
+          <button type="button" class="msheet-row theme-btn">${icon("sun", "icon-sun")}${icon("moon", "icon-moon")}<span class="grow">حالت روشن / تاریک</span><span class="toggle-ui" aria-hidden="true"></span></button>
+          <button type="button" class="msheet-row" data-install ${installPrompt ? "" : "hidden"}>${icon("download")}<span class="grow">نصب اپلیکیشن بهیکس روی گوشی</span>${icon("chevron-left")}</button>
+          ${isIOS() && !isStandalone() ? `<p class="msheet-hint">${icon("info")} برای نصب اپ: دکمه اشتراک‌گذاری سافاری ← «Add to Home Screen»</p>` : ""}
+          <a href="order.html" class="btn btn-primary btn-block">${icon("plus")} ثبت سفارش جدید</a>
+        </div>
+      </div>`;
+    document.body.appendChild(sheet);
+
+    const btn = document.querySelector("#site-header .menu-btn");
+    const root = document.documentElement;
+    let opened = false;
+    const setOpen = (open, fromPop) => {
+      if (open === opened) return;
+      opened = open;
+      btn.setAttribute("aria-expanded", String(open));
+      if (open) {
+        const r = btn.getBoundingClientRect();
+        sheet.style.setProperty("--ox", `${r.left + r.width / 2}px`);
+        sheet.style.setProperty("--oy", `${r.top + r.height / 2}px`);
+        sheet.hidden = false;
+        root.classList.add("menu-open");
+        requestAnimationFrame(() => requestAnimationFrame(() => sheet.classList.add("is-open")));
+        sheet.querySelector(".msheet-close").focus({ preventScroll: true });
+        if (!fromPop) history.pushState({ bxMenu: 1 }, "");
+      } else {
+        sheet.classList.remove("is-open");
+        root.classList.remove("menu-open");
+        setTimeout(() => { if (!opened) sheet.hidden = true; }, 550);
+        btn.focus({ preventScroll: true });
+        if (!fromPop && history.state?.bxMenu) history.back();
+      }
+    };
+    btn.addEventListener("click", () => setOpen(!opened));
+    sheet.querySelector(".msheet-close").addEventListener("click", () => setOpen(false));
+    sheet.addEventListener("click", (e) => {
+      const a = e.target.closest("a");
+      if (a && !a.target) {
+        // Same-page anchors just close; other links navigate away anyway.
+        opened = false;
+        sheet.classList.remove("is-open");
+        root.classList.remove("menu-open");
+      }
+      if (e.target.closest("[data-install]") && installPrompt) {
+        installPrompt.prompt();
+        installPrompt.userChoice.finally(() => { installPrompt = null; document.querySelectorAll("[data-install]").forEach((b) => (b.hidden = true)); });
+      }
+    });
+    window.addEventListener("popstate", () => opened && setOpen(false, true));
+    document.addEventListener("keydown", (e) => e.key === "Escape" && opened && setOpen(false));
+  }
+
+  // ---------------------------------------------------------------- Mobile: tab bar
+  // App-style bottom navigation on phones; the centre diamond is the logo "X".
+  const NO_TABBAR = ["dashboard", "order", "auth"];
+  function renderTabbar(user) {
+    if (NO_TABBAR.includes(page)) return;
+    document.querySelector(".tabbar")?.remove();
+    const shopOn = BX.settings.shop?.enabled !== false;
+    const tabs = [
+      ["index.html", "home", "خانه", ["home"]],
+      ["services.html", "grid", "خدمات", ["services"]],
+      null,
+      shopOn ? ["shop.html", "store", "فروشگاه", ["shop"]] : ["portfolio.html", "image", "نمونه‌کار", ["portfolio"]],
+      [user ? "dashboard.html" : "auth.html", user ? null : "user", user ? "پنل من" : "ورود", ["auth"]],
+    ];
+    const bar = document.createElement("nav");
+    bar.className = "tabbar";
+    bar.setAttribute("aria-label", "ناوبری سریع");
+    bar.innerHTML = `<i class="tb-ind" aria-hidden="true"></i>${tabs.map((t) => t
+      ? `<a href="${t[0]}" class="${t[3].includes(page) ? "is-active" : ""}" ${t[3].includes(page) ? 'aria-current="page"' : ""}><span class="tb-ic">${t[1] ? icon(t[1]) : avatar(user, "avatar-xs")}</span><span class="tb-l">${t[2]}</span></a>`
+      : `<a href="order.html" class="tb-fab" aria-label="ثبت سفارش"><span class="tb-x">${icon("plus")}</span><span class="tb-l">سفارش</span></a>`).join("")}`;
+    document.body.appendChild(bar);
+    document.body.classList.add("has-tabbar");
+
+    const ind = bar.querySelector(".tb-ind");
+    const place = (a) => {
+      if (!a || a.classList.contains("tb-fab")) { ind.style.opacity = "0"; return; }
+      const r = a.getBoundingClientRect(), br = bar.getBoundingClientRect();
+      ind.style.opacity = "1";
+      ind.style.setProperty("--x", `${r.left - br.left + r.width / 2 - 28}px`);
+    };
+    requestAnimationFrame(() => place(bar.querySelector("a.is-active")));
+    window.addEventListener("resize", () => place(bar.querySelector("a.is-active")));
+    bar.addEventListener("click", (e) => {
+      const a = e.target.closest("a");
+      if (!a) return;
+      navigator.vibrate?.(8);
+      bar.querySelectorAll("a").forEach((x) => x.classList.toggle("is-active", x === a));
+      place(a);
+    });
+
+    // Slide away while reading down, come back when scrolling up or near the end
+    let lastY = window.scrollY, ticking = false;
+    window.addEventListener("scroll", () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const nearEnd = y + innerHeight > document.documentElement.scrollHeight - 80;
+        if (y > lastY + 8 && y > 160 && !nearEnd) bar.classList.add("is-hidden");
+        else if (y < lastY - 8 || nearEnd || y < 160) bar.classList.remove("is-hidden");
+        lastY = y;
+        ticking = false;
+      });
+    }, { passive: true });
+    // Hide while the on-screen keyboard is likely open
+    document.addEventListener("focusin", (e) => { if (e.target.matches("input, textarea, select")) bar.classList.add("is-kb"); });
+    document.addEventListener("focusout", () => bar.classList.remove("is-kb"));
+  }
+
+  // Touch feedback: a soft ripple where the finger lands (+ tiny haptic on buttons)
+  document.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch") return;
+    const t = e.target instanceof Element && e.target.closest("a, button, label, summary, .chip, [data-spotlight]");
+    if (!t) return;
+    const r = document.createElement("span");
+    r.className = "tap-ripple";
+    r.style.left = `${e.clientX}px`;
+    r.style.top = `${e.clientY}px`;
+    document.body.appendChild(r);
+    setTimeout(() => r.remove(), 650);
+    if (t.matches(".btn-primary")) navigator.vibrate?.(6);
+  }, { passive: true });
+
   const SOCIALS = [
     ["instagram", "اینستاگرام"], ["telegram", "تلگرام"], ["whatsapp", "واتساپ"], ["linkedin", "لینکدین"],
     ["youtube", "یوتیوب"], ["aparat", "آپارات"], ["x", "ایکس"],
@@ -278,6 +444,9 @@
     const legal = st.legal || {};
     const badges = [legal.enamadCode, legal.samandehiCode, legal.extraBadgesCode].filter(Boolean);
     el.className = "site-footer";
+    // Link groups fold into accordions on phones
+    const open = window.matchMedia("(min-width: 768px)").matches ? "open" : "";
+    const fcol = (title, body) => `<details class="f-col" ${open}><summary><h4>${title}</h4>${icon("chevron-down", "chev")}</summary>${body}</details>`;
     el.innerHTML = `
       <div class="container">
         <div class="footer-grid">
@@ -286,13 +455,8 @@
             <p class="muted lh">${esc(g.siteNameFa || "بهیکس")}؛ ${esc(g.tagline || "")}. از ایده تا اتوماسیون، کنار کسب‌وکار شما.</p>
             <ul class="socials">${socialLinks()}</ul>
           </div>
-          <div>
-            <h4>خدمات</h4>
-            <ul class="footer-links">${BX.CATALOG.map((cat) => `<li><a href="services.html#${cat.id}">${esc(cat.title)}</a></li>`).join("")}</ul>
-          </div>
-          <div>
-            <h4>${esc(g.siteNameFa || "بهیکس")}</h4>
-            <ul class="footer-links">
+          ${fcol(`خدمات`, `<ul class="footer-links">${BX.CATALOG.map((cat) => `<li><a href="services.html#${cat.id}">${esc(cat.title)}</a></li>`).join("")}</ul>`)}
+          ${fcol(`${esc(g.siteNameFa || "بهیکس")}`, `<ul class="footer-links">
               <li><a href="portfolio.html">نمونه‌کارها</a></li>
               ${st.shop?.enabled !== false ? '<li><a href="shop.html">فروشگاه فایل</a></li>' : ""}
               <li><a href="designers.html">طراحان</a></li>
@@ -300,17 +464,13 @@
               <li><a href="about.html#faq">سوالات متداول</a></li>
               <li><a href="terms.html">قوانین و مقررات</a></li>
               <li><a href="terms.html#privacy">حریم خصوصی</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4>همکاری</h4>
-            <ul class="footer-links">
+            </ul>`)}
+          ${fcol(`همکاری`, `<ul class="footer-links">
               <li><a href="auth.html?mode=register&role=designer">همکاری به عنوان طراح</a></li>
               <li><a href="auth.html?mode=register&role=seller">فروشنده شوید</a></li>
               <li><a href="dashboard.html">ورود به پنل</a></li>
               <li><a href="about.html#contact">تماس با ما</a></li>
-            </ul>
-          </div>
+            </ul>`)}
           <div>
             <h4>ارتباط با ما</h4>
             <ul class="footer-contact-list">
@@ -600,6 +760,26 @@
     document.body.appendChild(wrap);
     wrap.querySelector("[data-close]").focus();
     onOpen && onOpen(wrap, close);
+    // Phones: the modal is a bottom sheet — drag its header down to dismiss
+    const sheet = wrap.querySelector(".modal");
+    let sy = null, dy = 0;
+    sheet.addEventListener("touchstart", (e) => {
+      if (!window.matchMedia("(max-width: 767px)").matches || !e.target.closest(".modal-head")) return;
+      sy = e.touches[0].clientY;
+      dy = 0;
+      sheet.style.transition = "none";
+    }, { passive: true });
+    sheet.addEventListener("touchmove", (e) => {
+      if (sy === null) return;
+      dy = Math.max(0, e.touches[0].clientY - sy);
+      sheet.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    sheet.addEventListener("touchend", () => {
+      if (sy === null) return;
+      sy = null;
+      sheet.style.transition = "transform .3s var(--ease-out)";
+      if (dy > 100) { sheet.style.transform = "translateY(110%)"; close(); } else sheet.style.transform = "";
+    });
     return { el: wrap, close };
   }
 

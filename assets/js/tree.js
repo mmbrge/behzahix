@@ -22,6 +22,9 @@
         <span class="tree-root-orb"><span class="logo logo--sm"><span class="logo-a">BEHI</span><span class="logo-x">X</span></span></span>
         <div><b>طراحی و خدمات دیجیتال</b><small>${faDigits(BX.CATALOG.reduce((n, c) => n + c.services.length, 0))} خدمت در ${faDigits(BX.CATALOG.length)} شاخه</small></div>
       </div>
+      <div class="tree-tabs" role="tablist" aria-label="شاخه‌های خدمات">
+        ${BX.CATALOG.map((c, ci) => `<button type="button" role="tab" style="--h:${c.hue}" class="${ci ? "" : "is-on"}" aria-selected="${ci ? "false" : "true"}">${icon(c.icon)}${esc(c.title)}</button>`).join("")}
+      </div>
       <div class="tree-cats">
         ${BX.CATALOG.map((c, ci) => `
           <div class="tree-branch" data-branch="${c.id}" id="${c.id}" style="--h:${c.hue};--i:${ci}">
@@ -48,8 +51,12 @@
       </div>`;
   }
 
+  // Phones: branches become a swipeable carousel with category chips
+  const phone = window.matchMedia("(max-width: 767px)");
+
   function draw(tree) {
     const svg = tree.querySelector(".tree-lines");
+    if (phone.matches) return;
     const box = tree.getBoundingClientRect();
     const rel = (r) => ({
       l: r.left - box.left, r: r.right - box.left, t: r.top - box.top, b: r.bottom - box.top,
@@ -121,13 +128,15 @@
       b.addEventListener("focusout", () => setActive(null));
       // Collapse / expand a branch (mostly useful on mobile)
       b.querySelector(".tree-cat").addEventListener("click", () => {
+        if (phone.matches) return;
         const collapsed = b.classList.toggle("is-collapsed");
         b.querySelector(".tree-cat").setAttribute("aria-expanded", String(!collapsed));
         redraw();
       });
     });
 
-    if ("ResizeObserver" in window) new ResizeObserver(redraw).observe(tree);
+    const carousel = initCarousel(tree);
+    if ("ResizeObserver" in window) new ResizeObserver(() => { redraw(); carousel.fit(); }).observe(tree);
     window.addEventListener("resize", redraw);
     // Leaves animate in / expand on hover; keep the connectors attached.
     tree.addEventListener("transitionend", (e) => {
@@ -153,9 +162,48 @@
     // Deep link: services.html#web highlights that branch
     const hash = decodeURIComponent(location.hash.slice(1));
     if (hash && tree.querySelector(`[data-branch="${hash}"]`)) {
+      carousel.go(BX.CATALOG.findIndex((c) => c.id === hash), true);
       setTimeout(() => setActive(hash), 900);
       setTimeout(() => setActive(null), 3500);
     }
+  }
+
+  function initCarousel(tree) {
+    const cats = tree.querySelector(".tree-cats");
+    const tabs = tree.querySelector(".tree-tabs");
+    const rtl = getComputedStyle(cats).direction === "rtl" ? -1 : 1;
+    let cur = 0;
+    const fit = () => {
+      if (!phone.matches) { cats.style.height = ""; return; }
+      cats.style.height = `${cats.children[cur].offsetHeight}px`;
+    };
+    const mark = (i) => {
+      cur = i;
+      [...tabs.children].forEach((b, j) => { b.classList.toggle("is-on", j === i); b.setAttribute("aria-selected", String(j === i)); });
+      const t = tabs.children[i];
+      tabs.scrollTo({ left: t.offsetLeft - (tabs.clientWidth - t.offsetWidth) / 2, behavior: "smooth" });
+      fit();
+    };
+    const go = (i, instant) => {
+      if (i < 0 || !phone.matches) return;
+      cats.scrollTo({ left: rtl * i * cats.clientWidth, behavior: instant ? "auto" : "smooth" });
+      mark(i);
+    };
+    let st;
+    cats.addEventListener("scroll", () => {
+      if (!phone.matches) return;
+      const i = Math.round(Math.abs(cats.scrollLeft) / cats.clientWidth);
+      if (i !== cur) { mark(i); navigator.vibrate?.(5); }
+      clearTimeout(st);
+      st = setTimeout(fit, 120);
+    }, { passive: true });
+    tabs.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (b) go([...tabs.children].indexOf(b));
+    });
+    phone.addEventListener?.("change", fit);
+    setTimeout(fit, 50);
+    return { go, fit };
   }
 
   BX.ready.then(() => document.querySelectorAll("[data-tree]").forEach(init));

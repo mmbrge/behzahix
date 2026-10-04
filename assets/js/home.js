@@ -109,7 +109,30 @@ window.BX.ready.then(() => {
     out.subtotal.hidden = discount === 0;
     out.submit.classList.toggle("is-disabled", chosen.length === 0);
     out.submit.setAttribute("aria-disabled", String(chosen.length === 0));
+    if (dock) {
+      dock.querySelector("b").textContent = toman(total);
+      dock.querySelector("small").textContent = chosen.length ? `${faDigits(chosen.length)} خدمت · ${days ? `${faDigits(days)} روز` : ""}${discount ? ` · ${faDigits(Math.round(discount * 100))}٪ تخفیف` : ""}` : "یک خدمت انتخاب کنید";
+      dock.querySelector("a").classList.toggle("is-disabled", chosen.length === 0);
+    }
   };
+
+  // Phones: while choosing packages the quote card is off-screen, so a small
+  // dock above the tab bar shows the live total.
+  let dock = null;
+  if (window.matchMedia("(max-width: 767px)").matches && "IntersectionObserver" in window) {
+    dock = document.createElement("div");
+    dock.className = "calc-dock";
+    dock.innerHTML = `<div><small></small><b></b></div><a href="#calc-total" class="btn btn-primary btn-sm">مشاهده پکیج</a>`;
+    document.body.appendChild(dock);
+    dock.querySelector("a").addEventListener("click", (e) => {
+      e.preventDefault();
+      document.querySelector(".quote").scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    let listIn = false, quoteIn = false;
+    const sync = () => dock.classList.toggle("is-on", listIn && !quoteIn);
+    new IntersectionObserver((e) => { listIn = e[0].isIntersecting; sync(); }, { rootMargin: "0px 0px -20% 0px" }).observe(list);
+    new IntersectionObserver((e) => { quoteIn = e[0].isIntersecting; sync(); }, { threshold: 0.35 }).observe(document.querySelector(".quote"));
+  }
 
   list.addEventListener("change", update);
   update();

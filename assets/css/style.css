@@ -202,7 +202,6 @@ a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
   box-shadow: var(--shadow), 0 0 0 1px rgb(255 122 26 / 0.12);
   animation: header-drop .7s var(--ease-spring);
 }
-.site-header.is-floating .mobile-nav { margin-inline: 16px; }
 
 .nav { display: none; gap: 4px; }
 .nav { align-items: center; }
@@ -219,16 +218,6 @@ a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
 .live-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .live-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--ok); animation: ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
 .live-note { font-size: 11px; color: var(--muted); }
-.mobile-nav {
-  display: flex; flex-direction: column; margin: 8px 16px 0; padding: 12px;
-  border: 1px solid var(--line); border-radius: var(--radius);
-  background: var(--menu-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  box-shadow: var(--shadow);
-  animation: menu-in .35s var(--ease-out);
-}
-.mobile-nav a:not(.btn) { padding: 12px 16px; border-radius: 16px; color: var(--muted); transition: background-color .2s, color .2s, padding .2s; }
-.mobile-nav a:not(.btn):hover { background: var(--hover); color: var(--fg); padding-right: 22px; }
-.mobile-nav .btn { margin-top: 8px; }
 
 /* ---------- Hero ---------- */
 .hero { display: grid; align-items: center; gap: 48px; padding-top: 64px; padding-bottom: 80px; }
@@ -542,7 +531,6 @@ a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
 /* ---------- Responsive ---------- */
 @media (min-width: 640px) {
   .header-cta { display: flex; }
-  .mobile-nav .btn { display: none; }
   .hero h1 { font-size: 2.25rem; line-height: 1.45; }
   .service { grid-template-columns: 1fr auto; }
   .art { display: flex; }
@@ -559,7 +547,7 @@ a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
 }
 @media (min-width: 1024px) {
   .nav { display: flex; }
-  .menu-btn, .mobile-nav { display: none !important; }
+  .menu-btn { display: none !important; }
   .hero { grid-template-columns: 1fr 1fr; padding-top: 96px; }
   .split--compare { grid-template-columns: 1fr 2fr; align-items: center; }
   .split--calc { grid-template-columns: 3fr 2fr; }

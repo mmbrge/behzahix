@@ -331,7 +331,8 @@
 @keyframes pane-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
 .wizard-pane h2 { font-size: 1.35rem; font-weight: 900; }
 .wizard-pane > .muted { margin-top: 6px; }
-.wizard-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+.wizard-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 24px 0; padding: 20px 0 24px; border-top: 1px solid var(--line); }
+.wnav-price { display: none; }
 
 .svc-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 .svc-tab { --h: 25; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); font-size: .85rem; transition: .25s; }

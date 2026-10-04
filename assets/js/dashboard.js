@@ -748,7 +748,26 @@
             ${me.role === "customer" ? `<a class="btn btn-primary btn-sm" href="order.html">${icon("plus")}<span class="hide-sm">سفارش جدید</span></a>` : ""}
           </header>
           <div class="dash-view" id="view"></div>
-        </div>`;
+        </div>
+        ${mobileTabs(nav, unread)}`;
+    }
+
+    // Phones: app-style bottom bar (first panel sections + the logo X + "more")
+    function mobileTabs(nav, unread) {
+      const [sec] = decodeURIComponent(location.hash.slice(1)).split("/");
+      const current = (nav.find((n) => n.id === sec) || nav[0]).id;
+      const picks = nav.slice(0, 3);
+      const link = (n) => {
+        const c = n.count ? n.count() : n.id === "notifications" ? unread : 0;
+        return `<a href="#${n.id}" class="${n.id === current ? "is-active" : ""}"><span class="tb-ic">${icon(n.icon)}${c ? `<i class="tb-badge">${faDigits(c)}</i>` : ""}</span><span class="tb-l">${esc(n.label.replace(/ من$| کل$/, ""))}</span></a>`;
+      };
+      const fab = me.role === "customer" ? ["order.html", "سفارش"] : ["index.html", "سایت"];
+      return `<nav class="tabbar dash-tabbar" aria-label="منوی سریع پنل">
+        ${link(picks[0])}${picks[1] ? link(picks[1]) : ""}
+        <a href="${fab[0]}" class="tb-fab"><span class="tb-x">${icon("plus")}</span><span class="tb-l">${fab[1]}</span></a>
+        ${picks[2] ? link(picks[2]) : "<span></span>"}
+        <button type="button" data-act="side-open" class="${picks.some((n) => n.id === current) ? "" : "is-active"}"><span class="tb-ic">${icon("menu")}</span><span class="tb-l">بیشتر</span></button>
+      </nav>`;
     }
 
     function render() {
@@ -762,6 +781,11 @@
       document.title = `${route.label} | پنل ${BX.settings.general?.siteNameFa || "بهیکس"}`;
       const view = app.querySelector("#view");
       view.innerHTML = route.render(param);
+      // Label every cell with its column title so tables can become cards on phones
+      view.querySelectorAll("table.table").forEach((t) => {
+        const heads = [...t.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+        t.querySelectorAll("tbody tr").forEach((tr) => [...tr.children].forEach((td, i) => { if (heads[i]) td.dataset.label = heads[i]; }));
+      });
       const log = view.querySelector("[data-chat]");
       if (log) log.scrollTop = log.scrollHeight;
       if (BXD.afterRender) BXD.afterRender(view, route.id, param);

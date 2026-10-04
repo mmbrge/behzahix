@@ -6,7 +6,9 @@
   BX.ready.then(() => {
   const { CATALOG, icon, toman, faDigits, initReveal, esc } = BX;
 
-  root.innerHTML = CATALOG.map((c) => `
+  // Phones: a sticky chip bar jumps between categories; each category's cards swipe sideways
+  const nav = `<nav class="svc-nav" aria-label="دسته‌های خدمات"><div>${CATALOG.map((c, i) => `<a href="#cat-${c.id}" style="--h:${c.hue}" class="${i ? "" : "is-on"}">${icon(c.icon)}${esc(c.title)}</a>`).join("")}</div></nav>`;
+  root.innerHTML = nav + CATALOG.map((c) => `
     <section class="container section-sm svc-section" id="cat-${c.id}" style="--h:${c.hue}">
       <div class="svc-section-head" data-reveal>
         <span class="tree-cat-icon">${icon(c.icon)}</span>
@@ -16,7 +18,7 @@
           <p class="muted small">${esc(c.desc)}</p>
         </div>
       </div>
-      <div class="grid-auto mt-2">
+      <div class="grid-auto mt-2 svc-row">
         ${c.services.map((s, i) => `
           <article class="card service-detail" data-spotlight data-reveal style="--d:${i * 80}ms">
             <div class="row-between">
@@ -35,5 +37,19 @@
     </section>`).join("");
 
   initReveal(root);
+
+  const chips = [...root.querySelectorAll(".svc-nav a")];
+  const strip = root.querySelector(".svc-nav div");
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((entries) => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        const on = chips.find((a) => a.getAttribute("href") === `#${en.target.id}`);
+        chips.forEach((a) => a.classList.toggle("is-on", a === on));
+        if (on) strip.scrollTo({ left: on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2, behavior: "smooth" });
+      }
+    }, { rootMargin: "-45% 0px -50% 0px" });
+    root.querySelectorAll(".svc-section").forEach((sec) => io.observe(sec));
+  }
   });
 })();

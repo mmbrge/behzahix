@@ -74,7 +74,7 @@
               </div>
             </article>`;
         }).join("") : `<div class="empty card" style="grid-column:1/-1">${icon("search")}<p>نمونه‌کاری پیدا نشد.</p></div>`;
-        initReveal(list);
+        initReveal(view);
       }
 
       view.addEventListener("click", async (e) => {
@@ -185,7 +185,7 @@
               </div>
             </article>`;
         }).join("") : `<div class="empty card" style="grid-column:1/-1">${icon("search")}<p>محصولی پیدا نشد.</p></div>`;
-        initReveal(list);
+        initReveal(view);
         updateCount();
       }
 
@@ -361,7 +361,7 @@
               <a class="btn btn-primary" href="order.html${d.skills?.[0] ? `?service=${encodeURIComponent(d.skills[0])}` : ""}">سفارش</a>
             </div>
           </article>`).join("") : `<div class="empty card" style="grid-column:1/-1">${icon("users")}<p>طراحی در این شاخه ثبت نشده است.</p></div>`;
-        initReveal(list);
+        initReveal(view);
       }
       view.addEventListener("click", (e) => {
         const f = e.target.closest("[data-filter]");
