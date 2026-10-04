@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BEHIX">
   <link rel="preload" href="assets/fonts/Vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/css/style.css?v=m4">
-  <link rel="stylesheet" href="assets/css/pages.css?v=m4">
-  <link rel="stylesheet" href="assets/css/mobile.css?v=m4">
+  <link rel="stylesheet" href="assets/css/style.css?v=m5">
+  <link rel="stylesheet" href="assets/css/pages.css?v=m5">
+  <link rel="stylesheet" href="assets/css/mobile.css?v=m5">
 </head>
 <body data-page="home">
 
@@ -134,23 +134,48 @@
       </div>
 
       <div class="compare" id="compare-frame" style="--pos:50%">
+        <!-- After: a miniature of the BEHIX site itself -->
         <div class="panel panel--after">
           <span class="panel-label panel-label--good">بعد از BEHIX</span>
-          <ul>
-            <li><svg class="icon ok"><use href="#i-check"/></svg>سایت حرفه‌ای</li>
-            <li><svg class="icon ok"><use href="#i-check"/></svg>تولید محتوای AI</li>
-            <li><svg class="icon ok"><use href="#i-check"/></svg>اتوماسیون و ابزارها</li>
-            <li><svg class="icon ok"><use href="#i-check"/></svg>پشتیبانی و مانیتورینگ</li>
-          </ul>
+          <div class="mock mock--new" aria-hidden="true">
+            <div class="nw-top">
+              <span class="logo"><span class="logo-a">BEHI</span><span class="logo-x">X</span></span>
+              <span class="nw-nav"><i></i><i></i><i></i><i></i></span>
+              <span class="nw-btn"><b></b>ثبت سفارش</span>
+            </div>
+            <div class="nw-hero">
+              <div>
+                <span class="nw-pill">✦ خلق ارزش با هوش مصنوعی</span>
+                <p class="nw-h">از ایده تا <em>اتوماسیون</em></p>
+                <span class="nw-cta">شروع همکاری ←</span>
+              </div>
+              <svg class="nw-chart" viewBox="0 0 120 60"><defs><linearGradient id="nw-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a1a" stop-opacity=".55"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></linearGradient></defs><path d="M0 55 L15 44 L28 48 L42 30 L56 36 L70 16 L84 26 L98 10 L120 4 V60 H0Z" fill="url(#nw-g)"/><path d="M0 55 L15 44 L28 48 L42 30 L56 36 L70 16 L84 26 L98 10 L120 4" fill="none" stroke="#ffa24a" stroke-width="1.6"/></svg>
+            </div>
+            <div class="nw-cards">
+              <div style="--h:25"><i></i><b>طراحی وب</b><small>از ۱۸ میلیون · ۱۴ روز</small></div>
+              <div style="--h:330"><i></i><b>ویدیو و موشن</b><small>از ۳٫۵ میلیون · ۷ روز</small></div>
+              <div style="--h:150"><i></i><b>اتوماسیون AI</b><small>از ۶ میلیون · ۱۰ روز</small></div>
+            </div>
+          </div>
         </div>
+        <!-- Before: a typical early-2000s website -->
         <div class="panel panel--before">
           <span class="panel-label">قبل از</span>
-          <ul>
-            <li><svg class="icon bad"><use href="#i-cross"/></svg>کاغذی و سنتی</li>
-            <li><svg class="icon bad"><use href="#i-cross"/></svg>بدون اتوماسیون</li>
-            <li><svg class="icon bad"><use href="#i-cross"/></svg>تبلیغات محدود</li>
-            <li><svg class="icon bad"><use href="#i-cross"/></svg>پشتیبانی ضعیف</li>
-          </ul>
+          <div class="mock mock--old" aria-hidden="true">
+            <div class="old-top"><b>شرکت تبلیغاتی نمونه</b><small>به وب سایت ما خوش آمدید !!!</small></div>
+            <div class="old-nav"><u>صفحه اصلی</u> | <u>درباره ما</u> | <u>محصولات</u> | <u>تماس با ما</u></div>
+            <div class="old-marquee"><span>*** اطلاعیه: سایت در حال به روز رسانی می باشد ... لطفا بعدا مراجعه فرمایید ***</span></div>
+            <div class="old-body">
+              <ul class="old-side"><li><u>اخبار</u></li><li><u>گالری عکس</u></li><li><u>دانلود</u></li><li><u>لینک دوستان</u></li></ul>
+              <div class="old-main">
+                <p class="old-h">خدمات ما</p>
+                <p>طراحی - چاپ - تبلیغات<br>جهت سفارش با شماره زیر تماس بگیرید</p>
+                <span class="old-uc"><span>در دست ساخت</span></span>
+                <span class="old-btn">ارسال فرم</span>
+              </div>
+            </div>
+            <div class="old-foot">تعداد بازدید: <span>000127</span> | بهترین نمایش با IE 6.0 و رزولوشن 800×600</div>
+          </div>
         </div>
         <div class="compare-handle"><span>‹ ›</span></div>
         <input type="range" min="0" max="100" value="50" class="sr-only" id="compare-range" aria-label="میزان نمایش حالت قبل">
@@ -210,10 +235,10 @@
 
 <footer id="site-footer"></footer>
 
-<script src="assets/js/data.js?v=m4" defer></script>
-<script src="assets/js/core.js?v=m4" defer></script>
-<script src="assets/js/tree.js?v=m4" defer></script>
-<script src="assets/js/home.js?v=m4" defer></script>
-<script src="assets/js/morph.js?v=m4" defer></script>
+<script src="assets/js/data.js?v=m5" defer></script>
+<script src="assets/js/core.js?v=m5" defer></script>
+<script src="assets/js/tree.js?v=m5" defer></script>
+<script src="assets/js/home.js?v=m5" defer></script>
+<script src="assets/js/morph.js?v=m5" defer></script>
 </body>
 </html>

@@ -481,8 +481,8 @@ a.logo:hover .logo-a { animation-duration: 1.6s; }
 /* Two thin bars at a steep angle — narrower than wide, like the logo X */
 .cx i { position: absolute; left: 50%; top: 50%; width: 20px; height: 2px; margin: -1px 0 0 -10px; border-radius: 2px; background: var(--brand); box-shadow: 0 0 8px rgb(255 122 26 / .7);
   transition: width .4s var(--ease-spring), margin .4s var(--ease-spring), transform .45s var(--ease-spring), opacity .25s, background-color .3s; }
-.cx i:nth-child(1) { transform: rotate(62deg); }
-.cx i:nth-child(2) { transform: rotate(-62deg); }
+.cx i:nth-child(1) { transform: rotate(57deg); }
+.cx i:nth-child(2) { transform: rotate(-57deg); }
 .cx b { position: absolute; inset: 0 -12px; display: flex; direction: ltr; align-items: center; justify-content: space-between; font: 800 16px/1 Vazirmatn, sans-serif; color: var(--brand); opacity: 0; transition: opacity .2s, inset .35s var(--ease-spring); }
 /* idle: the X breathes slowly like the logo mark */
 .cursor-idle:not(.cursor-hover):not(.cursor-text):not(.cursor-drag) .cx { animation: cx-breathe 2.4s ease-in-out infinite; }

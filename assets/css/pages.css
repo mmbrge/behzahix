@@ -650,3 +650,62 @@
 .js [data-reveal="rise"].is-visible { translate: 0 0; rotate: 0deg; }
 .parallax { will-change: transform; }
 @media (prefers-reduced-motion: reduce) { .morph-caption .caret { animation: none; } .scroll-progress { display: none; } }
+
+/* ---------- Before / after mock-ups (home) ----------
+   Both panels hold a tiny website; sizes follow the frame width (cqw). */
+.compare { container-type: size; }
+.compare .panel { padding: 0; }
+.compare .panel-label { position: absolute; z-index: 3; bottom: 12px; font-size: .8rem; box-shadow: 0 6px 16px -6px rgb(0 0 0 / .5); }
+.compare .panel--before .panel-label { right: 12px; background: #fffbe6; color: #5b4a00; border: 1px solid #c9b458; border-radius: 4px; font-family: Tahoma, sans-serif; }
+.compare .panel--after .panel-label { left: 12px; }
+.mock { position: absolute; inset: 0; font-size: clamp(7px, 1.95cqw, 12.5px); line-height: 1.55; overflow: hidden; text-align: right; }
+
+/* Old site: tables, Tahoma, bevelled buttons, marquee, visitor counter */
+.mock--old { display: flex; flex-direction: column; background: #f4f1e8; color: #222; font-family: Tahoma, "Times New Roman", serif; }
+.old-top { display: flex; flex-direction: column; align-items: center; padding: .9em 1em .5em; background: linear-gradient(#1c3fa8, #0b2470); border-bottom: 3px ridge #c0c0c0; }
+.old-top b { font-size: 1.6em; color: #ffde00; text-shadow: 2px 2px 0 #b00000; font-family: "Times New Roman", serif; }
+.old-top small { color: #9fe3ff; font-style: italic; }
+.old-nav { padding: .35em; background: #c0c0c0; border-bottom: 2px outset #eee; text-align: center; color: #333; }
+.old-nav u, .old-side u { color: #0000ee; }
+.old-marquee { position: relative; flex-shrink: 0; height: 1.7em; overflow: hidden; white-space: nowrap; background: #000; color: #00ff3c; font-family: "Courier New", monospace; }
+.old-marquee span { position: absolute; top: .1em; left: 100%; animation: old-marquee 11s linear infinite; }
+@keyframes old-marquee { to { left: 0; transform: translateX(-100%); } }
+.old-body { flex: 1; min-height: 0; display: flex; gap: .8em; padding: .6em .8em; }
+.old-side { width: 30%; padding: .5em; border: 2px inset #d8d8d8; background: #fff; list-style: square inside; }
+.old-side li { margin-bottom: .3em; }
+.old-main { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: .45em; padding: .5em .7em; border: 1px dashed #999; background: #fffdf5; }
+.old-h { color: #b00000; font-weight: bold; font-size: 1.25em; text-decoration: underline; }
+.old-uc { padding: .3em; background: repeating-linear-gradient(45deg, #ffd400 0 .5em, #111 .5em 1em); animation: old-blink 1.2s steps(1) infinite; }
+.old-uc span { display: block; padding: 0 .7em; background: #ffd400; color: #000; font-weight: bold; }
+@keyframes old-blink { 50% { opacity: .35; } }
+.old-btn { padding: .2em 1em; color: #000; background: #d4d0c8; border: 2px outset #fff; font-size: .95em; }
+.old-foot { flex-shrink: 0; padding: .35em .35em 3em; background: #c0c0c0; border-top: 2px outset #eee; color: #444; font-size: .85em; text-align: center; }
+.old-foot span { padding: 0 .3em; background: #000; color: #ff3030; font-family: "Courier New", monospace; letter-spacing: .1em; }
+
+/* New site: the BEHIX look in miniature */
+.mock--new { display: flex; flex-direction: column; gap: 1em; padding: 1.4em 1.4em 3.6em; color: #f3f4f6; font-family: Vazirmatn, sans-serif;
+  background:
+    radial-gradient(circle at 75% 20%, rgb(255 122 26 / .3), transparent 45%),
+    radial-gradient(circle at 10% 90%, rgb(59 130 246 / .25), transparent 50%),
+    radial-gradient(rgb(255 255 255 / .06) 1px, transparent 1.3px) 0 0 / 1.6em 1.6em,
+    #07080c; }
+.nw-top { display: flex; align-items: center; gap: 1em; padding: .5em .8em; border: 1px solid rgb(255 255 255 / .08); border-radius: 999px; background: rgb(14 16 23 / .8); }
+.nw-top .logo { font-size: 1.5em; }
+.nw-top .logo::after { display: none; }
+.nw-nav { flex: 1; display: flex; gap: .7em; justify-content: center; }
+.nw-nav i { width: 2.6em; height: .45em; border-radius: 99px; background: rgb(255 255 255 / .16); }
+.nw-btn { display: inline-flex; align-items: center; gap: .4em; padding: .35em .9em; border-radius: 99px; background: linear-gradient(to left, #ff7a1a, #ffa24a); color: #07080c; font-weight: 800; font-size: .85em; }
+.nw-btn b { width: .5em; height: .5em; border-radius: 50%; background: #16a34a; }
+.nw-hero { display: flex; align-items: center; gap: 1em; }
+.nw-hero > div { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: .5em; }
+.nw-pill { padding: .15em .8em; border: 1px solid rgb(255 122 26 / .45); border-radius: 99px; background: rgb(255 122 26 / .1); color: #ffa24a; font-size: .8em; }
+.nw-h { font-size: 1.9em; font-weight: 900; line-height: 1.35; }
+.nw-h em { font-style: normal; background: linear-gradient(to left, #ff7a1a, #ffa24a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nw-cta { padding: .45em 1.2em; border-radius: 99px; background: linear-gradient(to left, #ff7a1a, #ffa24a); color: #07080c; font-weight: 800; box-shadow: 0 .6em 1.6em -.5em rgb(255 122 26 / .8); }
+.nw-chart { width: 34%; padding: .6em; border: 1px solid rgb(255 255 255 / .08); border-radius: 1em; background: linear-gradient(135deg, #151822, #07080c); box-shadow: 0 0 2em -.6em rgb(255 122 26 / .5); }
+.nw-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7em; }
+.nw-cards div { display: flex; flex-direction: column; gap: .15em; padding: .7em; border: 1px solid hsl(var(--h) 80% 60% / .3); border-radius: .9em; background: linear-gradient(135deg, hsl(var(--h) 80% 55% / .14), rgb(14 16 23 / .85)); }
+.nw-cards i { width: 1.8em; height: 1.8em; margin-bottom: .2em; border-radius: .55em; background: hsl(var(--h) 85% 55%); box-shadow: 0 .4em 1em -.3em hsl(var(--h) 85% 55%); }
+.nw-cards b { font-size: .9em; }
+.nw-cards small { color: #a3a8b6; font-size: .7em; }
+@media (max-width: 767px) { .compare .panel-label { bottom: 8px; padding: 2px 10px; font-size: .7rem; } .compare .panel--before .panel-label { right: 8px; } .compare .panel--after .panel-label { left: 8px; } }
