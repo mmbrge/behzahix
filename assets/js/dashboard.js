@@ -1084,6 +1084,7 @@
     });
 
     window.addEventListener("hashchange", () => {
+      if (!S) return; // snapshot still loading; load().then(render) picks up the new hash
       render();
       window.scrollTo({ top: 0 });
     });

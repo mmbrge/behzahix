@@ -1,8 +1,8 @@
 /* ==========================================================================
-   BEHIX — scroll-driven particle morph (home page intro)
-   A pinned section where ~2000 particles flow from a rotating orb into each
-   word from settings (home.morphWords) and finally the BEHIX logo, driven by
-   the scroll position. Particles also react to the pointer.
+   BEHIX — particle word morph (home page intro)
+   Particles flow from a rotating orb into each word from the admin panel
+   (settings → home → morphItems) and cycle automatically every few seconds.
+   Particles react to the pointer; the dots below jump to a word.
    ========================================================================== */
 
 (function () {
@@ -13,105 +13,106 @@
   const ctx = canvas.getContext("2d");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const DEFAULT_WORDS = ["ایده", "طراحی", "هوش مصنوعی", "BEHIX"];
-  const DEFAULT_CAPTIONS = [
-    "به بهیکس خوش آمدید؛ جایی که ایده‌ها جان می‌گیرند",
-    "همه‌چیز از یک ایده شروع می‌شود",
-    "ایده را به طراحی دیدنی و ماندگار تبدیل می‌کنیم",
-    "با هوش مصنوعی، سریع‌تر و هوشمندتر می‌سازیم",
-    "از ایده تا اتوماسیون، کنار کسب‌وکار شما",
+  const DEFAULT_ITEMS = [
+    { word: "ایده", caption: "همه‌چیز از یک ایده شروع می‌شود" },
+    { word: "طراحی", caption: "ایده را به طراحی دیدنی و ماندگار تبدیل می‌کنیم" },
+    { word: "هوش مصنوعی", caption: "با هوش مصنوعی، سریع‌تر و هوشمندتر می‌سازیم" },
+    { word: "اتوماسیون", caption: "کارهای تکراری را به کد می‌سپاریم" },
+    { word: "BEHIX", caption: "از ایده تا اتوماسیون، کنار کسب‌وکار شما" },
   ];
-  // Palette (index → colour); words use the warm shades, BEHI is light, X is brand
-  const PALETTE = ["#ffd8a8", "#ffb347", "#ff9a3c", "#ff7a1a", "#f1f5f9", "#7dd3fc"];
+  const DEFAULT_INTRO = "به بهیکس خوش آمدید؛ جایی که ایده‌ها جان می‌گیرند";
+  const PALETTE = ["#ffe0b8", "#ffbe5c", "#ff9a3c", "#ff7a1a", "#f8fafc", "#7dd3fc"];
+  const GLYPHS = ["</>", "{ }", "=>", "( )", "[ ]", "&&", "//", "fn", "<X/>", ";"];
 
   let W = 0, H = 0, DPR = 1, N = 0;
-  let shapes = []; // [{x,y,z,c}] per stage
-  let P = []; // particles
-  let stagePos = 0, targetStage = 0, time = 0, running = false, visible = true, built = false;
-  const mouse = { x: -9999, y: -9999, nx: 0, ny: 0 };
-  let captions = DEFAULT_CAPTIONS;
-  let words = DEFAULT_WORDS;
+  let shapes = []; // per stage: { pts:[{x,y,z,c,orb}], size }
+  let P = [];
+  let glyphs = [];
+  let stagePos = 0, from = 0, to = 0, tStart = 0, tDur = 1500;
+  let running = false, visible = true, built = false;
+  let interval = 3500, timer = null, last = performance.now(), time = 0;
+  const mouse = { x: -9999, y: -9999, nx: 0, ny: 0, sx: 0, sy: 0 };
+  let items = DEFAULT_ITEMS;
+  let intro = DEFAULT_INTRO;
 
   const brand = () => getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#ff7a1a";
 
   // ------------------------------------------------------------ shapes
   function sampleText(text, isLogo) {
     const off = document.createElement("canvas");
-    const ow = Math.min(1400, Math.round(W * 0.9));
-    const oh = Math.round(Math.min(H * 0.42, ow * 0.45));
+    const ow = Math.round(Math.min(1500, W * 0.92));
+    const oh = Math.round(Math.min(H * 0.5, ow * 0.5));
     off.width = ow;
     off.height = oh;
     const o = off.getContext("2d", { willReadFrequently: true });
-    const latin = /^[A-Za-z0-9 ]+$/.test(text);
-    let size = oh * 0.9;
-    const font = (s) => `900 ${s}px ${latin ? "Vazirmatn, sans-serif" : "Vazirmatn, Tahoma, sans-serif"}`;
+    const latin = /^[A-Za-z0-9 .&+-]+$/.test(text);
+    let size = oh * 0.92;
+    const font = (s) => `900 ${s}px Vazirmatn, Tahoma, sans-serif`;
     o.font = font(size);
-    while (o.measureText(text).width > ow * 0.92 && size > 20) {
-      size *= 0.92;
+    while (o.measureText(text).width > ow * 0.94 && size > 18) {
+      size *= 0.94;
       o.font = font(size);
     }
-    o.textAlign = "center";
     o.textBaseline = "middle";
-    o.direction = latin ? "ltr" : "rtl";
     if (isLogo) {
-      // Draw BEHI light and X in brand colour so particles inherit the colours
       const full = o.measureText(text).width;
       const xw = o.measureText("X").width;
-      o.textAlign = "left";
       o.direction = "ltr";
+      o.textAlign = "left";
       o.fillStyle = "#ffffff";
       o.fillText(text.slice(0, -1), ow / 2 - full / 2, oh / 2);
       o.fillStyle = "#ff7a1a";
       o.fillText("X", ow / 2 + full / 2 - xw, oh / 2);
     } else {
+      o.direction = latin ? "ltr" : "rtl";
+      o.textAlign = "center";
       const g = o.createLinearGradient(0, 0, 0, oh);
-      g.addColorStop(0, "#ffd8a8");
+      g.addColorStop(0, "#ffe0b8");
+      g.addColorStop(0.55, "#ff9a3c");
       g.addColorStop(1, "#ff7a1a");
       o.fillStyle = g;
       o.fillText(text, ow / 2, oh / 2);
     }
     const data = o.getImageData(0, 0, ow, oh).data;
-    // Choose a grid step that yields roughly N points
     let filled = 0;
-    for (let i = 3; i < data.length; i += 16) if (data[i] > 128) filled++;
-    const step = Math.max(2, Math.round(Math.sqrt((filled * 4) / N)));
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 140) filled++;
+    // Grid step so that the glyphs get close to N samples → crisp, dense letters
+    const step = Math.max(2, Math.sqrt(filled / N));
     const pts = [];
-    for (let y = 0; y < oh; y += step) {
-      for (let x = 0; x < ow; x += step) {
-        const k = (y * ow + x) * 4;
-        if (data[k + 3] < 128) continue;
+    for (let y = step / 2; y < oh; y += step) {
+      for (let x = step / 2; x < ow; x += step) {
+        const k = ((y | 0) * ow + (x | 0)) * 4;
+        if (data[k + 3] < 140) continue;
         const r = data[k], gch = data[k + 1], b = data[k + 2];
-        let c;
-        if (r > 230 && gch > 230 && b > 230) c = 4;
-        else c = gch > 200 ? 0 : gch > 170 ? 1 : gch > 140 ? 2 : 3;
-        pts.push({ x: x - ow / 2, y: y - oh / 2 - H * 0.05, z: (Math.random() - 0.5) * 40, c });
+        const c = r > 230 && gch > 230 && b > 230 ? 4 : gch > 200 ? 0 : gch > 165 ? 1 : gch > 135 ? 2 : 3;
+        pts.push({ x: x - ow / 2, y: y - oh / 2 - H * 0.06, z: (Math.random() - 0.5) * 10, c });
       }
     }
-    return fit(pts);
+    return { pts: fit(pts), size: Math.max(1.4, step * 0.82) };
   }
 
   function sphere() {
-    const R = Math.min(W, H) * 0.24;
+    const R = Math.min(W, H) * 0.25;
     const pts = [];
     for (let i = 0; i < N; i++) {
-      const t = i / N;
+      const t = (i + 0.5) / N;
       const phi = Math.acos(1 - 2 * t);
       const th = Math.PI * (1 + Math.sqrt(5)) * i;
-      const rr = R * (0.92 + Math.random() * 0.12);
-      pts.push({ x: rr * Math.sin(phi) * Math.cos(th), y: rr * Math.cos(phi) - H * 0.05, z: rr * Math.sin(phi) * Math.sin(th), c: Math.random() < 0.12 ? 5 : 1 + (i % 3), orb: true });
+      const rr = R * (0.94 + Math.random() * 0.1);
+      pts.push({ x: rr * Math.sin(phi) * Math.cos(th), y: rr * Math.cos(phi) - H * 0.06, z: rr * Math.sin(phi) * Math.sin(th), c: Math.random() < 0.1 ? 5 : 1 + (i % 3), orb: true });
     }
-    return pts;
+    return { pts, size: W < 640 ? 1.6 : 1.9 };
   }
 
-  // Resize a point list to exactly N entries and shuffle (random pairing makes the flow)
   function fit(pts) {
-    if (!pts.length) return sphere();
-    const out = [];
-    for (let i = 0; i < N; i++) out.push(i < pts.length ? pts[i] : { ...pts[(Math.random() * pts.length) | 0], z: (Math.random() - 0.5) * 60 });
-    if (pts.length > N) {
-      // keep an even subsample
+    if (!pts.length) return sphere().pts;
+    let out;
+    if (pts.length >= N) {
       const k = pts.length / N;
-      for (let i = 0; i < N; i++) out[i] = pts[Math.floor(i * k)];
+      out = Array.from({ length: N }, (_, i) => pts[Math.floor(i * k)]);
+    } else {
+      out = pts.slice();
+      while (out.length < N) out.push({ ...pts[(Math.random() * pts.length) | 0], z: (Math.random() - 0.5) * 30 });
     }
     for (let i = out.length - 1; i > 0; i--) {
       const j = (Math.random() * (i + 1)) | 0;
@@ -128,147 +129,181 @@
     canvas.width = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    N = W < 640 ? 1100 : W < 1100 ? 1600 : 2200;
-    shapes = [sphere(), ...words.map((w, i) => sampleText(w, i === words.length - 1 && /^[A-Za-z]+X$/i.test(w)))];
-    const keep = P.length === N;
-    if (!keep) {
+    N = W < 640 ? 1400 : W < 1100 ? 2600 : 3400;
+    shapes = [sphere(), ...items.map((it) => sampleText(it.word, /^[A-Za-z]+X$/.test(it.word)))];
+    if (P.length !== N) {
       P = Array.from({ length: N }, () => ({
-        x: (Math.random() - 0.5) * W * 1.6, y: (Math.random() - 0.5) * H * 1.6, z: (Math.random() - 0.5) * 600,
-        d: Math.random(), a: Math.random() * Math.PI * 2, s: 0.7 + Math.random() * 0.9,
+        x: W / 2 + (Math.random() - 0.5) * W * 1.4, y: H / 2 + (Math.random() - 0.5) * H * 1.4,
+        d: Math.random(), a: Math.random() * Math.PI * 2, s: 0.8 + Math.random() * 0.4,
       }));
     }
+    glyphs = Array.from({ length: W < 640 ? 10 : 22 }, () => ({
+      g: GLYPHS[(Math.random() * GLYPHS.length) | 0], x: Math.random() * W, y: Math.random() * H,
+      v: 0.15 + Math.random() * 0.35, s: 11 + Math.random() * 10, o: 0.05 + Math.random() * 0.1,
+    }));
     built = true;
   }
 
-  // ------------------------------------------------------------ scroll → stage
-  function readScroll() {
-    const r = section.getBoundingClientRect();
-    const total = r.height - window.innerHeight;
-    const p = total > 0 ? Math.min(1, Math.max(0, -r.top / total)) : 1;
-    const raw = p * (shapes.length - 1);
-    // Hold on each shape for a while, then move quickly to the next
-    const i = Math.floor(raw);
-    const f = raw - i;
-    const eased = f < 0.3 ? 0 : f > 0.85 ? 1 : (f - 0.3) / 0.55;
-    targetStage = Math.min(shapes.length - 1, i + eased);
-    section.style.setProperty("--p", p.toFixed(3));
+  // ------------------------------------------------------------ sequencing
+  function goTo(i) {
+    const n = shapes.length;
+    from = stagePos;
+    to = ((i % n) + n) % n;
+    tStart = performance.now();
+    tDur = 1500;
+    showCaption(to);
+  }
+  function next() { goTo(Math.round(to) + 1); }
+  function schedule() {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (visible && !document.hidden) next();
+      schedule();
+    }, interval + tDur);
   }
 
-  let shownStage = -1;
-  function updateCaption() {
-    const s = Math.round(stagePos);
-    if (s === shownStage) return;
-    shownStage = s;
-    const cap = section.querySelector(".morph-caption");
-    cap.classList.remove("is-in");
-    void cap.offsetWidth;
-    cap.textContent = captions[s] || "";
-    cap.classList.add("is-in");
-    section.querySelectorAll(".morph-dots i").forEach((d, i) => d.classList.toggle("is-on", i === s));
-    section.classList.toggle("is-final", s === shapes.length - 1);
+  // Terminal-style typed caption
+  let typeTimer;
+  function showCaption(i) {
+    const cap = section.querySelector(".morph-caption .txt");
+    const text = i === 0 ? intro : items[i - 1]?.caption || "";
+    clearInterval(typeTimer);
+    let k = 0;
+    cap.textContent = "";
+    typeTimer = setInterval(() => {
+      k += 1;
+      cap.textContent = text.slice(0, k);
+      if (k >= text.length) clearInterval(typeTimer);
+    }, Math.max(14, Math.min(40, 900 / Math.max(1, text.length))));
+    section.querySelectorAll(".morph-dots button").forEach((d, j) => {
+      d.classList.toggle("is-on", j === i);
+      d.setAttribute("aria-current", j === i ? "true" : "false");
+    });
+    section.querySelector(".morph-word").textContent = i === 0 ? "hello" : items[i - 1]?.word || "";
   }
 
   // ------------------------------------------------------------ render
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   const smooth = (t) => t * t * (3 - 2 * t);
-  function frame() {
+  function frame(now) {
     if (!running) return;
     requestAnimationFrame(frame);
     if (!visible || !built) return;
-    time += 0.016;
-    stagePos += (targetStage - stagePos) * 0.08;
-    updateCaption();
+    const dt = Math.min(50, now - last);
+    last = now;
+    time += dt / 1000;
 
-    const i0 = Math.floor(stagePos);
-    const i1 = Math.min(shapes.length - 1, i0 + 1);
-    const t = stagePos - i0;
+    // progress between `from` and `to`
+    const k = Math.min(1, (now - tStart) / tDur);
+    const t = ease(k);
+    const i0 = Math.round(from) % shapes.length;
+    const i1 = to;
     const A = shapes[i0], B = shapes[i1];
-    const yaw = Math.sin(time * 0.35) * 0.22 + mouse.nx * 0.35;
-    const pitch = mouse.ny * 0.18 + Math.sin(time * 0.27) * 0.05;
+    stagePos = k >= 1 ? to : from;
+
+    mouse.sx += (mouse.nx - mouse.sx) * 0.06;
+    mouse.sy += (mouse.ny - mouse.sy) * 0.06;
+    const textMode = !(A.pts[0].orb && B.pts[0].orb);
+    const yaw = Math.sin(time * 0.4) * (textMode ? 0.08 : 0.2) + mouse.sx * 0.22;
+    const pitch = mouse.sy * 0.14;
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-    const spin = time * 0.5;
+    const spin = time * 0.45;
     const cs = Math.cos(spin), ss = Math.sin(spin);
-    const F = 900;
+    const F = 1000;
 
     ctx.clearRect(0, 0, W, H);
-    // orbit rings
-    ctx.save();
-    ctx.translate(W / 2, H / 2 - H * 0.05);
-    ctx.globalAlpha = 0.18 * (1 - Math.min(1, stagePos));
-    ctx.strokeStyle = brand();
-    for (let k = 0; k < 3; k++) {
-      ctx.beginPath();
-      ctx.ellipse(0, 0, Math.min(W, H) * (0.3 + k * 0.07), Math.min(W, H) * (0.08 + k * 0.03), spin * (k % 2 ? -0.3 : 0.3) + k, 0, Math.PI * 2);
-      ctx.lineWidth = 1;
-      ctx.stroke();
+
+    // floating code glyphs
+    ctx.font = "600 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+    ctx.textAlign = "center";
+    for (const g of glyphs) {
+      g.y -= g.v;
+      if (g.y < -20) { g.y = H + 20; g.x = Math.random() * W; }
+      ctx.globalAlpha = g.o;
+      ctx.fillStyle = "#ffbe5c";
+      ctx.font = `600 ${g.s}px ui-monospace, Menlo, Consolas, monospace`;
+      ctx.fillText(g.g, g.x, g.y);
     }
-    ctx.restore();
+    ctx.globalAlpha = 1;
 
     ctx.globalCompositeOperation = "lighter";
+    const sizeA = A.size, sizeB = B.size;
     const buckets = PALETTE.map(() => []);
     for (let n = 0; n < N; n++) {
       const p = P[n];
-      let a = A[n], b = B[n];
-      // the orb keeps spinning
+      const a = A.pts[n], b = B.pts[n];
       let ax = a.x, az = a.z, bx = b.x, bz = b.z;
       if (a.orb) { ax = a.x * cs - a.z * ss; az = a.x * ss + a.z * cs; }
       if (b.orb) { bx = b.x * cs - b.z * ss; bz = b.x * ss + b.z * cs; }
-      // staggered, swirling transition
-      const tt = smooth(Math.min(1, Math.max(0, (t - p.d * 0.35) / 0.65)));
-      const sw = Math.sin(Math.PI * tt) * (90 + p.d * 160);
-      const ang = p.a + tt * 5;
-      let x = ax + (bx - ax) * tt + Math.cos(ang) * sw;
-      let y = a.y + (b.y - a.y) * tt + Math.sin(ang) * sw * 0.55;
-      let z = az + (bz - az) * tt + Math.sin(ang * 1.7) * sw;
-      // gentle breathing
-      y += Math.sin(time * 1.6 + p.a * 3) * 1.5;
-      // rotate scene
+      const tt = smooth(Math.min(1, Math.max(0, (t - p.d * 0.3) / 0.7)));
+      const sw = Math.sin(Math.PI * tt) * (70 + p.d * 150);
+      const ang = p.a + tt * 4.5;
+      const x = ax + (bx - ax) * tt + Math.cos(ang) * sw;
+      const y = a.y + (b.y - a.y) * tt + Math.sin(ang) * sw * 0.5;
+      const z = az + (bz - az) * tt + Math.sin(ang * 1.7) * sw;
       const x1 = x * cy - z * sy, z1 = x * sy + z * cy;
       const y1 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
       const sc = F / (F + z2);
       let px = W / 2 + x1 * sc, py = H / 2 + y1 * sc;
-      // pointer repulsion
       const dx = px - mouse.x, dy = py - mouse.y, d2 = dx * dx + dy * dy;
-      if (d2 < 12000) {
-        const f = (1 - d2 / 12000) * 38;
+      if (d2 < 9000) {
+        const f = (1 - d2 / 9000) * 30;
         const d = Math.sqrt(d2) || 1;
         px += (dx / d) * f;
         py += (dy / d) * f;
       }
-      p.x += (px - p.x) * 0.14;
-      p.y += (py - p.y) * 0.14;
-      const c = tt < 0.5 ? a.c : b.c;
-      buckets[c].push(p.x, p.y, Math.max(0.6, 1.9 * sc * p.s));
+      p.x += (px - p.x) * 0.2;
+      p.y += (py - p.y) * 0.2;
+      const sz = (sizeA + (sizeB - sizeA) * tt) * sc * p.s;
+      buckets[tt < 0.5 ? a.c : b.c].push(p.x - sz / 2, p.y - sz / 2, sz);
     }
     for (let c = 0; c < buckets.length; c++) {
       const arr = buckets[c];
       ctx.fillStyle = c === 3 ? brand() : PALETTE[c];
-      for (let k = 0; k < arr.length; k += 3) ctx.fillRect(arr[k], arr[k + 1], arr[k + 2], arr[k + 2]);
+      for (let q = 0; q < arr.length; q += 3) ctx.fillRect(arr[q], arr[q + 1], arr[q + 2], arr[q + 2]);
     }
     ctx.globalCompositeOperation = "source-over";
   }
 
   // ------------------------------------------------------------ boot
-  function start() {
+  function readSettings() {
     const home = window.BX?.settings?.home || {};
-    if (Array.isArray(home.morphWords) && home.morphWords.length) words = home.morphWords.slice(0, 8);
-    if (Array.isArray(home.morphCaptions) && home.morphCaptions.length) captions = home.morphCaptions;
-    section.style.setProperty("--stages", words.length + 1);
-    section.querySelector(".morph-dots").innerHTML = Array.from({ length: words.length + 1 }, () => "<i></i>").join("");
+    if (Array.isArray(home.morphItems) && home.morphItems.some((x) => x && x.word)) {
+      items = home.morphItems.filter((x) => x && x.word).map((x) => ({ word: String(x.word), caption: String(x.caption || "") }));
+    } else if (Array.isArray(home.morphWords) && home.morphWords.length) {
+      items = home.morphWords.map((w, i) => ({ word: w, caption: (home.morphCaptions || [])[i + 1] || "" }));
+    }
+    if (home.morphIntro) intro = home.morphIntro;
+    const sec = Number(home.morphInterval);
+    if (sec >= 1.5 && sec <= 30) interval = sec * 1000;
+  }
+
+  function start() {
+    readSettings();
+    section.querySelector(".morph-dots").innerHTML = [intro, ...items.map((x) => x.word)]
+      .map((w, i) => `<button type="button" aria-label="${i === 0 ? "شروع" : String(w).replace(/[<>"&]/g, "")}"></button>`).join("");
     if (reduced) {
-      section.classList.add("is-static", "is-final");
-      section.querySelector(".morph-caption").textContent = captions[captions.length - 1] || "";
+      section.classList.add("is-static");
+      section.querySelector(".morph-caption .txt").textContent = items[items.length - 1]?.caption || intro;
+      section.querySelector(".morph-word").textContent = items[items.length - 1]?.word || "";
+      section.querySelector(".morph-dots button:last-child")?.classList.add("is-on");
       return;
     }
     build();
-    readScroll();
-    stagePos = 0;
+    showCaption(0);
+    tStart = performance.now() - tDur; // start settled on the orb (particles fly in)
     running = true;
-    frame();
-    window.addEventListener("scroll", readScroll, { passive: true });
+    requestAnimationFrame(frame);
+    schedule();
+    section.querySelector(".morph-dots").addEventListener("click", (e) => {
+      const btns = [...section.querySelectorAll(".morph-dots button")];
+      const i = btns.indexOf(e.target.closest("button"));
+      if (i >= 0 && i !== to) { goTo(i); schedule(); }
+    });
     let rt;
     window.addEventListener("resize", () => {
       clearTimeout(rt);
-      rt = setTimeout(() => { build(); readScroll(); }, 200);
+      rt = setTimeout(build, 200);
     });
     section.addEventListener("pointermove", (e) => {
       const r = canvas.getBoundingClientRect();

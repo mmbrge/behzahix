@@ -388,8 +388,8 @@
     home: { title: "صفحه اصلی", icon: "home", groups: [
       ["home", [
         ["badge", "برچسب بالای عنوان", "text"], ["title1", "خط اول عنوان", "text"], ["title2", "خط دوم عنوان (قبل از لوگو)", "text"],
-        ["morphWords", "کلمات انیمیشن ذره‌ای بالای صفحه (هر خط یک کلمه، حداکثر ۸؛ اگر آخری لوگوی لاتین باشد، X آن نارنجی می‌شود)", "lines"],
-        ["morphCaptions", "زیرنویس هر مرحله (خط اول برای کره شروع، سپس به ترتیب کلمات)", "lines"],
+        ["morphItems", "کلمات انیمیشن ذره‌ای بالای صفحه (بدون محدودیت؛ هر کلمه با یک زیرنویس. کلمه لاتینی که به X ختم شود، مثل BEHIX، با X نارنجی نمایش داده می‌شود)", "morph"],
+        ["morphIntro", "زیرنویس شروع (هنگام نمایش کره ذرات)", "text"], ["morphInterval", "مکث روی هر کلمه (ثانیه، ۱.۵ تا ۳۰)", "number"],
         ["lead", "متن معرفی", "textarea"], ["cta", "متن دکمه اصلی", "text"], ["packages", "پکیج‌های ماشین‌حساب صفحه اصلی", "packages"], ["bundle", "تخفیف ترکیبی ماشین‌حساب", "bundle"],
       ]],
     ] },
@@ -449,12 +449,15 @@
     if (type === "html") return `<div class="field span-2"><div class="row-between"><label class="field-label">${label}</label><button type="button" class="btn btn-ghost btn-xs" data-act="html-preview" data-name="${name}">${icon("eye")} پیش‌نمایش</button></div><textarea class="textarea code-area tall" name="${name}" spellcheck="false">${esc(value || "")}</textarea></div>`;
     if (type === "packages") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="packages">${(value || []).map((p) => packageRow(p)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="packages" data-target="${name}">${icon("plus")} افزودن پکیج</button></div>`;
     if (type === "bundle") return `<div class="field span-2"><span class="field-label">${label}</span><div class="bundle-grid">${[2, 3, 4, 5].map((n) => `<label class="mini-field"><span>${faDigits(n)} خدمت (٪)</span><input class="input" dir="ltr" name="${name}.${n}" value="${faDigits(value?.[n] ?? "")}"></label>`).join("")}</div></div>`;
+    if (type === "morph") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="morph">${(value || []).map((m) => morphRow(m)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="morph" data-target="${name}">${icon("plus")} افزودن کلمه</button></div>`;
     if (type === "deadlines") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="deadlines">${(value || []).map((d) => deadlineRow(d)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="deadlines" data-target="${name}">${icon("plus")} افزودن سرعت</button></div>`;
     if (type === "addons") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="addons">${(value || []).map((a) => addonRow(a)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="addons" data-target="${name}">${icon("plus")} افزودن خدمت تکمیلی</button></div>`;
     return `<div class="field"><label class="field-label">${label}</label><input class="input" name="${name}" ${type === "ltr" ? 'dir="ltr"' : ""} value="${val(value)}"></div>`;
   }
   const rmBtn = () => `<button type="button" class="icon-btn icon-btn-sm" data-act="row-remove" aria-label="حذف">${BX.icon("cross")}</button>`;
   const packageRow = (p = {}) => `<div class="edit-row" data-row><input class="input" data-f="title" placeholder="عنوان پکیج" value="${val(p.title)}"><input class="input" data-f="price" dir="ltr" placeholder="قیمت" value="${val(p.price)}"><input class="input" data-f="days" dir="ltr" placeholder="روز" value="${val(p.days)}"><label class="switch small"><input type="checkbox" data-f="selected" ${p.selected ? "checked" : ""}><span class="track"></span>پیش‌فرض</label><input type="hidden" data-f="id" value="${val(p.id)}">${rmBtn()}</div>`;
+  const upBtn = () => `<button type="button" class="icon-btn icon-btn-sm" data-act="row-up" aria-label="جابه‌جایی به بالا" title="جابه‌جایی به بالا">${BX.icon("chevron-up")}</button>`;
+  const morphRow = (m = {}) => `<div class="edit-row" data-row><input class="input" data-f="word" placeholder="کلمه (مثلاً طراحی)" maxlength="24" value="${val(m.word)}"><input class="input" data-f="caption" placeholder="زیرنویس این کلمه" maxlength="160" value="${val(m.caption)}">${upBtn()}${rmBtn()}</div>`;
   const deadlineRow = (d = {}) => `<div class="edit-row" data-row><input class="input" data-f="label" placeholder="عنوان (مثلاً فوری)" value="${val(d.label)}"><input class="input" data-f="hint" placeholder="توضیح" value="${val(d.hint)}"><input class="input" data-f="mult" dir="ltr" placeholder="ضریب قیمت" title="ضریب قیمت (۱ = بدون تغییر)" value="${val(d.mult ?? 1)}"><input class="input" data-f="daysMult" dir="ltr" placeholder="ضریب زمان" title="ضریب زمان تحویل" value="${val(d.daysMult ?? 1)}"><input type="hidden" data-f="v" value="${val(d.v)}"><input type="hidden" data-f="icon" value="${val(d.icon || "clock")}">${rmBtn()}</div>`;
   const addonRow = (a = {}) => `<div class="edit-row" data-row><input class="input" data-f="label" placeholder="عنوان" value="${val(a.label)}"><input class="input" data-f="pct" dir="ltr" placeholder="درصد" title="درصد افزایش قیمت" value="${val(a.pct != null ? Math.round(a.pct * 100) : "")}"><input type="hidden" data-f="v" value="${val(a.v)}">${rmBtn()}</div>`;
 
@@ -498,11 +501,16 @@
       else if (type === "number") out[k] = Number(BX.enDigits(el.value).replace(/[^\d.]/g, "")) || 0;
       else if (type === "lines") out[k] = el.value.split("\n").map((x) => x.trim()).filter(Boolean);
       else if (type === "bundle") out[k] = Object.fromEntries([2, 3, 4, 5].map((n) => [n, Number(BX.enDigits(form.elements[`${name}.${n}`].value)) || 0]).filter(([, v]) => v > 0));
-      else if (["packages", "deadlines", "addons"].includes(type)) {
+      else if (type === "morph") {
+        out[k] = [...form.querySelectorAll(`[data-rows="${name}"] [data-row]`)].map((row) => ({
+          word: row.querySelector('[data-f="word"]').value.trim(), caption: row.querySelector('[data-f="caption"]').value.trim(),
+        })).filter((x) => x.word);
+      } else if (["packages", "deadlines", "addons"].includes(type)) {
         out[k] = [...form.querySelectorAll(`[data-rows="${name}"] [data-row]`)].map((row, i) => {
           const g = (f) => row.querySelector(`[data-f="${f}"]`);
           if (type === "packages") return { id: g("id").value || `p${i + 1}`, title: g("title").value.trim(), price: Number(BX.enDigits(g("price").value).replace(/\D/g, "")) || 0, days: Number(BX.enDigits(g("days").value)) || 1, selected: g("selected").checked };
-          if (type === "deadlines") return { v: g("v").value || `d${i + 1}`, label: g("label").value.trim(), hint: g("hint").value.trim(), mult: Number(BX.enDigits(g("mult").value)) || 1, daysMult: Number(BX.enDigits(g("daysMult").value)) || 1, icon: g("icon").value || "clock" };
+          if (type === "morph") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="morph">${(value || []).map((m) => morphRow(m)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="morph" data-target="${name}">${icon("plus")} افزودن کلمه</button></div>`;
+    if (type === "deadlines") return { v: g("v").value || `d${i + 1}`, label: g("label").value.trim(), hint: g("hint").value.trim(), mult: Number(BX.enDigits(g("mult").value)) || 1, daysMult: Number(BX.enDigits(g("daysMult").value)) || 1, icon: g("icon").value || "clock" };
           return { v: g("v").value || `a${i + 1}`, label: g("label").value.trim(), pct: (Number(BX.enDigits(g("pct").value)) || 0) / 100 };
         }).filter((x) => x.title || x.label);
       } else out[k] = el.value;
@@ -526,9 +534,14 @@
   Object.assign(BXD.acts, {
     "row-add": (el) => {
       const box = el.parentElement.querySelector(`[data-rows="${el.dataset.target}"]`);
-      box.insertAdjacentHTML("beforeend", { packages: packageRow, deadlines: deadlineRow, addons: addonRow }[el.dataset.kind]());
+      box.insertAdjacentHTML("beforeend", { packages: packageRow, deadlines: deadlineRow, addons: addonRow, morph: morphRow }[el.dataset.kind]());
+      box.lastElementChild?.querySelector("input")?.focus();
     },
     "row-remove": (el) => el.closest("[data-row]").remove(),
+    "row-up": (el) => {
+      const row = el.closest("[data-row]");
+      if (row.previousElementSibling) row.parentElement.insertBefore(row, row.previousElementSibling);
+    },
     "html-preview": (el) => {
       const ta = el.closest(".field").querySelector("textarea");
       BX.modal({ title: "پیش‌نمایش", wide: true, body: `<div class="prose">${ta.value}</div>` });

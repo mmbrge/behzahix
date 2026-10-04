@@ -605,36 +605,38 @@
 @media (max-width: 899px) { .legal-nav { position: static; flex-direction: row; } }
 .wizard > *, .dash-grid > *, .split > *, .legal-layout > * { min-width: 0; }
 
-/* ---------- Scroll morph intro (home) ---------- */
-.morph { --stages: 5; --p: 0; position: relative; height: calc(var(--stages) * 85vh + 40vh); margin-top: -76px; }
-.morph-sticky { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
+/* ---------- Auto morph intro (home) ---------- */
+.morph { position: relative; margin-top: -76px; }
+.morph-sticky { position: relative; background-color: rgb(7 8 12 / .5); height: 100vh; height: 100svh; min-height: 560px; overflow: hidden;
   background:
-    radial-gradient(ellipse 60% 45% at 50% 46%, rgb(255 122 26 / .16), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 50% 42%, rgb(255 122 26 / .16), transparent 70%),
     radial-gradient(ellipse 40% 30% at 15% 85%, rgb(96 165 250 / .08), transparent 70%),
     radial-gradient(ellipse 40% 30% at 85% 15%, rgb(255 162 74 / .07), transparent 70%); }
+.morph-sticky::after { content: ""; position: absolute; inset: auto 0 0; height: 120px; background: linear-gradient(transparent, var(--ink)); pointer-events: none; }
 .morph-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.morph-copy { position: absolute; inset: auto 16px 15vh; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; pointer-events: none; }
-.morph-kicker { font-size: .72rem; letter-spacing: .35em; color: var(--accent); opacity: .85; }
-.morph-caption { max-width: 34rem; font-size: clamp(1.1rem, 2.6vw, 1.65rem); font-weight: 800; line-height: 1.8; opacity: 0; transform: translateY(14px); filter: blur(6px); }
-.morph-caption.is-in { animation: cap-in .7s var(--ease-out) forwards; }
-@keyframes cap-in { to { opacity: 1; transform: none; filter: blur(0); } }
-.morph-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; opacity: 0; transform: translateY(16px); transition: opacity .6s, transform .6s var(--ease-out); pointer-events: none; }
-.morph.is-final .morph-cta { opacity: 1; transform: none; pointer-events: auto; }
-.morph-dots { position: absolute; left: 24px; top: 50%; display: flex; flex-direction: column; gap: 10px; translate: 0 -50%; }
-.morph-dots i { width: 6px; height: 6px; border-radius: 999px; background: var(--line-strong); transition: height .4s var(--ease-spring), background-color .3s; }
-.morph-dots i.is-on { height: 26px; background: var(--brand); box-shadow: 0 0 10px var(--brand); }
-.morph-scroll { position: absolute; bottom: 24px; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 6px; translate: -50% 0; color: var(--muted); font-size: .72rem; transition: opacity .4s; opacity: calc(1 - var(--p) * 4); }
-.mouse { width: 22px; height: 34px; border: 2px solid var(--line-strong); border-radius: 12px; display: flex; justify-content: center; padding-top: 6px; }
+.morph-copy { position: absolute; inset: auto 16px 13vh; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; pointer-events: none; }
+.morph-kicker { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; color: #cbd5e1; padding: 6px 12px; border: 1px solid rgb(255 255 255 / .08); border-radius: 8px; background: rgb(10 12 20 / .55); backdrop-filter: blur(6px); }
+.morph-kicker .c-com { color: #64748b; } .morph-kicker .c-op { color: #94a3b8; } .morph-kicker .c-fn { color: #7dd3fc; } .morph-kicker .c-str { color: #ffbe5c; }
+.morph-word { font-family: Vazirmatn, sans-serif; font-weight: 700; }
+.morph-caption { max-width: 40rem; min-height: 2.2em; font-size: clamp(1.15rem, 2.6vw, 1.7rem); font-weight: 800; line-height: 1.7; color: #fff; text-shadow: 0 2px 18px rgb(0 0 0 / .65); }
+.morph-caption .prompt { display: inline-block; margin-inline-end: 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .7em; color: var(--brand); text-shadow: 0 0 12px var(--brand); }
+.morph-caption .caret { display: inline-block; vertical-align: -0.15em; margin-inline-start: 4px; width: 3px; height: 1.1em; border-radius: 2px; background: var(--brand); box-shadow: 0 0 10px var(--brand); animation: caret 1s steps(1) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+.morph-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; pointer-events: auto; }
+.morph-dots { position: absolute; left: 50%; bottom: 5.5vh; z-index: 2; display: flex; gap: 8px; translate: -50% 0; direction: ltr; }
+.morph-dots button { position: relative; width: 8px; height: 8px; padding: 0; border: 0; border-radius: 999px; background: rgb(255 255 255 / .25); cursor: pointer; transition: width .45s var(--ease-spring), background-color .3s; }
+.morph-dots button::before { content: ""; position: absolute; inset: -8px; }
+.morph-dots button:hover { background: rgb(255 255 255 / .55); }
+.morph-dots button.is-on { width: 30px; background: var(--brand); box-shadow: 0 0 12px var(--brand); }
+.morph-scroll { position: absolute; bottom: 5vh; right: 28px; z-index: 2; color: var(--muted); }
+.mouse { width: 22px; height: 34px; border: 2px solid rgb(255 255 255 / .25); border-radius: 12px; display: flex; justify-content: center; padding-top: 6px; }
 .mouse i { width: 3px; height: 7px; border-radius: 3px; background: var(--brand); animation: wheel 1.6s ease-in-out infinite; }
 @keyframes wheel { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(10px); opacity: 0; } 100% { opacity: 0; } }
-.morph-bar { position: absolute; bottom: 0; inset-inline: 0; height: 2px; background: var(--line); }
-.morph-bar i { display: block; height: 100%; width: calc(var(--p) * 100%); background: linear-gradient(to left, var(--brand), var(--brand-2)); box-shadow: 0 0 10px var(--brand); }
-.morph-static { position: absolute; inset: 0; display: none; place-items: center; font-size: clamp(4rem, 16vw, 11rem); }
-.morph.is-static { height: 100vh; }
+.morph-static { position: absolute; inset: 0; display: none; place-items: center; font-size: clamp(4rem, 16vw, 11rem); padding-bottom: 20vh; }
 .morph.is-static .morph-static { display: grid; }
-:root[data-theme="light"] .morph-sticky { background: radial-gradient(ellipse 60% 45% at 50% 46%, rgb(255 122 26 / .14), transparent 70%), #0b0d14; color: #f3f4f6; }
+:root[data-theme="light"] .morph-sticky { background: radial-gradient(ellipse 60% 45% at 50% 42%, rgb(255 122 26 / .14), transparent 70%), #0b0d14; color: #f3f4f6; }
 :root[data-theme="light"] .morph-sticky { --muted: #a3a8b6; --line-strong: rgb(255 255 255 / .25); --line: rgb(255 255 255 / .08); --accent: #ffa24a; }
-@media (max-width: 640px) { .morph { height: calc(var(--stages) * 70vh + 40vh); } .morph-dots { left: 12px; } .morph-copy { bottom: 13vh; } }
+@media (max-width: 640px) { .morph-copy { bottom: 12vh; } .morph-scroll { display: none; } .morph-kicker { font-size: .7rem; } }
 
 /* ---------- Scroll progress & richer reveals ---------- */
 .scroll-progress { position: fixed; top: 0; inset-inline: 0; z-index: 70; height: 3px; pointer-events: none; transform-origin: right; transform: scaleX(var(--sp, 0)); background: linear-gradient(to left, var(--brand), var(--brand-2)); box-shadow: 0 0 12px var(--brand); }
@@ -646,4 +648,4 @@
 .js [data-reveal="rise"] { translate: 0 60px; rotate: -1.5deg; transition: opacity 1s var(--ease-out), translate 1s var(--ease-out), rotate 1s var(--ease-out); transition-delay: var(--d, 0ms); }
 .js [data-reveal="rise"].is-visible { translate: 0 0; rotate: 0deg; }
 .parallax { will-change: transform; }
-@media (prefers-reduced-motion: reduce) { .morph-caption { opacity: 1; transform: none; filter: none; } .scroll-progress { display: none; } }
+@media (prefers-reduced-motion: reduce) { .morph-caption .caret { animation: none; } .scroll-progress { display: none; } }

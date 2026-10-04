@@ -14,6 +14,7 @@
     arrow: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
     "arrow-right": '<path d="M5 12h14M13 6l6 6-6 6"/>',
     "chevron-down": '<path d="m6 9 6 6 6-6"/>',
+    "chevron-up": '<path d="m18 15-6-6-6 6"/>',
     "chevron-left": '<path d="m15 6-6 6 6 6"/>',
     play: '<path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor" stroke="none"/>',
     check: '<path d="m5 12 5 5 9-10"/>',
@@ -439,49 +440,117 @@
   });
 
   // ---------------------------------------------------------------- Cursor
+  // A minimal "X" — the logo mark. A precise dot sits on the pointer while the
+  // X glides behind it; hover turns it into a "+" halo, a click spins it and
+  // throws four sparks, text fields fold it into a caret.
   function initCursor() {
     const fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!fine || reduced) return;
     const root = document.documentElement;
     const dot = document.createElement("div");
-    const ring = document.createElement("div");
+    const mark = document.createElement("div");
     dot.className = "cursor-dot";
-    ring.className = "cursor-ring";
-    ring.innerHTML = "<span>‹ ›</span>";
-    document.body.append(dot, ring);
+    mark.className = "cursor-x";
+    mark.innerHTML = '<div class="cx"><i></i><i></i><b>‹ ›</b></div>';
+    document.body.append(mark, dot);
     root.classList.add("has-cursor");
-    let x = -100, y = -100, rx = x, ry = y;
+    let x = -100, y = -100, mx = x, my = y, idleT;
+    const HOVER = "a, button, label, summary, select, [role=button], [data-spotlight], .float, .tree-leaf, .tree-cat, .chip";
     window.addEventListener("pointermove", (e) => {
       if (e.pointerType !== "mouse") return;
       x = e.clientX;
       y = e.clientY;
       dot.style.transform = `translate3d(${x}px, ${y}px, 0)`;
       root.classList.add("cursor-visible");
+      root.classList.remove("cursor-idle");
+      clearTimeout(idleT);
+      idleT = setTimeout(() => root.classList.add("cursor-idle"), 1400);
       const t = e.target instanceof Element ? e.target : null;
-      const typing = Boolean(t && t.closest("input:not([type=checkbox]):not([type=radio]):not([type=range]), textarea, select"));
+      const typing = Boolean(t && t.closest("input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=submit]), textarea, [contenteditable]"));
       root.classList.toggle("cursor-text", typing);
       root.classList.toggle("cursor-drag", Boolean(t && t.closest(".compare")));
-      root.classList.toggle("cursor-hover", !typing && Boolean(t && t.closest("a, button, label, summary, [data-spotlight], .float, .tree-leaf, .tree-cat")));
+      root.classList.toggle("cursor-hover", !typing && Boolean(t && t.closest(HOVER)));
     });
     document.addEventListener("pointerleave", () => root.classList.remove("cursor-visible"));
     window.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "mouse") return;
       root.classList.add("cursor-down");
-      const r = document.createElement("span");
-      r.className = "cursor-ripple";
-      r.style.left = `${e.clientX}px`;
-      r.style.top = `${e.clientY}px`;
-      document.body.appendChild(r);
-      r.addEventListener("animationend", () => r.remove());
+      const b = document.createElement("span");
+      b.className = "cursor-burst";
+      b.style.left = `${e.clientX}px`;
+      b.style.top = `${e.clientY}px`;
+      b.innerHTML = [45, 135, 225, 315].map((a) => `<i style="--a:${a}deg"></i>`).join("");
+      document.body.appendChild(b);
+      setTimeout(() => b.remove(), 600);
     });
     window.addEventListener("pointerup", () => root.classList.remove("cursor-down"));
     const tick = () => {
-      rx += (x - rx) * 0.18;
-      ry += (y - ry) * 0.18;
-      ring.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
+      mx += (x - mx) * 0.22;
+      my += (y - my) * 0.22;
+      mark.style.transform = `translate3d(${mx}px, ${my}px, 0)`;
       requestAnimationFrame(tick);
     };
     tick();
+  }
+
+  // ---------------------------------------------------------------- Code background
+  // Two slow columns of faint, syntax-coloured code behind the content.
+  const CODE = [
+    ["c", "// BEHIX — creative AI studio"],
+    ["k", "import", "", " { ", "f", "ideas", "", ", ", "f", "design", "", " } ", "k", "from", "", " ", "s", "'@behix/core'", "", ";"],
+    ["", ""],
+    ["k", "const", "", " studio = ", "f", "createStudio", "", "({"],
+    ["", "  name: ", "s", "'BEHIX'", "", ","],
+    ["", "  services: [", "s", "'web'", "", ", ", "s", "'video'", "", ", ", "s", "'image'", "", ", ", "s", "'office'", "", "],"],
+    ["", "  ai: ", "t", "true", "", ","],
+    ["", "});"],
+    ["", ""],
+    ["k", "async function", "", " ", "f", "launch", "", "(idea) {"],
+    ["", "  ", "k", "const", "", " brief = ", "k", "await", "", " ", "f", "analyze", "", "(idea);"],
+    ["", "  ", "k", "const", "", " draft = ", "k", "await", "", " ai.", "f", "generate", "", "(brief, { quality: ", "n", "100", "", " });"],
+    ["", "  ", "k", "return", "", " studio.", "f", "polish", "", "(draft);"],
+    ["", "}"],
+    ["", ""],
+    ["c", "/* from idea to automation */"],
+    ["k", "for", "", " (", "k", "const", "", " step ", "k", "of", "", " [", "s", "'ایده'", "", ", ", "s", "'طراحی'", "", ", ", "s", "'اجرا'", "", "]) {"],
+    ["", "  pipeline.", "f", "push", "", "(step);"],
+    ["", "}"],
+    ["", ""],
+    ["k", "export default", "", " ", "f", "launch", "", ";"],
+    ["", ""],
+    ["c", "<?php // api/index.php"],
+    ["k", "function", "", " ", "f", "order_submit", "", "(): ", "k", "void"],
+    ["", "{"],
+    ["", "    $price = ", "f", "estimate", "", "($service, $options);"],
+    ["", "    $fee   = $price * ", "n", "0.1", "", ";"],
+    ["", "    ", "f", "done", "", "(", "s", "'سفارش ثبت شد'", "", ");"],
+    ["", "}"],
+    ["", ""],
+    ["c", "// render the logo mark"],
+    ["", "<", "k", "Logo", "", " text=", "s", "\"BEHI\"", "", " mark=", "s", "\"X\"", "", " glow />"],
+    ["", ""],
+    ["", "theme.", "f", "set", "", "({ brand: ", "s", "'#ff7a1a'", "", ", mode: ", "s", "'dark'", "", " });"],
+    ["", "deploy(", "s", "'production'", "", ").", "f", "then", "", "(() => ", "f", "celebrate", "", "());"],
+    ["", ""],
+  ];
+  function codeLines(offset) {
+    const esc2 = (t) => String(t).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+    const lines = CODE.slice(offset).concat(CODE.slice(0, offset));
+    const html = lines.map((parts, i) => {
+      let h = `<span class="ln">${i + 1}</span>`;
+      for (let k = 0; k < parts.length; k += 2) h += parts[k] ? `<span class="${parts[k]}">${esc2(parts[k + 1])}</span>` : esc2(parts[k + 1]);
+      return `<div>${h}</div>`;
+    }).join("");
+    return html + html; // doubled for a seamless loop
+  }
+  function initCodeBg() {
+    if (document.body.dataset.page === "dashboard" || document.querySelector(".code-bg")) return;
+    const bg = document.createElement("div");
+    bg.className = "code-bg";
+    bg.setAttribute("aria-hidden", "true");
+    bg.innerHTML = `<div class="code-col" style="--dur:110s">${codeLines(0)}</div><div class="code-col" style="--dur:140s">${codeLines(18)}</div>`;
+    document.body.prepend(bg);
   }
 
   // ---------------------------------------------------------------- Toast & modal
@@ -564,4 +633,5 @@
     });
   initTheme();
   initScrollFx();
+  initCodeBg();
 })();

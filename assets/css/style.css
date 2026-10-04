@@ -462,42 +462,62 @@ a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
   transition-delay: 0ms, 0ms, 0ms, var(--d, 0ms), var(--d, 0ms);
 }
 
-/* ---------- Custom cursor (fine pointers only; created in main.js) ---------- */
+/* ---------- Custom cursor: the BEHIX "X" (fine pointers only; created in core.js) ---------- */
 .has-cursor, .has-cursor * { cursor: none !important; }
-.cursor-dot, .cursor-ring {
-  position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none;
-  border-radius: 50%; opacity: 0; transition: opacity .3s;
-}
-.cursor-dot { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: var(--brand); box-shadow: 0 0 10px var(--brand); }
-.cursor-ring {
-  display: grid; place-items: center;
-  width: 38px; height: 38px; margin: -19px 0 0 -19px;
-  border: 1.5px solid rgb(255 122 26 / 0.7);
-  background: rgb(255 122 26 / 0.04);
-  transition: opacity .3s, width .35s var(--ease-spring), height .35s var(--ease-spring), margin .35s var(--ease-spring),
-    background-color .3s, border-color .3s, backdrop-filter .3s;
-}
-.cursor-ring::before {
-  content: ""; position: absolute; inset: -5px; border-radius: 50%;
-  border: 1.5px dashed rgb(255 122 26 / 0.35); animation: spin 6s linear infinite;
-}
-.cursor-ring span { font-size: 11px; font-weight: 700; color: #fff; opacity: 0; transition: opacity .2s; }
-.cursor-visible .cursor-dot, .cursor-visible .cursor-ring { opacity: 1; }
-.cursor-hover .cursor-ring {
-  width: 64px; height: 64px; margin: -32px 0 0 -32px;
-  background: rgb(255 122 26 / 0.15); border-color: var(--brand);
-  backdrop-filter: blur(2px);
-}
-.cursor-hover .cursor-dot { transform: scale(0.5); }
-.cursor-drag .cursor-ring { width: 72px; height: 72px; margin: -36px 0 0 -36px; background: var(--brand); border-color: var(--brand); }
-.cursor-drag .cursor-ring span { opacity: 1; color: #07080c; }
-.cursor-drag .cursor-dot { opacity: 0; }
-.cursor-down .cursor-ring { width: 28px; height: 28px; margin: -14px 0 0 -14px; background: rgb(255 122 26 / 0.35); }
-.cursor-ripple {
-  position: fixed; z-index: 9998; width: 12px; height: 12px; margin: -6px 0 0 -6px;
-  border: 2px solid var(--brand); border-radius: 50%; pointer-events: none;
-  animation: ripple .6s var(--ease-out) forwards;
-}
+.cursor-x, .cursor-dot { position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none; opacity: 0; transition: opacity .3s; }
+.cursor-visible .cursor-x, .cursor-visible .cursor-dot { opacity: 1; }
+.cursor-dot { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--fg); transition: opacity .3s, scale .3s var(--ease-spring); }
+.cursor-x { width: 0; height: 0; }
+.cx { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; transition: transform .45s var(--ease-spring); }
+.cx i { position: absolute; left: 50%; top: 50%; width: 18px; height: 2px; margin: -1px 0 0 -9px; border-radius: 2px; background: var(--brand); box-shadow: 0 0 8px rgb(255 122 26 / .7); transition: width .4s var(--ease-spring), margin .4s var(--ease-spring), transform .45s var(--ease-spring), opacity .25s, background-color .3s; }
+.cx i:nth-child(1) { transform: rotate(45deg); }
+.cx i:nth-child(2) { transform: rotate(-45deg); }
+.cx::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgb(255 122 26 / .55); background: rgb(255 122 26 / .08); transform: scale(.2); opacity: 0; transition: transform .45s var(--ease-spring), opacity .3s; }
+.cx b { position: absolute; inset: 0; display: grid; place-items: center; font: 700 13px/1 ui-monospace, Menlo, Consolas, monospace; color: var(--on-brand); opacity: 0; transition: opacity .2s; }
+/* idle: the X breathes slowly like the logo mark */
+.cursor-idle:not(.cursor-hover):not(.cursor-text):not(.cursor-drag) .cx { animation: cx-breathe 2.4s ease-in-out infinite; }
+@keyframes cx-breathe { 50% { transform: rotate(90deg) scale(.85); } }
+/* hover: X turns into a "+" inside a soft halo */
+.cursor-hover .cx { transform: rotate(45deg) scale(1.35); }
+.cursor-hover .cx::before { transform: scale(1.25); opacity: 1; }
+.cursor-hover .cx i { width: 12px; margin-left: -6px; background: var(--fg); box-shadow: 0 0 6px rgb(255 122 26 / .9); }
+.cursor-hover .cursor-dot { scale: 0; }
+/* press: quick spin + shrink */
+.cursor-down .cx { transform: rotate(180deg) scale(.7); transition-duration: .25s; }
+.cursor-hover.cursor-down .cx { transform: rotate(135deg) scale(1.05); }
+/* text fields: the X folds into a blinking caret */
+.cursor-text .cx i:nth-child(1) { transform: rotate(90deg); width: 20px; margin-left: -10px; animation: blink 1s steps(1) infinite; }
+.cursor-text .cx i:nth-child(2) { opacity: 0; transform: rotate(90deg); }
+.cursor-text .cursor-dot { scale: 0; }
+/* before/after slider: filled disc with arrows */
+.cursor-drag .cx { transform: scale(1.9); }
+.cursor-drag .cx::before { transform: scale(1); opacity: 1; background: var(--brand); border-color: var(--brand); }
+.cursor-drag .cx i { opacity: 0; }
+.cursor-drag .cx b { opacity: 1; font-size: 8px; }
+.cursor-drag .cursor-dot { scale: 0; }
+.cursor-burst { position: fixed; z-index: 9998; width: 0; height: 0; pointer-events: none; }
+.cursor-burst i { position: absolute; left: -1px; top: -6px; width: 2px; height: 12px; border-radius: 2px; background: var(--brand); transform: rotate(var(--a)) translateY(-6px) scaleY(1); opacity: 1; animation: burst .55s var(--ease-out) forwards; }
+@keyframes burst { to { transform: rotate(var(--a)) translateY(-26px) scaleY(.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cursor-x, .cursor-dot, .cursor-burst { display: none; } }
+
+/* ---------- Code background (programming texture behind every page) ---------- */
+.code-bg { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; direction: ltr;
+  background-image: radial-gradient(rgb(255 255 255 / .07) 1px, transparent 1.4px); background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 25%, transparent 85%); mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 25%, transparent 85%); }
+.code-col { position: absolute; top: 0; width: min(440px, 40vw); font: 500 12.5px/1.95 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; white-space: pre; color: #94a3b8; opacity: .17; animation: code-up var(--dur, 90s) linear infinite; }
+.code-col:nth-child(1) { left: 2.5vw; }
+.code-col:nth-child(2) { right: 2.5vw; text-align: left; animation-delay: -40s; }
+.code-col .ln { display: inline-block; width: 2.4em; color: #475569; text-align: right; margin-right: 1.2em; user-select: none; }
+.code-col div:nth-child(23n + 7) { color: #e2e8f0; text-shadow: 0 0 10px rgb(255 122 26 / .5); animation: code-hot 7s ease-in-out infinite; }
+.code-col .k { color: #c084fc; } .code-col .s { color: #ffbe5c; } .code-col .f { color: #7dd3fc; } .code-col .c { color: #64748b; font-style: italic; } .code-col .n { color: #ff7a1a; } .code-col .t { color: #4ade80; }
+@keyframes code-up { to { transform: translateY(-50%); } }
+@keyframes code-hot { 50% { background: rgb(255 122 26 / .1); } }
+:root[data-theme="light"] .code-bg { background-image: radial-gradient(rgb(15 23 42 / .09) 1px, transparent 1.4px); }
+:root[data-theme="light"] .code-col { color: #334155; opacity: .13; }
+:root[data-theme="light"] .code-col .k { color: #7c3aed; } :root[data-theme="light"] .code-col .s { color: #c2410c; } :root[data-theme="light"] .code-col .f { color: #0369a1; } :root[data-theme="light"] .code-col .t { color: #15803d; }
+:root[data-theme="light"] .code-col div:nth-child(23n + 7) { color: #0f172a; text-shadow: none; }
+@media (max-width: 899px) { .code-col { width: 92vw; opacity: .09; } .code-col:nth-child(2) { display: none; } }
+@media (prefers-reduced-motion: reduce) { .code-col, .code-col div { animation: none !important; } }
 
 /* ---------- Keyframes ---------- */
 @keyframes header-drop { from { transform: translateY(-140%); opacity: 0; } to { transform: none; opacity: 1; } }

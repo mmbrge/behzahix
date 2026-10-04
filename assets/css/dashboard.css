@@ -296,3 +296,5 @@
 .code-area.tall { min-height: 260px; text-align: right; direction: rtl; }
 .color-input { width: 52px; height: 42px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: none; cursor: pointer; }
 .code-area.tall { font-family: inherit; font-size: .85rem; line-height: 2; }
+.rows-editor[data-kind="morph"] .input:first-child { flex: 1 1 130px; font-weight: 700; }
+.rows-editor[data-kind="morph"] [data-f="caption"] { flex: 4 1 260px; }

@@ -900,10 +900,14 @@ function a_settings_save(): void
         $current['budgets'] = array_values(array_filter(array_map(function ($x) { return mb_substr(trim((string) $x), 0, 60); }, (array) $current['budgets'])));
     }
     if ($group === 'home') {
-        foreach (['morphWords' => 30, 'morphCaptions' => 160] as $k => $max) {
-            $current[$k] = array_values(array_filter(array_map(function ($x) use ($max) { return mb_substr(trim((string) $x), 0, $max); }, (array) $current[$k])));
-        }
-        $current['morphWords'] = array_slice($current['morphWords'], 0, 8);
+        $current['morphItems'] = array_values(array_filter(array_map(function ($m) {
+            if (!is_array($m)) return null;
+            $w = mb_substr(trim((string) ($m['word'] ?? '')), 0, 24);
+            return $w === '' ? null : ['word' => $w, 'caption' => mb_substr(trim((string) ($m['caption'] ?? '')), 0, 160)];
+        }, (array) $current['morphItems'])));
+        if (!$current['morphItems']) $current['morphItems'] = $defaults['home']['morphItems'];
+        $current['morphIntro'] = mb_substr(trim((string) $current['morphIntro']), 0, 160);
+        $current['morphInterval'] = max(1.5, min(30, (float) $current['morphInterval']));
         $current['packages'] = array_values(array_filter(array_map(function ($p) {
             if (!is_array($p) || empty($p['title'])) return null;
             return ['id' => preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($p['id'] ?? ''))) ?: 'p' . random_int(100, 999), 'title' => mb_substr((string) $p['title'], 0, 120),
