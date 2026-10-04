@@ -900,6 +900,10 @@ function a_settings_save(): void
         $current['budgets'] = array_values(array_filter(array_map(function ($x) { return mb_substr(trim((string) $x), 0, 60); }, (array) $current['budgets'])));
     }
     if ($group === 'home') {
+        foreach (['morphWords' => 30, 'morphCaptions' => 160] as $k => $max) {
+            $current[$k] = array_values(array_filter(array_map(function ($x) use ($max) { return mb_substr(trim((string) $x), 0, $max); }, (array) $current[$k])));
+        }
+        $current['morphWords'] = array_slice($current['morphWords'], 0, 8);
         $current['packages'] = array_values(array_filter(array_map(function ($p) {
             if (!is_array($p) || empty($p['title'])) return null;
             return ['id' => preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($p['id'] ?? ''))) ?: 'p' . random_int(100, 999), 'title' => mb_substr((string) $p['title'], 0, 120),

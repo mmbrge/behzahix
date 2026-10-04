@@ -402,6 +402,33 @@
     items.forEach((el) => io.observe(el));
   }
 
+  // Scroll progress bar + simple parallax ([data-parallax="0.1"])
+  function initScrollFx() {
+    if (document.body.dataset.page === "dashboard") return;
+    const bar = document.createElement("div");
+    bar.className = "scroll-progress";
+    bar.setAttribute("aria-hidden", "true");
+    document.body.appendChild(bar);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const max = document.documentElement.scrollHeight - innerHeight;
+      bar.style.setProperty("--sp", max > 0 ? (scrollY / max).toFixed(4) : 0);
+      if (reduced) return;
+      document.querySelectorAll("[data-parallax]").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.bottom < -200 || r.top > innerHeight + 200) return;
+        const off = (r.top + r.height / 2 - innerHeight / 2) * Number(el.dataset.parallax);
+        el.style.transform = `translate3d(0, ${(-off).toFixed(1)}px, 0)`;
+      });
+    };
+    window.addEventListener("scroll", () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    update();
+  }
+
   // Pointer spotlight for any [data-spotlight] card
   document.addEventListener("pointermove", (e) => {
     const card = e.target instanceof Element && e.target.closest("[data-spotlight]");
@@ -536,4 +563,5 @@
       else toast(err.message, "bad");
     });
   initTheme();
+  initScrollFx();
 })();
