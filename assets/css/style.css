@@ -121,18 +121,38 @@ section[id] { scroll-margin-top: 110px; }
   pointer-events: none;
 }
 
-/* ---------- Logo ---------- */
-.logo { display: inline-flex; direction: ltr; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
+/* ---------- Logo ----------
+   BEHI in brushed metal with a warm light sweeping across it, the X in a
+   deep orange gradient, and a small AI sparkle twinkling at its tip. */
+.logo { position: relative; display: inline-flex; align-items: baseline; direction: ltr; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; isolation: isolate; }
 .logo-a, .logo-x { -webkit-background-clip: text; background-clip: text; color: transparent; }
-.logo-a { background-image: var(--logo-a); }
-.logo-x {
-  display: inline-block;
-  background-image: linear-gradient(var(--brand-2), var(--brand));
-  filter: drop-shadow(0 0 12px rgb(255 122 26 / 0.6));
-  transition: transform .5s var(--ease-spring);
+.logo-a {
+  background-image: linear-gradient(105deg, transparent 42%, rgb(255 214 170 / .95) 50%, transparent 58%), var(--logo-a);
+  background-size: 260% 100%, 100% 100%; background-position: 130% 0, 0 0; background-repeat: no-repeat;
+  animation: logo-sheen 7s ease-in-out infinite;
 }
-a.logo:hover .logo-x { transform: rotate(90deg) scale(1.1); }
+@keyframes logo-sheen { 0%, 62% { background-position: 130% 0, 0 0; } 82%, 100% { background-position: -30% 0, 0 0; } }
+.logo-x {
+  position: relative; display: inline-block; margin-left: .02em;
+  background-image: linear-gradient(140deg, #ffd29a 0%, var(--brand-2) 30%, var(--brand) 62%, #ff4a0c 100%);
+  filter: drop-shadow(0 0 .2em rgb(255 122 26 / .55));
+  transition: transform .6s var(--ease-spring), filter .4s;
+}
+/* AI sparkle at the top-right of the X */
+.logo::after {
+  content: ""; position: absolute; right: -.2em; top: .02em; width: .3em; height: .3em; pointer-events: none;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  background: radial-gradient(circle, #fff 20%, #ffd29a 55%, var(--brand) 100%);
+  filter: drop-shadow(0 0 4px #fff);
+  animation: logo-spark 3.2s ease-in-out infinite;
+}
+:root[data-theme="light"] .logo::after { background: radial-gradient(circle, #fff 8%, var(--brand-2) 45%, var(--brand) 100%); filter: drop-shadow(0 0 3px rgb(255 122 26 / .8)); }
+@keyframes logo-spark { 0%, 100% { transform: scale(.35) rotate(0deg); opacity: .45; } 45% { transform: scale(1) rotate(90deg); opacity: 1; } 60% { transform: scale(.75) rotate(120deg); opacity: .9; } }
+a.logo:hover .logo-x { transform: rotate(90deg) scale(1.12); filter: drop-shadow(0 0 .3em rgb(255 122 26 / .9)); }
+a.logo:hover::after { animation-duration: .9s; }
+a.logo:hover .logo-a { animation-duration: 1.6s; }
 .logo--sm { font-size: 1.125rem; }
+.logo--sm::after { display: none; }
 .logo--md { font-size: 2rem; }
 .logo--hero { display: flex; width: fit-content; margin-top: 8px; font-size: 3.75rem; }
 .logo--hero .logo-x { animation: x-glow 3s ease-in-out infinite; }
