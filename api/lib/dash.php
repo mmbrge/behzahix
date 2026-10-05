@@ -914,6 +914,13 @@ function a_settings_save(): void
                 'price' => (int) en_digits((string) ($p['price'] ?? 0)), 'days' => max(1, (int) en_digits((string) ($p['days'] ?? 1))), 'selected' => !empty($p['selected'])];
         }, $current['packages'])));
     }
+    if ($group === 'tools') {
+        $current['disabled'] = array_values(array_intersect(array_map('strval', (array) $current['disabled']), array_keys(BX_TOOLS)));
+        $current['blockedDomains'] = array_values(array_filter(array_map(function ($d) {
+            return preg_replace('/[^a-z0-9.-]/', '', strtolower(trim((string) $d)));
+        }, (array) $current['blockedDomains'])));
+        $current['shortGuestDaily'] = max(1, min(1000, (int) $current['shortGuestDaily']));
+    }
     if ($group === 'payment' && !in_array($current['driver'], ['test', 'zarinpal', 'zibal'], true)) $current['driver'] = 'test';
     if ($group === 'sms' && !in_array($current['driver'], ['none', 'kavenegar', 'smsir'], true)) $current['driver'] = 'none';
     save_setting($group, $current);

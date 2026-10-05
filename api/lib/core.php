@@ -249,6 +249,15 @@ function login_as(int $id): void
 }
 
 // ------------------------------------------------------------------ settings
+// Existing installs get new tables automatically (CREATE TABLE IF NOT EXISTS).
+function ensure_schema(): void
+{
+    require_once __DIR__ . '/schema.php';
+    $v = (int) val("SELECT v FROM settings WHERE k = 'schema_version'");
+    if ($v >= BX_SCHEMA_VERSION) return;
+    foreach (bx_schema() as $sql) db()->exec($sql);
+    q("INSERT INTO settings (k, v) VALUES ('schema_version', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)", [(string) BX_SCHEMA_VERSION]);
+}
 function settings(): array
 {
     static $s = null;

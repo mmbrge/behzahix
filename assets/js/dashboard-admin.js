@@ -433,6 +433,12 @@
       ]],
       ["uploads", [["maxMB", "حداکثر حجم هر فایل (مگابایت)", "number"], ["ext", "پسوندهای مجاز (با کاما)", "ltr"]], "حداکثر حجم واقعی به تنظیمات PHP هاست (upload_max_filesize) هم بستگی دارد."],
     ] },
+    tools: { title: "ابزارها", icon: "wrench", groups: [
+      ["tools", [
+        ["enabled", "صفحه ابزارهای رایگان فعال باشد", "switch"], ["shortRequireLogin", "ساخت لینک کوتاه فقط برای کاربران واردشده", "switch"],
+        ["shortGuestDaily", "سقف ساخت لینک کوتاه برای مهمان در هر روز", "number"], ["blockedDomains", "دامنه‌های ممنوع برای کوتاه‌سازی (هر خط یک دامنه، مثلاً example.com)", "lines"],
+      ], "روشن یا خاموش کردن هر ابزار از بخش «ابزارها و لینک‌ها» انجام می‌شود."],
+    ] },
     demo: { title: "داده‌های نمایشی", icon: "refresh", groups: [] },
   };
 
@@ -480,7 +486,7 @@
     }
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", shop: "فروشگاه", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { general: "اطلاعات سایت", shop: "فروشگاه", tools: "ابزارهای رایگان", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">
@@ -555,6 +561,126 @@
   });
 
   // Live label next to colour inputs
+
+  // ============================================================ FREE TOOLS (usage, short links)
+  const TOOL_META = {
+    files: "فایل", inKB: "حجم ورودی (KB)", outKB: "حجم خروجی (KB)", format: "فرمت", maxWidth: "حداکثر عرض", quality: "کیفیت", pages: "صفحات", selected: "انتخابی",
+    mode: "حالت", sizeKB: "حجم (KB)", images: "عکس", page: "قطع", margin: "حاشیه", colors: "رنگ", width: "عرض", height: "ارتفاع", words: "کلمه", chars: "کاراکتر",
+    dir: "جهت", digits: "رقم", unit: "واحد", length: "طول", sets: "نوع کاراکتر", kind: "نوع", valid: "معتبر", type: "نوع", size: "اندازه", style: "سبک",
+    logo: "لوگو", host: "دامنه", alias: "نام دلخواه", source: "منبع", medium: "رسانه", action: "اقدام",
+  };
+  const DEVICE = { mobile: "موبایل", desktop: "دسکتاپ", tablet: "تبلت", bot: "ربات", "": "—" };
+  const toolsState = { data: null, log: { tool: "", page: 0, items: [] }, q: "" };
+  const metaChips = (m) => Object.entries(m || {}).map(([k, v]) => `<span class="meta-chip"><small>${BX.esc(TOOL_META[k] || k)}</small>${BX.esc(typeof v === "boolean" ? (v ? "بله" : "خیر") : BX.faDigits(v))}</span>`).join("") || '<span class="muted">—</span>';
+
+  BXD.routes.tools = function (param) {
+    const sub = ["", "log", "links"].includes(param) ? param : "";
+    return `${tabs("tools", [["", "آمار ابزارها", "chart"], ["log", "گزارش استفاده", "list"], ["links", "لینک‌های کوتاه", "link"]], sub)}
+      <div data-tools-admin="${sub}"><div class="dash-grid"><div class="tiles">${Array.from({ length: 4 }, () => '<div class="card tile skeleton" style="height:110px"></div>').join("")}</div><div class="card box skeleton" style="height:280px"></div></div></div>`;
+  };
+
+  async function toolsOverview(el) {
+    const { box, tile, table, icon, faDigits, ago } = h();
+    const d = (toolsState.data = await BX.api("a.tools.stats"));
+    const t = d.totals;
+    const max = Math.max(1, ...d.days.map((x) => x.n));
+    const days = Array.from({ length: 14 }, (_, i) => {
+      const dt = new Date(Date.now() - (13 - i) * 864e5), key = dt.toISOString().slice(0, 10);
+      return { n: (d.days.find((x) => x.d === key) || { n: 0 }).n, label: new Intl.DateTimeFormat("fa-IR", { day: "numeric", month: "short" }).format(dt) };
+    });
+    const devTotal = Math.max(1, d.devices.reduce((s, x) => s + x.n, 0));
+    const off = new Set(d.settings.disabled || []);
+    el.innerHTML = `<div class="dash-grid">
+      ${d.settings.enabled ? "" : `<div class="banner">${icon("info")}<span>صفحه ابزارها برای بازدیدکنندگان خاموش است. از <a href="#settings/tools" class="brand">تنظیمات ← ابزارها</a> روشنش کنید.</span></div>`}
+      <div class="tiles">
+        ${tile("استفاده امروز", faDigits(t.today), "zap", `کل: ${faDigits(t.uses)} بار`)}
+        ${tile("کاربران یکتا (۷ روز)", faDigits(t.people), "users", "بر اساس دستگاه")}
+        ${tile("لینک‌های کوتاه", faDigits(t.links), "link", `${faDigits(t.clicks)} کلیک`)}
+        ${tile("محبوب‌ترین ابزار", BX.esc((d.tools.slice().sort((a, b) => b.week - a.week)[0] || {}).title || "—"), "award", "در ۷ روز گذشته")}
+      </div>
+      <div class="dash-grid dash-grid-2">
+        ${box("استفاده روزانه (۱۴ روز)", "chart", `<div class="day-bars">${days.map((x) => `<div title="${x.label}: ${faDigits(x.n)}"><i style="--h:${(x.n / max) * 100}%"></i><small>${x.label.split(" ")[0]}</small></div>`).join("")}</div>`)}
+        ${box("دستگاه کاربران", "monitor", d.devices.length ? d.devices.map((x) => `<div class="hb"><span>${DEVICE[x.k] || x.k}</span><i style="--w:${(x.n / devTotal) * 100}%"></i><b>${faDigits(x.n)}</b></div>`).join("") : '<p class="muted small">هنوز داده‌ای نیست.</p>')}
+      </div>
+      ${box("ابزارها", "wrench", table(["ابزار", "امروز", "۷ روز", "کل", "افراد یکتا", "آخرین استفاده", "وضعیت", ""], d.tools.map((x) => `<tr>
+          <td><b>${BX.esc(x.title)}</b></td><td>${faDigits(x.today)}</td><td>${faDigits(x.week)}</td><td><b>${faDigits(x.total)}</b></td><td>${faDigits(x.people)}</td>
+          <td class="muted">${x.last ? ago(x.last) : "—"}</td>
+          <td><label class="switch small"><input type="checkbox" data-change="tool-toggle" value="${x.id}" ${off.has(x.id) ? "" : "checked"}><span class="track"></span>${off.has(x.id) ? "خاموش" : "روشن"}</label></td>
+          <td><div class="actions"><a class="btn btn-ghost btn-xs" href="#tools/log" data-act="tool-log" data-tool="${x.id}">${icon("list")} گزارش</a><a class="btn btn-ghost btn-xs" href="tools.html#${x.id}" target="_blank">${icon("external")}</a></div></td></tr>`)),
+        `<a class="btn btn-ghost btn-xs" href="#settings/tools">${icon("settings")} تنظیمات</a><a class="btn btn-ghost btn-xs" href="tools.html" target="_blank">${icon("external")} صفحه ابزارها</a>`)}
+    </div>`;
+  }
+
+  async function toolsLog(el, append) {
+    const { box, table, icon, faDigits, ago, esc } = h();
+    const L = toolsState.log;
+    if (!append) { L.page = 0; L.items = []; }
+    const r = await BX.api("a.tools.events", { tool: L.tool, page: L.page });
+    L.items = L.items.concat(r.events);
+    const names = toolsState.data?.tools || [];
+    const title = (id) => (names.find((x) => x.id === id) || { title: id }).title;
+    el.innerHTML = box("گزارش استفاده از ابزارها", "list", `
+      <div class="row-between mb-2"><select class="select" style="max-width:260px" data-change="tool-log-filter"><option value="">همه ابزارها</option>${(names.length ? names : []).map((x) => `<option value="${x.id}" ${x.id === L.tool ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select>
+      <span class="muted small">${faDigits(L.items.length)} مورد نمایش داده شده</span></div>
+      ${table(["زمان", "ابزار", "کاربر", "دستگاه", "جزئیات"], L.items.map((e) => `<tr>
+        <td class="muted" title="${BX.date(e.at)}">${ago(e.at)}</td><td><b>${esc(title(e.tool))}</b></td>
+        <td>${e.user ? `<a href="#users" class="brand">${esc(e.user)}</a>` : `<span class="muted">مهمان <small dir="ltr">#${esc(e.visitor.slice(0, 6))}</small></span>`}</td>
+        <td>${DEVICE[e.device] || esc(e.device)}</td><td><div class="meta-chips">${metaChips(e.meta)}</div></td></tr>`), "هنوز استفاده‌ای ثبت نشده است.")}
+      ${r.more ? `<div class="center mt-2"><button class="btn btn-ghost btn-sm" data-act="tool-log-more">${icon("refresh")} موارد بیشتر</button></div>` : ""}`);
+    BXD.labelTables?.(el);
+  }
+
+  async function toolsLinks(el) {
+    const { box, table, icon, faDigits, ago, esc } = h();
+    const r = await BX.api("a.short.list", { q: toolsState.q });
+    el.innerHTML = box("لینک‌های کوتاه", "link", `
+      <form class="row mb-2" data-tools-search><input class="input" name="q" placeholder="جستجوی کد یا آدرس مقصد…" value="${esc(toolsState.q)}" style="max-width:320px"><button class="btn btn-ghost btn-sm">${icon("search")} جستجو</button></form>
+      ${table(["لینک کوتاه", "مقصد", "سازنده", "کلیک", "ساخته‌شده", "وضعیت", ""], r.links.map((l) => `<tr>
+        <td><a href="${esc(l.short)}" target="_blank" rel="noopener" dir="ltr" class="brand">/s/${esc(l.code)}</a></td>
+        <td><span class="ellipsis" dir="ltr" title="${esc(l.url)}">${esc(l.url)}</span></td>
+        <td>${l.owner ? esc(l.owner) : '<span class="muted">مهمان</span>'}</td><td><b>${faDigits(l.clicks)}</b></td><td class="muted">${ago(l.createdAt)}</td>
+        <td>${l.active ? '<span class="badge badge--ok">فعال</span>' : '<span class="badge badge--bad">غیرفعال</span>'}</td>
+        <td><div class="actions"><button class="btn btn-ghost btn-xs" data-act="short-stats" data-id="${l.id}">${icon("chart")} آمار</button>
+          <button class="btn btn-ghost btn-xs" data-act="short-toggle" data-id="${l.id}">${l.active ? "غیرفعال" : "فعال"}</button>
+          <button class="icon-btn icon-btn-sm" data-act="short-delete" data-id="${l.id}" aria-label="حذف">${icon("trash")}</button></div></td></tr>`), "هنوز لینک کوتاهی ساخته نشده است.")}`);
+    el.querySelector("[data-tools-search]").addEventListener("submit", (e) => { e.preventDefault(); toolsState.q = e.target.elements.q.value.trim(); toolsLinks(el); });
+    BXD.labelTables?.(el);
+  }
+
+  function loadToolsView(el) {
+    const sub = el.dataset.toolsAdmin;
+    const job = sub === "log" ? (toolsState.data ? Promise.resolve() : BX.api("a.tools.stats").then((d) => (toolsState.data = d))).then(() => toolsLog(el)) : sub === "links" ? toolsLinks(el) : toolsOverview(el);
+    job.then(() => BXD.labelTables?.(el)).catch((err) => { el.innerHTML = `<div class="card empty">${BX.icon("info")}<p>${BX.esc(err.message)}</p></div>`; });
+  }
+  const prevAfter = BXD.afterRender;
+  BXD.afterRender = (view, id, param) => {
+    if (prevAfter) prevAfter(view, id, param);
+    const el = view.querySelector("[data-tools-admin]");
+    if (el) loadToolsView(el);
+  };
+  const toolsEl = () => document.querySelector("[data-tools-admin]");
+  Object.assign(BXD.acts, {
+    "tool-log": (el) => { toolsState.log.tool = el.dataset.tool; location.hash = "tools/log"; },
+    "tool-log-more": () => { toolsState.log.page += 1; toolsLog(toolsEl(), true); },
+    "short-stats": (el) => BX.api("a.short.stats", { id: el.dataset.id }).then((d) => BX.shortStatsModal?.(d)).catch((err) => BX.toast(err.message, "bad")),
+    "short-toggle": (el) => BX.api("a.short.toggle", { id: el.dataset.id }).then(() => toolsLinks(toolsEl())).catch((err) => BX.toast(err.message, "bad")),
+    "short-delete": (el) => BXD.ui.confirmBox("حذف لینک کوتاه", "لینک و آمار کلیک‌هایش حذف می‌شود و دیگر کار نمی‌کند. ادامه می‌دهید؟", () => BX.api("a.short.delete", { id: el.dataset.id }).then(() => toolsLinks(toolsEl())), "حذف"),
+  });
+  Object.assign(BXD.changes, {
+    "tool-toggle": async (el) => {
+      const d = toolsState.data;
+      const off = new Set(d.settings.disabled || []);
+      el.checked ? off.delete(el.value) : off.add(el.value);
+      try {
+        await BX.api("a.settings.save", { group: "tools", value: { disabled: [...off] } });
+        d.settings.disabled = [...off];
+        el.parentElement.lastChild.textContent = el.checked ? "روشن" : "خاموش";
+        BX.toast(el.checked ? "ابزار روشن شد." : "ابزار برای بازدیدکنندگان خاموش شد.", "ok");
+      } catch (err) { el.checked = !el.checked; BX.toast(err.message, "bad"); }
+    },
+    "tool-log-filter": (el) => { toolsState.log.tool = el.value; toolsLog(toolsEl()); },
+  });
+
   BXD.changes.noop = () => {};
   document.addEventListener("input", (e) => {
     if (e.target.classList?.contains("color-input")) e.target.nextElementSibling.textContent = e.target.value;

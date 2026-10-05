@@ -3,6 +3,9 @@
 // columns for compatibility with older shared hosts.
 if (!defined('BX')) { http_response_code(403); exit; }
 
+// Bump when tables are added; existing installs pick them up on the next request.
+const BX_SCHEMA_VERSION = 2;
+
 function bx_schema(): array
 {
     $t = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
@@ -237,6 +240,42 @@ function bx_schema(): array
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL
+        ) $t",
+        // v2 — free tools: usage log, short links and their clicks
+        "CREATE TABLE IF NOT EXISTS tool_events (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            tool VARCHAR(32) NOT NULL,
+            user_id INT UNSIGNED NULL,
+            visitor CHAR(16) NOT NULL,
+            device VARCHAR(16) NOT NULL DEFAULT '',
+            meta LONGTEXT NOT NULL,
+            created_at DATETIME NOT NULL,
+            KEY tool_time (tool, created_at),
+            KEY created (created_at)
+        ) $t",
+        "CREATE TABLE IF NOT EXISTS short_links (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(32) NOT NULL,
+            url TEXT NOT NULL,
+            user_id INT UNSIGNED NULL,
+            visitor CHAR(16) NOT NULL,
+            clicks INT UNSIGNED NOT NULL DEFAULT 0,
+            active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL,
+            last_click_at DATETIME NULL,
+            UNIQUE KEY code (code),
+            KEY owner (user_id)
+        ) $t",
+        "CREATE TABLE IF NOT EXISTS short_clicks (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            link_id INT UNSIGNED NOT NULL,
+            visitor CHAR(16) NOT NULL,
+            device VARCHAR(16) NOT NULL DEFAULT '',
+            browser VARCHAR(24) NOT NULL DEFAULT '',
+            os VARCHAR(24) NOT NULL DEFAULT '',
+            referrer VARCHAR(190) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL,
+            KEY link_time (link_id, created_at)
         ) $t",
     ];
 }

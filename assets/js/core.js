@@ -15,6 +15,9 @@
     "arrow-right": '<path d="M5 12h14M13 6l6 6-6 6"/>',
     "chevron-down": '<path d="m6 9 6 6 6-6"/>',
     "chevron-up": '<path d="m18 15-6-6-6 6"/>',
+    qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4h-4z"/>',
+    hash: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
+    wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
     "chevron-left": '<path d="m15 6-6 6 6 6"/>',
     play: '<path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor" stroke="none"/>',
     check: '<path d="m5 12 5 5 9-10"/>',
@@ -158,6 +161,7 @@
     { id: "portfolio", label: "نمونه‌کارها", href: "portfolio.html" },
     { id: "shop", label: "فروشگاه", href: "shop.html" },
     { id: "designers", label: "طراحان", href: "designers.html" },
+    { id: "tools", label: "ابزارها", href: "tools.html" },
     { id: "pricing", label: "تعرفه‌ها", href: "index.html#packages" },
     { id: "about", label: "درباره ما", href: "about.html" },
   ];
@@ -269,6 +273,7 @@
       ["portfolio.html", "image", "نمونه‌کارها", "portfolio"],
       shopOn && ["shop.html", "store", "فروشگاه فایل", "shop"],
       ["designers.html", "users", "طراحان", "designers"],
+      ["tools.html", "wrench", "ابزارهای رایگان", "tools"],
       ["index.html#packages", "percent", "تعرفه‌ها و پکیج‌ها", "pricing"],
       ["about.html", "info", "درباره ما و سوالات", "about"],
       [user ? "dashboard.html" : "auth.html", user ? "layout" : "user", user ? "پنل کاربری" : "ورود / ثبت‌نام", "auth"],
@@ -460,6 +465,7 @@
               <li><a href="portfolio.html">نمونه‌کارها</a></li>
               ${st.shop?.enabled !== false ? '<li><a href="shop.html">فروشگاه فایل</a></li>' : ""}
               <li><a href="designers.html">طراحان</a></li>
+              <li><a href="tools.html">ابزارهای رایگان</a></li>
               <li><a href="about.html">درباره ما</a></li>
               <li><a href="about.html#faq">سوالات متداول</a></li>
               <li><a href="terms.html">قوانین و مقررات</a></li>

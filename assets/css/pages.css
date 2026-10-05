@@ -231,7 +231,7 @@
 .input:hover, .select:hover, .textarea:hover { border-color: var(--line-strong); }
 .input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px rgb(255 122 26 / .15); }
 .input::placeholder, .textarea::placeholder { color: var(--muted); opacity: .7; }
-.select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: 18px 52%, 13px 52%; background-size: 5px 5px; background-repeat: no-repeat; padding-left: 34px; }
+.select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: 13px 55%, 18px 55%; background-size: 5px 5px; background-repeat: no-repeat; padding-left: 34px; }
 .select option { background: var(--surface); color: var(--fg); }
 .input.is-invalid, .textarea.is-invalid { border-color: var(--bad); animation: shake .35s; }
 .form-grid { display: grid; gap: 18px; }

@@ -634,6 +634,7 @@
       { id: "finance", label: "مالی و تسویه", icon: "wallet", render: adminFinance, count: () => S.payouts.filter((p) => p.status === "pending").length },
       { id: "tickets", label: "تیکت‌ها", icon: "ticket", render: () => ticketsView(true), count: () => S.tickets.filter((t) => t.status === "open").length },
       { id: "coupons", label: "کدهای تخفیف", icon: "percent", render: () => couponsView(false) },
+      { id: "tools", label: "ابزارها و لینک‌ها", icon: "wrench", render: (p) => BXD.routes.tools(p) },
       { id: "notifications", label: "اعلان‌ها", icon: "bell", render: notificationsView },
       { id: "settings", label: "تنظیمات سایت", icon: "settings", render: (p) => BXD.routes.settings(p) },
     ];
@@ -770,6 +771,15 @@
       </nav>`;
     }
 
+    // Label every cell with its column title so tables can become cards on phones
+    function labelTables(root) {
+      root.querySelectorAll("table.table").forEach((t) => {
+        const heads = [...t.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+        t.querySelectorAll("tbody tr").forEach((tr) => [...tr.children].forEach((td, i) => { if (heads[i]) td.dataset.label = heads[i]; }));
+      });
+    }
+    BXD.labelTables = labelTables;
+
     function render() {
       shell();
       const nav = navFor();
@@ -781,11 +791,7 @@
       document.title = `${route.label} | پنل ${BX.settings.general?.siteNameFa || "بهیکس"}`;
       const view = app.querySelector("#view");
       view.innerHTML = route.render(param);
-      // Label every cell with its column title so tables can become cards on phones
-      view.querySelectorAll("table.table").forEach((t) => {
-        const heads = [...t.querySelectorAll("thead th")].map((th) => th.textContent.trim());
-        t.querySelectorAll("tbody tr").forEach((tr) => [...tr.children].forEach((td, i) => { if (heads[i]) td.dataset.label = heads[i]; }));
-      });
+      labelTables(view);
       const log = view.querySelector("[data-chat]");
       if (log) log.scrollTop = log.scrollHeight;
       if (BXD.afterRender) BXD.afterRender(view, route.id, param);

@@ -62,6 +62,7 @@ function default_settings(): array
         'theme' => ['brand' => '#ff7a1a', 'brand2' => '#ffa24a', 'defaultTheme' => 'dark', 'cursor' => true],
         'uploads' => ['maxMB' => 50, 'ext' => 'jpg,jpeg,png,webp,gif,svg,pdf,zip,rar,7z,psd,ai,eps,pptx,ppt,docx,doc,xlsx,xls,mp4,mov,mp3,wav,aep,prproj,fig,txt'],
         'shop' => ['enabled' => true],
+        'tools' => ['enabled' => true, 'disabled' => [], 'shortRequireLogin' => false, 'shortGuestDaily' => 10, 'blockedDomains' => []],
     ];
 }
 
@@ -81,6 +82,7 @@ function public_settings(): array
         'theme' => $s['theme'],
         'uploads' => ['maxMB' => (int) $s['uploads']['maxMB'], 'ext' => $s['uploads']['ext']],
         'shop' => $s['shop'],
+        'tools' => ['enabled' => (bool) $s['tools']['enabled'], 'disabled' => array_values((array) $s['tools']['disabled']), 'shortRequireLogin' => (bool) $s['tools']['shortRequireLogin']],
         'sms' => ['enabled' => $s['sms']['driver'] !== 'none'],
         'payment' => ['driver' => $s['payment']['driver']],
     ];
