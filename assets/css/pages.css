@@ -316,7 +316,13 @@
 /* ---------- Order wizard ---------- */
 .wizard { display: grid; gap: 24px; align-items: start; }
 @media (min-width: 1024px) { .wizard { grid-template-columns: 1fr 340px; } }
-.steps { display: flex; gap: 6px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; padding-bottom: 6px; }
+@media (max-width: 1100px) {
+  .steps { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgb(255 122 26 / .5) transparent; cursor: grab; overscroll-behavior-x: contain; }
+  .steps::-webkit-scrollbar { height: 4px; }
+  .steps::-webkit-scrollbar-thumb { background: rgb(255 122 26 / .5); border-radius: 4px; }
+  .step-dot { flex-shrink: 0; }
+}
 .step-dot {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 8px 14px 8px 10px;
   border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; color: var(--muted);
