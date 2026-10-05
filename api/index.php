@@ -8,6 +8,7 @@ error_reporting(E_ALL);
 require __DIR__ . '/lib/core.php';
 require __DIR__ . '/lib/public.php';
 require __DIR__ . '/lib/tools.php';
+require __DIR__ . '/lib/chat.php';
 
 set_exception_handler(function (Throwable $e) {
     error_log('[BEHIX] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
@@ -52,6 +53,7 @@ $public = [
     'auth.register' => 'r_auth_register', 'auth.logout' => 'r_auth_logout', 'auth.demo' => 'r_auth_demo',
     'fav.toggle' => 'r_fav_toggle', 'shop.checkout' => 'r_shop_checkout', 'shop.quote' => 'r_shop_quote',
     'cart.sync' => 'r_cart_sync',
+    'chat.open' => 'r_chat_open', 'chat.send' => 'r_chat_send', 'chat.poll' => 'r_chat_poll', 'chat.escalate' => 'r_chat_escalate', 'chat.feedback' => 'r_chat_feedback',
     'tools.track' => 'r_tools_track', 'tools.short.create' => 'r_short_create', 'tools.short.mine' => 'r_short_mine', 'tools.short.stats' => 'r_short_stats',
 ];
 if (isset($public[$route])) {

@@ -75,6 +75,15 @@ function default_settings(): array
             'stats' => ['{services} | خدمت تخصصی', '۲ ساعت | پاسخ‌گویی در ساعات کاری', '۲ مرحله | اصلاح رایگان در هر سفارش', '۱۰۰٪ | پرداخت امن و شفاف'],
             'designerStats' => ['{share}٪ | سهم طراح از هر پروژه', 'هفتگی | تسویه درآمد', '{services} | نوع خدمت', 'اختصاصی | پنل مدیریت پروژه'],
         ],
+        // Floating support: smart bot + live chat. faq: one per line «keyword, keyword | answer»
+        'chat' => [
+            'enabled' => true, 'botName' => 'دستیار بهیکس',
+            'greeting' => 'سلام! من دستیار هوشمند بهیکس هستم 👋 درباره خدمات، قیمت، پیگیری سفارش، پرداخت و اقساط هر سؤالی دارید بپرسید.',
+            'offline' => 'پیام شما به پشتیبانی رسید. در ساعات کاری معمولاً ظرف چند دقیقه پاسخ می‌دهیم و نتیجه را همین‌جا می‌بینید.',
+            'faq' => [],
+            'quickReplies' => ['سلام، وقت بخیر 🌹 چطور می‌تونم کمکتون کنم؟', 'چند لحظه صبر کنید، در حال بررسی هستم.', 'مشکل برطرف شد؟ اگر سؤال دیگری دارید در خدمتم.', 'ممنون از صبوری شما 🙏'],
+            'smsAdmin' => true,
+        ],
         'tools' => ['enabled' => true, 'disabled' => [], 'shortRequireLogin' => false, 'shortGuestDaily' => 10, 'blockedDomains' => []],
         // Installment (BNPL) gateways — each enabled after signing a merchant contract
         'bnpl_snapppay' => ['enabled' => false, 'label' => 'اسنپ‌پی', 'note' => '۴ قسط ماهانه، بدون کارمزد', 'installments' => 4, 'min' => 0, 'max' => 0,
@@ -106,6 +115,7 @@ function public_settings(): array
         'theme' => $s['theme'],
         'uploads' => ['maxMB' => (int) $s['uploads']['maxMB'], 'ext' => $s['uploads']['ext']],
         'shop' => $s['shop'],
+        'chat' => ['enabled' => (bool) $s['chat']['enabled'], 'botName' => (string) $s['chat']['botName'], 'greeting' => (string) $s['chat']['greeting']],
         'tools' => ['enabled' => (bool) $s['tools']['enabled'], 'disabled' => array_values((array) $s['tools']['disabled']), 'shortRequireLogin' => (bool) $s['tools']['shortRequireLogin']],
         'sms' => ['enabled' => $s['sms']['driver'] !== 'none'],
         'payment' => ['driver' => $s['payment']['driver']],

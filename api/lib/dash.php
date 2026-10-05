@@ -79,6 +79,7 @@ function r_dash(): void
         $snap['productCategories'] = rows('SELECT * FROM product_categories ORDER BY sort, title');
         $snap['leads'] = (int) val('SELECT COUNT(*) FROM leads');
         $snap['demoUsers'] = (int) val('SELECT COUNT(*) FROM users WHERE is_demo = 1');
+        $snap['supportWaiting'] = table_exists('chats') ? (int) val("SELECT COUNT(*) FROM chats WHERE status = 'waiting' OR admin_unread > 0") : 0;
         $snap['smsEvents'] = [];
         foreach (sms_events_def() as $eid => $d) {
             $tok = sms_tokens($d[2]);

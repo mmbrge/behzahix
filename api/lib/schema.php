@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 4;
+const BX_SCHEMA_VERSION = 5;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -256,6 +256,42 @@ function bx_schema(): array
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL
+        ) $t",
+        // v5 — support chat: smart bot + live chat with the admin (every conversation is archived)
+        "CREATE TABLE IF NOT EXISTS chats (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            token CHAR(32) NOT NULL,
+            user_id INT UNSIGNED NULL,
+            name VARCHAR(120) NOT NULL DEFAULT '',
+            phone VARCHAR(15) NOT NULL DEFAULT '',
+            status VARCHAR(12) NOT NULL DEFAULT 'bot',
+            topic VARCHAR(190) NOT NULL DEFAULT '',
+            page VARCHAR(120) NOT NULL DEFAULT '',
+            device VARCHAR(16) NOT NULL DEFAULT '',
+            misses TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            rating TINYINT UNSIGNED NULL,
+            admin_unread INT UNSIGNED NOT NULL DEFAULT 0,
+            user_unread INT UNSIGNED NOT NULL DEFAULT 0,
+            rev INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            escalated_at DATETIME NULL,
+            UNIQUE KEY token (token),
+            KEY status_time (status, updated_at),
+            KEY user (user_id)
+        ) $t",
+        "CREATE TABLE IF NOT EXISTS chat_messages (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            chat_id INT UNSIGNED NOT NULL,
+            sender VARCHAR(8) NOT NULL,
+            admin_id INT UNSIGNED NULL,
+            body TEXT NOT NULL,
+            meta TEXT NULL,
+            intent VARCHAR(40) NOT NULL DEFAULT '',
+            edited TINYINT(1) NOT NULL DEFAULT 0,
+            deleted TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            KEY chat (chat_id, id)
         ) $t",
         // v4 — event SMS log
         "CREATE TABLE IF NOT EXISTS sms_log (

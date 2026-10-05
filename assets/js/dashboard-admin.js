@@ -473,6 +473,15 @@
         ["merchant", "مرچنت کد", "ltr"], ["sandbox", "حالت آزمایشی درگاه (Sandbox)", "switch"], ["description", "توضیح پرداخت", "text"],
       ], "مرچنت کد را از پنل زرین‌پال یا زیبال بگیرید. آدرس بازگشت به‌طور خودکار ساخته می‌شود؛ دامنه سایت باید در پنل درگاه ثبت شده باشد."],
     ] },
+    chat: { title: "پشتیبانی و ربات", icon: "ai", groups: [
+      ["chat", [
+        ["enabled", "دکمه شناور پشتیبانی و چت در سایت فعال باشد", "switch"], ["botName", "نام دستیار هوشمند", "text"],
+        ["greeting", "پیام خوش‌آمد ربات", "textarea"], ["offline", "پیام بعد از درخواست اتصال به پشتیبان", "textarea"],
+        ["faq", "پاسخ‌های اختصاصی ربات — هر خط: کلمه‌های کلیدی با کاما | پاسخ (مثلاً: ساعت کاری، کی باز هستید | شنبه تا پنجشنبه ۹ تا ۱۹)", "lines"],
+        ["quickReplies", "پاسخ‌های آماده شما در گفتگو (هر خط یکی)", "lines"],
+        ["smsAdmin", "پیامک به مدیر هنگام درخواست گفتگو (قالب «درخواست پشتیبانی» را فعال کنید)", "switch"],
+      ], "ربات خودش قیمت و زمان خدمات، وضعیت سفارش، روش‌های پرداخت و اقساط و اطلاعات تماس را از تنظیمات سایت جواب می‌دهد. پاسخ‌های اختصاصی بالا بر پاسخ‌های داخلی اولویت دارند. سؤال‌هایی که ربات جواب نداده را در «پشتیبانی آنلاین» ببینید و با یک کلیک به این لیست اضافه کنید."],
+    ] },
     sms: { title: "پیامک", icon: "chat", groups: [
       ["sms", [
         ["driver", "سرویس پیامک", "select", [["none", "غیرفعال (فقط ورود با رمز)"], ["kavenegar", "کاوه‌نگار"], ["smsir", "اس‌ام‌اس دات آی‌آر"]]],
@@ -576,7 +585,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { general: "اطلاعات سایت", chat: "گفتگوی آنلاین", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">

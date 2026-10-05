@@ -649,6 +649,7 @@
     const ADMIN = [
       { id: "overview", label: "داشبورد کل", icon: "home", render: adminOverview },
       { id: "orders", label: "سفارش‌ها", icon: "list", render: adminOrders, count: () => S.orders.filter((o) => o.status === "new").length },
+      { id: "support", label: "پشتیبانی آنلاین", icon: "chat", render: (p) => BXD.routes.support(p), count: () => S.supportWaiting || 0 },
       { id: "users", label: "کاربران", icon: "users", render: (p) => BXD.routes.users(p), count: () => S.users.filter((u) => u.status === "pending").length },
       { id: "catalog", label: "خدمات و محصولات", icon: "tag", render: (p) => BXD.routes.catalog(p), count: () => S.products.filter((p) => p.status === "pending").length },
       { id: "finance", label: "مالی و تسویه", icon: "wallet", render: adminFinance, count: () => S.payouts.filter((p) => p.status === "pending").length },
