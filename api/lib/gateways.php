@@ -2,6 +2,7 @@
 // BEHIX — payment gateways (Zarinpal, Zibal, test) and SMS providers (Kavenegar, SMS.ir).
 // Amounts are stored in Toman; gateways are called in Rial.
 if (!defined('BX')) { http_response_code(403); exit; }
+require_once __DIR__ . '/sms.php';
 
 function http_json(string $method, string $url, ?array $body = null, array $headers = []): array
 {
@@ -340,7 +341,7 @@ function payment_apply(array $pay): string
         tx($uid, 'charge', $amount, 'پرداخت آنلاین');
         require_once __DIR__ . '/dash.php';
         $o = row('SELECT * FROM orders WHERE id = ?', [(int) $ref['orderId']]);
-        if ($o && !$o['paid']) order_pay_from_wallet($o, $uid);
+        if ($o && !$o['paid']) order_pay_from_wallet($o, $uid, (int) ($ref['pay'] ?? 0));
         return 'پرداخت سفارش با موفقیت انجام شد.';
     }
     if ($pay['purpose'] === 'cart') {

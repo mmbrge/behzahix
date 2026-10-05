@@ -165,6 +165,7 @@ function r_order_submit(): void
         $uid = insert('users', ['name' => $name, 'phone' => $phone, 'email' => mb_substr((string) ($contact['email'] ?? ''), 0, 190) ?: null,
             'password_hash' => password_hash($temp, PASSWORD_DEFAULT), 'role' => 'customer', 'status' => 'active',
             'business' => mb_substr((string) ($contact['business'] ?? ''), 0, 190) ?: null, 'hue' => random_int(0, 359), 'created_at' => now()]);
+        referral_attach($uid);
         login_as($uid);
         $u = me();
         $created = $temp;
@@ -204,6 +205,8 @@ function r_order_submit(): void
     if ($coupon) q('UPDATE coupons SET uses = uses + 1 WHERE code = ?', [$coupon['code']]);
     notify_admins("سفارش جدید $code — {$svc['title']}", 'orders');
     notify((int) $u['id'], "سفارش $code ثبت شد و در صف بررسی است.", 'orders');
+    sms_notify('order_new', (string) $u['phone'], ['name' => $name ?: $u['name'], 'code' => $code]);
+    sms_admin('admin_new_order', ['code' => $code, 'name' => $name ?: $u['name']]);
     out(['id' => (string) $oid, 'code' => $code, 'estimate' => $est['total'] - $discount, 'createdAccount' => $created !== null, 'tempPassword' => $created, 'phone' => $u['phone']]);
 }
 
@@ -374,6 +377,7 @@ function r_auth_register(): void
         $data['cats'] = jenc(array_values(array_map('strval', arr_in('cats'))));
     }
     $id = insert('users', $data);
+    referral_attach($id);
     if ($role !== 'customer') notify_admins('درخواست ' . ($role === 'designer' ? 'طراح' : 'فروشنده') . " جدید: $name", $role === 'designer' ? 'designers' : 'sellers');
     notify($id, 'به بهیکس خوش آمدید! 🎉', 'overview');
     login_as($id);
@@ -441,6 +445,39 @@ function shop_coupon(string $code): ?array
 }
 
 // Charges the wallet and records the purchases (wallet must already hold the total).
+function r_cart_sync(): void
+{
+    $u = me();
+    if (!$u) out(['ok' => false]);
+    rate_limit('cart', 60, 600);
+    $ids = array_values(array_unique(array_filter(array_map('intval', arr_in('items')))));
+    $ids = array_slice($ids, 0, 50);
+    $prev = jdec((string) val('SELECT cart FROM users WHERE id = ?', [$u['id']]), []);
+    if ($ids !== $prev) update('users', ['cart' => $ids ? jenc($ids) : null, 'cart_at' => now(), 'cart_reminded' => 0], 'id = ?', [$u['id']]);
+    out(['ok' => true]);
+}
+
+// Lightweight scheduler: runs at most every 10 minutes on normal traffic
+// (a cPanel cron calling api/index.php?r=cron also works).
+function lazy_cron(bool $force = false): void
+{
+    $last = (int) val("SELECT v FROM settings WHERE k = 'cron_last'");
+    if (!$force && time() - $last < 600) return;
+    q("INSERT INTO settings (k, v) VALUES ('cron_last', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)", [(string) time()]);
+    $c = setting('cart');
+    if (!empty($c['reminder'])) {
+        $before = date('Y-m-d H:i:s', time() - max(1, (int) $c['hours']) * 3600);
+        foreach (rows('SELECT id, name, phone, cart FROM users WHERE cart IS NOT NULL AND cart_reminded = 0 AND cart_at < ? LIMIT 20', [$before]) as $u) {
+            $ids = array_map('intval', jdec($u['cart'], []));
+            $left = $ids ? (int) val('SELECT COUNT(*) FROM products WHERE status = \'active\' AND id IN (' . implode(',', $ids) . ') AND id NOT IN (SELECT product_id FROM purchases WHERE user_id = ?)', [$u['id']]) : 0;
+            q('UPDATE users SET cart_reminded = 1 WHERE id = ?', [$u['id']]);
+            if ($left < 1) continue;
+            notify((int) $u['id'], fa_digits((string) $left) . ' فایل در سبد خرید شما منتظر است.', 'shop');
+            sms_notify('cart_reminder', (string) $u['phone'], ['name' => $u['name'], 'count' => (string) $left]);
+        }
+    }
+}
+
 function shop_complete(int $uid, array $ids, string $couponCode = ''): array
 {
     $items = cart_products($uid, $ids);
@@ -459,11 +496,17 @@ function shop_complete(int $uid, array $ids, string $couponCode = ''): array
             wallet_add((int) $seller['id'], $earn);
             tx((int) $seller['id'], 'sale', $earn, 'فروش ' . $p['title']);
             notify((int) $seller['id'], '«' . $p['title'] . '» فروخته شد (+' . toman($earn) . ')', 'sales');
+            sms_user('product_sold', (int) $seller['id'], ['amount' => number_format($earn)]);
         }
         q('UPDATE products SET sales = sales + 1 WHERE id = ?', [$p['id']]);
     }
     if ($items && $coupon) q('UPDATE coupons SET uses = uses + 1 WHERE code = ?', [$coupon['code']]);
-    if ($items) notify($uid, fa_digits(count($items)) . ' فایل خریداری شد و در بخش دانلودها آماده است.', 'downloads');
+    if ($items) {
+        notify($uid, fa_digits(count($items)) . ' فایل خریداری شد و در بخش دانلودها آماده است.', 'downloads');
+        sms_user('shop_paid', $uid, ['code' => 'S' . (int) val('SELECT MAX(id) FROM purchases WHERE user_id = ?', [$uid])]);
+        q('UPDATE users SET cart = NULL, cart_reminded = 0 WHERE id = ?', [$uid]);
+        referral_check($uid);
+    }
     return ['count' => count($items), 'total' => $total];
 }
 

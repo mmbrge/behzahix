@@ -12,11 +12,11 @@ function default_settings(): array
             'maintenanceText' => 'در حال به‌روزرسانی سایت هستیم؛ به‌زودی برمی‌گردیم.', 'demoMode' => false,
         ],
         'contact' => [
-            'phone' => '09120000000', 'phone2' => '', 'email' => 'hello@behix.ir', 'address' => 'تهران',
-            'hours' => 'شنبه تا پنجشنبه، ۹ تا ۱۹', 'whatsapp' => '', 'telegramId' => 'behix',
+            'phone' => '', 'phone2' => '', 'email' => '', 'address' => '',
+            'hours' => 'شنبه تا پنجشنبه، ۹ تا ۱۹', 'whatsapp' => '', 'telegramId' => '',
         ],
         'socials' => [
-            'instagram' => 'https://instagram.com/behix', 'telegram' => 'https://t.me/behix', 'whatsapp' => '',
+            'instagram' => '', 'telegram' => '', 'whatsapp' => '', 'bale' => '',
             'linkedin' => '', 'youtube' => '', 'aparat' => '', 'x' => '',
         ],
         'home' => [
@@ -56,12 +56,25 @@ function default_settings(): array
             'deadlines' => $cat['deadlines'], 'addons' => $cat['addons'], 'styles' => $cat['styles'],
             'budgets' => ['هنوز مشخص نیست', 'کمتر از ۵ میلیون', '۵ تا ۱۵ میلیون', '۱۵ تا ۴۰ میلیون', 'بیش از ۴۰ میلیون'],
             'revisions' => 2, 'guestOrders' => true,
+            // Staged payment: orders at or above stagedMin can start with a deposit
+            'stagedEnabled' => true, 'stagedMin' => 5000000, 'stagedPercent' => 50,
         ],
         'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس'],
-        'sms' => ['driver' => 'none', 'apiKey' => '', 'template' => 'verify', 'templateId' => '', 'paramName' => 'CODE'],
+        'sms' => ['driver' => 'none', 'apiKey' => '', 'template' => 'verify', 'templateId' => '', 'paramName' => 'CODE', 'adminPhone' => ''],
+        // Event SMS: per event on/off and the provider template name (Kavenegar) or id (SMS.ir)
+        'sms_events' => array_fill_keys(['order_new', 'order_quote', 'order_paid', 'order_review', 'order_due', 'order_done', 'shop_paid', 'cart_reminder', 'ticket_reply', 'referral_reward', 'designer_assigned', 'revision_requested', 'product_sold', 'payout_paid', 'admin_new_order', 'admin_support'], ['on' => false, 'template' => '']),
         'theme' => ['brand' => '#ff7a1a', 'brand2' => '#ffa24a', 'defaultTheme' => 'dark', 'cursor' => true],
         'uploads' => ['maxMB' => 50, 'ext' => 'jpg,jpeg,png,webp,gif,svg,pdf,zip,rar,7z,psd,ai,eps,pptx,ppt,docx,doc,xlsx,xls,mp4,mov,mp3,wav,aep,prproj,fig,txt'],
         'shop' => ['enabled' => true],
+        // Invite-a-friend: both get wallet credit after the friend's first payment of at least minPurchase
+        'referral' => ['enabled' => true, 'rewardInviter' => 50000, 'rewardFriend' => 30000, 'minPurchase' => 200000],
+        // Abandoned cart: remind logged-in users by SMS after N hours
+        'cart' => ['reminder' => true, 'hours' => 3],
+        // Numbers shown on «about» and «designers»; one per line: value | label ({services} = live count)
+        'about' => [
+            'stats' => ['{services} | خدمت تخصصی', '۲ ساعت | پاسخ‌گویی در ساعات کاری', '۲ مرحله | اصلاح رایگان در هر سفارش', '۱۰۰٪ | پرداخت امن و شفاف'],
+            'designerStats' => ['{share}٪ | سهم طراح از هر پروژه', 'هفتگی | تسویه درآمد', '{services} | نوع خدمت', 'اختصاصی | پنل مدیریت پروژه'],
+        ],
         'tools' => ['enabled' => true, 'disabled' => [], 'shortRequireLogin' => false, 'shortGuestDaily' => 10, 'blockedDomains' => []],
         // Installment (BNPL) gateways — each enabled after signing a merchant contract
         'bnpl_snapppay' => ['enabled' => false, 'label' => 'اسنپ‌پی', 'note' => '۴ قسط ماهانه، بدون کارمزد', 'installments' => 4, 'min' => 0, 'max' => 0,
@@ -84,6 +97,8 @@ function public_settings(): array
         'contact' => $s['contact'],
         'socials' => $s['socials'],
         'home' => $s['home'],
+        'about' => $s['about'],
+        'referral' => $s['referral'],
         'seo' => $s['seo'],
         'legal' => ['enamadCode' => $s['legal']['enamadCode'], 'samandehiCode' => $s['legal']['samandehiCode'], 'extraBadgesCode' => $s['legal']['extraBadgesCode']],
         'commission' => $s['commission'],

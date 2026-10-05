@@ -237,14 +237,22 @@
 
       let actions = "";
       if (role === "customer") {
-        if (["new", "review"].includes(o.status) && !o.paid) {
+        const due = priceOf(o) - (o.paidAmount || 0);
+        if (["new", "review"].includes(o.status) && !o.paid && !o.paidAmount) {
           actions += o.status === "review"
-            ? `<button class="btn btn-primary btn-block" data-act="pay" data-id="${o.id}">${icon("wallet")} پرداخت پیش‌فاکتور (${money(priceOf(o))})</button>`
+            ? (o.deposit ? `<button class="btn btn-primary btn-block" data-act="pay" data-stage="deposit" data-id="${o.id}">${icon("wallet")} شروع با پیش‌پرداخت (${money(o.deposit)})</button>
+                <button class="btn btn-ghost btn-block" data-act="pay" data-id="${o.id}">${icon("wallet")} پرداخت کامل (${money(priceOf(o))})</button>
+                <p class="small muted lh">${icon("info")} با پیش‌پرداخت کار شروع می‌شود و مانده را قبل از دریافت فایل‌های نهایی پرداخت می‌کنید.</p>`
+              : `<button class="btn btn-primary btn-block" data-act="pay" data-id="${o.id}">${icon("wallet")} پرداخت پیش‌فاکتور (${money(priceOf(o))})</button>`)
             : `<p class="small muted lh">${icon("clock")} کارشناس ما در حال بررسی بریف شماست؛ پیش‌فاکتور به‌زودی صادر می‌شود.</p>`;
           actions += `<button class="btn btn-ghost btn-block btn-sm" data-act="cancel-order" data-id="${o.id}">لغو سفارش</button>`;
         }
+        if (!o.paid && o.paidAmount > 0 && due > 0 && o.status !== "cancelled") {
+          actions += `<div class="due-box">${icon("wallet")}<span>پیش‌پرداخت: <b>${money(o.paidAmount)}</b> · مانده: <b class="brand">${money(due)}</b></span></div>
+            <button class="btn ${o.status === "awaiting" ? "btn-primary" : "btn-ghost"} btn-block" data-act="pay" data-id="${o.id}">${icon("wallet")} پرداخت مانده (${money(due)})</button>`;
+        }
         if (o.status === "awaiting") {
-          actions += `<button class="btn btn-primary btn-block" data-act="approve" data-id="${o.id}">${icon("check-circle")} تأیید و دریافت نسخه نهایی</button>
+          actions += `<button class="btn btn-primary btn-block" data-act="approve" data-id="${o.id}" ${o.paid ? "" : "disabled title=\"ابتدا مانده را پرداخت کنید\""}>${icon("check-circle")} تأیید و دریافت نسخه نهایی</button>
             <button class="btn btn-ghost btn-block" data-act="revise" data-id="${o.id}">${icon("refresh")} درخواست اصلاح</button>`;
         }
         if (o.status === "done" && !o.rating) actions += `<button class="btn btn-primary btn-block" data-act="rate" data-id="${o.id}">${icon("star")} امتیاز به طراح</button>`;
@@ -305,7 +313,7 @@
             <section class="card box glow">
               <p class="muted small">${o.quote != null ? "مبلغ پیش‌فاکتور" : "برآورد اولیه"}</p>
               <p class="price">${money(priceOf(o))}</p>
-              <p class="small mt-1">${o.paid ? `<span class="badge badge--ok">${icon("check")}پرداخت شده</span>` : '<span class="badge badge--warn">پرداخت نشده</span>'} ${o.rating ? `<span class="stars">${icon("star")}${faDigits(o.rating)}</span>` : ""}</p>
+              <p class="small mt-1">${o.paid ? `<span class="badge badge--ok">${icon("check")}پرداخت شده</span>` : o.paidAmount ? `<span class="badge badge--info">پیش‌پرداخت ${money(o.paidAmount)}</span>` : '<span class="badge badge--warn">پرداخت نشده</span>'} ${o.rating ? `<span class="stars">${icon("star")}${faDigits(o.rating)}</span>` : ""}</p>
               ${actions ? `<div class="stack mt-2">${actions}</div>` : ""}
             </section>
             ${box("افراد", "users", `
@@ -419,6 +427,17 @@
       { id: "notifications", label: "اعلان‌ها", icon: "bell", render: notificationsView },
       { id: "profile", label: "پروفایل و تنظیمات", icon: "settings", render: profileView },
     ];
+    // Invite friends: personal link + progress (all roles)
+    function referralBox() {
+      const r = S.referral;
+      const cfg = S.settings.referral || {};
+      if (!r || !cfg.enabled) return "";
+      const link = `${location.origin}${location.pathname.replace(/dashboard\.html$/, "")}?ref=${r.code}`;
+      return box("دعوت از دوستان 🎁", "users", `
+        <p class="small lh">لینک اختصاصی‌تان را بفرستید. وقتی دوستتان اولین خریدش (حداقل ${money(cfg.minPurchase || 0)}) را انجام داد، <b class="brand">${money(cfg.rewardInviter || 0)}</b> به کیف پول شما${cfg.rewardFriend ? ` و <b class="brand">${money(cfg.rewardFriend)}</b> به کیف پول دوستتان` : ""} اضافه می‌شود.</p>
+        <div class="ref-link mt-2"><code dir="ltr">${esc(link)}</code><button class="btn btn-primary btn-sm" data-act="ref-copy" data-link="${esc(link)}">${icon("link")} کپی</button>${navigator.share ? `<button class="btn btn-ghost btn-sm" data-act="ref-share" data-link="${esc(link)}">${icon("send")} اشتراک</button>` : ""}</div>
+        <div class="mini-stats mt-2"><div><b>${faDigits(r.invited)}</b><span>ثبت‌نام با لینک شما</span></div><div><b>${faDigits(r.rewarded)}</b><span>خرید انجام‌شده</span></div><div><b>${money(r.earned)}</b><span>هدیه دریافتی</span></div></div>`);
+    }
     function customerOverview() {
       const mine = S.orders;
       const active = mine.filter((o) => !["done", "cancelled"].includes(o.status));
@@ -440,6 +459,7 @@
             ${box("آخرین سفارش‌ها", "list", table(["سفارش", "وضعیت", "مبلغ", "زمان"], orderRows(mine.slice(0, 5)), "هنوز سفارشی ثبت نکرده‌اید."), `<a class="btn btn-ghost btn-sm" href="#orders">همه</a>`)}
             ${box("سفارش سریع", "zap", `<div class="quick-cats">${BX.CATALOG.map((c) => `<a class="quick-cat" href="services.html#${c.id}" style="--h:${c.hue}"><span class="tree-cat-icon">${icon(c.icon)}</span>${esc(c.title)}</a>`).join("")}</div>`)}
           </div>
+          ${referralBox()}
         </div>`;
     }
     function customerOrders(param) {
@@ -894,11 +914,14 @@
         app.querySelector("#ch-amount").value = num(Number(el.dataset.v));
         app.querySelectorAll(".amount-chips button").forEach((b) => b.classList.toggle("is-active", b === el));
       },
+      "ref-copy": (el) => navigator.clipboard?.writeText(el.dataset.link).then(() => toast("لینک دعوت کپی شد.", "ok")),
+      "ref-share": (el) => navigator.share?.({ title: BX.settings.general?.siteNameFa || "بهیکس", text: "با این لینک در بهیکس ثبت‌نام کن و هدیه بگیر:", url: el.dataset.link }).catch(() => {}),
       unfav: (el) => quiet(act("fav.toggle", { productId: el.dataset.id })),
       "cancel-order": (el) => confirmBox("لغو سفارش", "آیا از لغو این سفارش مطمئن هستید؟", () => quiet(act("order.cancel", { id: el.dataset.id })), "لغو سفارش"),
       pay: (el) => {
         const o = findOrder(el.dataset.id);
-        const amount = priceOf(o);
+        const stage = el.dataset.stage || "";
+        const amount = stage === "deposit" ? o.deposit : priceOf(o) - (o.paidAmount || 0);
         const canWallet = (me.wallet || 0) >= amount;
         modal({
           title: `پرداخت ${o.code}`,
@@ -907,7 +930,7 @@
               wallet: { note: `موجودی ${money(me.wallet)}`, checked: canWallet, disabled: !canWallet },
               gatewayNote: me.wallet ? `${money(Math.max(0, amount - me.wallet))} از درگاه` : "پرداخت آنلاین با همه کارت‌ها",
             })}</div>`,
-          actions: [{ label: "انصراف" }, { label: "پرداخت", primary: true, onClick: (wrap) => quiet(act("order.pay", { id: o.id, method: wrap.querySelector("[name=method]:checked")?.value || "gateway" })) }],
+          actions: [{ label: "انصراف" }, { label: "پرداخت", primary: true, onClick: (wrap) => quiet(act("order.pay", { id: o.id, stage, method: wrap.querySelector("[name=method]:checked")?.value || "gateway" })) }],
         });
       },
       approve: (el) => confirmBox("تأیید نهایی", "با تأیید، سفارش تحویل‌شده محسوب می‌شود و فایل‌های نهایی در اختیار شما قرار می‌گیرد.", async () => {

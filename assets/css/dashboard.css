@@ -308,3 +308,18 @@
 .cover-prev { display: grid; place-items: center; flex-shrink: 0; width: 120px; height: 90px; border: 1px dashed var(--line-strong); border-radius: 14px; background: var(--inset) center / cover no-repeat; color: var(--muted); }
 .d-block { display: block; }
 .steps-list { display: flex; flex-direction: column; gap: 8px; padding-right: 20px; list-style: decimal; font-size: .88rem; line-height: 1.9; }
+.checks-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.sms-events { display: grid; gap: 14px; }
+.sms-ev .box-head h2 .badge { margin-right: 6px; font-weight: 600; }
+.sms-tpl { position: relative; }
+.sms-tpl pre { margin: 0; padding: 14px 14px 14px 90px; border: 1px dashed rgb(255 122 26 / .4); border-radius: 14px; background: var(--inset); font: 500 .88rem/2 Vazirmatn, sans-serif; white-space: pre-wrap; }
+.sms-tpl .btn { position: absolute; top: 10px; left: 10px; }
+.sms-ev code { padding: 1px 6px; border-radius: 6px; background: var(--hover); font-size: .78rem; }
+.ref-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px; border: 1px dashed rgb(255 122 26 / .45); border-radius: 14px; background: var(--inset); }
+.ref-link code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .82rem; text-align: left; }
+.mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mini-stats div { padding: 10px 6px; border-radius: 12px; background: var(--hover); text-align: center; }
+.mini-stats b { display: block; font-size: 1rem; }
+.mini-stats span { color: var(--muted); font-size: .7rem; }
+.due-box { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgb(255 122 26 / .08); font-size: .85rem; }
+.due-box .icon { color: var(--brand); }

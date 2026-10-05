@@ -33,6 +33,13 @@
           ${sorts ? `<select class="select sort-select" data-sort aria-label="مرتب‌سازی">${sorts.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select>` : ""}
         </div>`;
     }
+    // Keep a server copy of the cart (logged-in users) for the abandoned-cart reminder
+    let syncT;
+    const syncCart = () => {
+      if (!BX.me) return;
+      clearTimeout(syncT);
+      syncT = setTimeout(() => api("cart.sync", { items: (JSON.parse(localStorage.getItem("behix:cart") || "[]") || []) }).catch(() => {}), 800);
+    };
     // "or N instalments of X with SnappPay" under a price
     const bnplHint = (amount) => {
       const b = BX.bnplFor(amount).find((x) => x.installments > 1);
@@ -142,7 +149,7 @@
       let sort = "top";
       let couponCode = "";
       let cart = store.get("behix:cart", []).filter((id) => data.products.some((p) => p.id === id) && !owned.has(id));
-      store.set("behix:cart", cart);
+      store.set("behix:cart", cart); syncCart();
       const user = BX.me;
       const finalPrice = (p) => Math.round((p.price * (100 - p.discount)) / 100 / 1000) * 1000;
       const catOf = (p) => PRODUCT_CATEGORIES.find((x) => x.id === p.category) || { icon: "box", title: "" };
@@ -197,7 +204,7 @@
       function addToCart(id) {
         if (!cart.includes(id)) {
           cart.push(id);
-          store.set("behix:cart", cart);
+          store.set("behix:cart", cart); syncCart();
           toast("به سبد خرید اضافه شد.", "ok");
           updateCount(true);
           render();
@@ -250,7 +257,7 @@
           const rm = e.target.closest("[data-remove]");
           if (rm) {
             cart = cart.filter((x) => x !== rm.dataset.remove);
-            store.set("behix:cart", cart);
+            store.set("behix:cart", cart); syncCart();
             close();
             render();
             return openCart();
@@ -277,7 +284,7 @@
           }
           cart.forEach((id) => owned.add(id));
           cart = [];
-          store.set("behix:cart", cart);
+          store.set("behix:cart", cart); syncCart();
           close();
           render();
           modal({

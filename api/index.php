@@ -31,6 +31,9 @@ try {
 start_session();
 
 // GET routes (no state change, no CSRF)
+// Scheduled jobs (abandoned-cart SMS…): piggyback on traffic; never blocks the request
+try { lazy_cron(($route === 'cron')); } catch (Throwable $e) { error_log('[BEHIX] cron: ' . $e->getMessage()); }
+if ($route === 'cron') out(['ok' => true]);
 $get = ['boot' => 'r_boot', 'file' => 'r_file', 'pay.callback' => 'payment_callback', 'go' => 'r_short_go'];
 if (isset($get[$route])) {
     if ($route === 'pay.callback') require_once __DIR__ . '/lib/gateways.php';
@@ -48,6 +51,7 @@ $public = [
     'auth.login' => 'r_auth_login', 'auth.otp.send' => 'r_auth_otp_send', 'auth.otp.login' => 'r_auth_otp_login',
     'auth.register' => 'r_auth_register', 'auth.logout' => 'r_auth_logout', 'auth.demo' => 'r_auth_demo',
     'fav.toggle' => 'r_fav_toggle', 'shop.checkout' => 'r_shop_checkout', 'shop.quote' => 'r_shop_quote',
+    'cart.sync' => 'r_cart_sync',
     'tools.track' => 'r_tools_track', 'tools.short.create' => 'r_short_create', 'tools.short.mine' => 'r_short_mine', 'tools.short.stats' => 'r_short_stats',
 ];
 if (isset($public[$route])) {

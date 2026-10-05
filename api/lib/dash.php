@@ -26,6 +26,12 @@ function r_dash(): void
         'settings' => $role === 'admin' ? settings() : public_settings(),
     ];
     $snap['notifications'] = array_map(function ($n) use ($id) { $n['userId'] = (string) $id; return $n; }, $snap['notifications']);
+    if (setting('referral', 'enabled')) {
+        $snap['referral'] = ['code' => ref_code_for($id),
+            'invited' => (int) val('SELECT COUNT(*) FROM users WHERE referred_by = ?', [$id]),
+            'rewarded' => (int) val('SELECT COUNT(*) FROM users WHERE referred_by = ? AND ref_rewarded = 1', [$id]),
+            'earned' => (int) val("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'referral'", [$id])];
+    }
     $userIds = [$id];
     $txOf = function ($uid) { return array_map('tx_out', rows('SELECT * FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 200', [$uid])); };
 
@@ -73,6 +79,15 @@ function r_dash(): void
         $snap['productCategories'] = rows('SELECT * FROM product_categories ORDER BY sort, title');
         $snap['leads'] = (int) val('SELECT COUNT(*) FROM leads');
         $snap['demoUsers'] = (int) val('SELECT COUNT(*) FROM users WHERE is_demo = 1');
+        $snap['smsEvents'] = [];
+        foreach (sms_events_def() as $eid => $d) {
+            $tok = sms_tokens($d[2]);
+            $snap['smsEvents'][] = ['id' => $eid, 'title' => $d[0], 'to' => $d[1],
+                'vars' => array_map(function ($v) use ($tok) { return ['key' => $v, 'label' => SMS_VARS[$v][0], 'kavenegar' => '%' . $tok[$v], 'smsir' => '#' . strtoupper($v) . '#', 'sample' => SMS_VARS[$v][2]]; }, $d[2]),
+                'kavenegar' => sms_template_text($eid, 'kavenegar'), 'smsir' => sms_template_text($eid, 'smsir')];
+        }
+        $snap['smsLog'] = array_map(function ($r) { return ['event' => $r['event'], 'phone' => $r['phone'], 'ok' => (bool) $r['ok'], 'response' => $r['response'], 'at' => ms($r['created_at'])]; },
+            rows('SELECT * FROM sms_log ORDER BY id DESC LIMIT 40'));
         out($snap);
     }
     // Non-admins only receive the people they work with (name & avatar colour)
@@ -139,16 +154,24 @@ function notify_order(array $o, string $text, int $exceptId): void
     foreach (rows("SELECT id FROM users WHERE role = 'admin'") as $a) if ((int) $a['id'] !== $exceptId) notify((int) $a['id'], $text, 'orders');
 }
 
-function order_pay_from_wallet(array $o, int $uid): void
+// Pays $amount of the order from the wallet (default: everything still due).
+// A deposit (staged payment) starts the work; the order is "paid" once fully covered.
+function order_pay_from_wallet(array $o, int $uid, int $amount = 0): void
 {
-    $amount = price_of($o);
+    $due = max(0, price_of($o) - (int) $o['paid_amount']);
+    $amount = $amount > 0 ? min($amount, $due) : $due;
+    if ($amount <= 0) return;
     $wallet = (int) val('SELECT wallet FROM users WHERE id = ?', [$uid]);
     if ($wallet < $amount) fail('موجودی کیف پول کافی نیست.', 422);
     wallet_add($uid, -$amount);
-    tx($uid, 'payment', -$amount, 'پرداخت ' . $o['code']);
-    q('UPDATE orders SET paid = 1 WHERE id = ?', [$o['id']]);
+    $first = (int) $o['paid_amount'] === 0;
+    $full = $amount >= $due;
+    tx($uid, 'payment', -$amount, ($full && !$first ? 'مانده ' : (!$full ? 'پیش‌پرداخت ' : 'پرداخت ')) . $o['code']);
+    q('UPDATE orders SET paid_amount = paid_amount + ?, paid = ? WHERE id = ?', [$amount, $full ? 1 : 0, $o['id']]);
     if ($o['designer_id'] && in_array($o['status'], ['new', 'review'], true)) order_event((int) $o['id'], 'in_progress');
-    notify_order($o, 'پیش‌فاکتور ' . $o['code'] . ' پرداخت شد.', $uid);
+    notify_order($o, ($full ? 'پرداخت ' : 'پیش‌پرداخت ') . $o['code'] . ' انجام شد.', $uid);
+    if ($first) sms_user('order_paid', (int) $o['user_id'], ['code' => $o['code']]);
+    referral_check($uid);
 }
 
 // ------------------------------------------------------------------ common actions
@@ -185,7 +208,10 @@ function a_ticket_reply(): void
     insert('ticket_replies', ['ticket_id' => $t['id'], 'user_id' => $u['id'], 'body' => $text, 'created_at' => now()]);
     if ($u['role'] === 'admin') {
         q("UPDATE tickets SET status = 'answered' WHERE id = ?", [$t['id']]);
-        if ($t['user_id']) notify((int) $t['user_id'], 'پاسخ جدید برای تیکت «' . $t['subject'] . '»', 'tickets');
+        if ($t['user_id']) {
+            notify((int) $t['user_id'], 'پاسخ جدید برای تیکت «' . $t['subject'] . '»', 'tickets');
+            sms_user('ticket_reply', (int) $t['user_id'], ['code' => (string) $t['id']]);
+        }
     } else {
         q("UPDATE tickets SET status = 'open' WHERE id = ?", [$t['id']]);
         notify_admins('پاسخ جدید در تیکت «' . $t['subject'] . '»', 'tickets');
@@ -303,22 +329,25 @@ function a_order_pay(): void
 {
     [$u, $o] = own_order();
     if ($o['paid']) fail('این سفارش قبلاً پرداخت شده است.', 422);
-    if ($o['status'] !== 'review') fail('پیش‌فاکتور هنوز صادر نشده است.', 422);
-    $amount = price_of($o);
+    if (in_array($o['status'], ['new', 'cancelled'], true)) fail('پیش‌فاکتور هنوز صادر نشده است.', 422);
+    $due = price_of($o) - (int) $o['paid_amount'];
+    // stage = deposit → pay only the deposit now; otherwise everything still due
+    $amount = str_in('stage', 16) === 'deposit' && order_deposit($o) > 0 ? order_deposit($o) : $due;
     if (str_in('method', 16) === 'wallet') {
         db()->beginTransaction();
-        order_pay_from_wallet($o, (int) $u['id']);
+        order_pay_from_wallet($o, (int) $u['id'], $amount);
         db()->commit();
         done('پرداخت با موفقیت انجام شد.');
     }
     $need = $amount - max(0, (int) $u['wallet']);
-    $url = payment_start((int) $u['id'], 'order', ['orderId' => (int) $o['id']], max(1000, $need), 'پرداخت سفارش ' . $o['code'], str_in('method', 16));
+    $url = payment_start((int) $u['id'], 'order', ['orderId' => (int) $o['id'], 'pay' => $amount], max(1000, $need), 'پرداخت سفارش ' . $o['code'], str_in('method', 16));
     done('', ['redirect' => $url]);
 }
 function a_order_approve(): void
 {
     [$u, $o] = own_order();
     if ($o['status'] !== 'awaiting') fail('سفارش در وضعیت تأیید نیست.', 422);
+    if (!$o['paid']) fail('برای تحویل نهایی، ابتدا مانده حساب سفارش را پرداخت کنید.', 422);
     db()->beginTransaction();
     if ($o['designer_id']) {
         $des = row('SELECT * FROM users WHERE id = ?', [$o['designer_id']]);
@@ -332,6 +361,7 @@ function a_order_approve(): void
     order_event((int) $o['id'], 'done');
     db()->commit();
     notify_order($o, 'سفارش ' . $o['code'] . ' تأیید و تحویل شد 🎉', (int) $u['id']);
+    sms_user('order_done', (int) $o['user_id'], ['code' => $o['code']]);
     done('سفارش تحویل شد.');
 }
 function a_order_rate(): void
@@ -356,6 +386,7 @@ function a_order_revise(): void
     insert('order_messages', ['order_id' => $o['id'], 'user_id' => $u['id'], 'body' => 'درخواست اصلاح: ' . $note, 'created_at' => now()]);
     order_event((int) $o['id'], 'revision', mb_substr($note, 0, 250));
     notify_order($o, 'درخواست اصلاح برای ' . $o['code'] . ' ثبت شد.', (int) $u['id']);
+    if ($o['designer_id']) sms_user('revision_requested', (int) $o['designer_id'], ['code' => $o['code']]);
     done('درخواست اصلاح ارسال شد.');
 }
 function a_wallet_charge(): void
@@ -405,6 +436,9 @@ function a_order_submitReview(): void
     if (!val("SELECT COUNT(*) FROM files WHERE kind = 'deliverable' AND ref_id = ?", [$o['id']])) fail('ابتدا حداقل یک فایل تحویلی آپلود کنید.', 422);
     order_event((int) $o['id'], 'awaiting');
     notify_order($o, 'نسخه جدید ' . $o['code'] . ' آماده بررسی است.', (int) $u['id']);
+    $due = price_of($o) - (int) $o['paid_amount'];
+    if (!$o['paid'] && $due > 0) sms_user('order_due', (int) $o['user_id'], ['code' => $o['code'], 'amount' => number_format($due)]);
+    else sms_user('order_review', (int) $o['user_id'], ['code' => $o['code']]);
     done('برای تأیید مشتری ارسال شد.');
 }
 function a_file_delete(): void
@@ -597,6 +631,7 @@ function a_order_quote(): void
     update('orders', ['quote' => $amount], 'id = ?', [$o['id']]);
     if ($o['status'] === 'new') order_event((int) $o['id'], 'review');
     notify((int) $o['user_id'], 'پیش‌فاکتور ' . $o['code'] . ' صادر شد: ' . toman($amount), 'orders');
+    sms_user('order_quote', (int) $o['user_id'], ['code' => $o['code'], 'amount' => number_format($amount)]);
     done('پیش‌فاکتور برای مشتری ارسال شد.');
 }
 function a_order_assign(): void
@@ -608,6 +643,7 @@ function a_order_assign(): void
     update('orders', ['designer_id' => $d['id']], 'id = ?', [$o['id']]);
     if ($o['paid'] && in_array($o['status'], ['new', 'review'], true)) order_event((int) $o['id'], 'in_progress');
     notify((int) $d['id'], 'پروژه ' . $o['code'] . ' به شما واگذار شد.', 'projects');
+    sms_user('designer_assigned', (int) $d['id'], ['code' => $o['code']]);
     notify((int) $o['user_id'], 'طراح سفارش ' . $o['code'] . ': ' . $d['name'], 'orders');
     done('طراح تخصیص یافت.');
 }
@@ -626,7 +662,7 @@ function a_order_markPaid(): void
 {
     $admin = require_active('admin');
     $o = get_order(int_in('id'));
-    q('UPDATE orders SET paid = 1 WHERE id = ?', [$o['id']]);
+    q('UPDATE orders SET paid = 1, paid_amount = ? WHERE id = ?', [price_of($o), $o['id']]);
     if ($o['designer_id'] && in_array($o['status'], ['new', 'review'], true)) order_event((int) $o['id'], 'in_progress');
     notify_order($o, 'پرداخت ' . $o['code'] . ' تأیید شد.', (int) $admin['id']);
     done('سفارش پرداخت‌شده علامت خورد.');
@@ -639,7 +675,7 @@ function a_order_refund(): void
     $amount = amount_in('amount') ?: price_of($o);
     wallet_add((int) $o['user_id'], $amount);
     tx((int) $o['user_id'], 'refund', $amount, 'بازگشت وجه ' . $o['code']);
-    q('UPDATE orders SET paid = 0 WHERE id = ?', [$o['id']]);
+    q('UPDATE orders SET paid = 0, paid_amount = 0 WHERE id = ?', [$o['id']]);
     order_event((int) $o['id'], 'cancelled', 'بازگشت وجه');
     notify((int) $o['user_id'], toman($amount) . ' بابت ' . $o['code'] . ' به کیف پول شما برگشت.', 'wallet');
     done('مبلغ به کیف پول مشتری برگشت.');
@@ -772,6 +808,72 @@ function a_demo_purge(): void
     done('داده‌های نمایشی حذف شد و حالت نمایشی خاموش شد.');
 }
 
+// Clean slate before launch: wipes the chosen kinds of test data. Settings,
+// services/categories and admin accounts are always kept.
+function table_exists(string $t): bool
+{
+    return (bool) val('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$t]);
+}
+function wipe_files(string $kinds): void
+{
+    $root = dirname(__DIR__, 2) . '/uploads/';
+    foreach (rows("SELECT id, path FROM files WHERE kind IN ($kinds)") as $f) {
+        if ($f['path'] && is_file($root . $f['path'])) @unlink($root . $f['path']);
+    }
+    q("DELETE FROM files WHERE kind IN ($kinds)");
+}
+function a_fresh_start(): void
+{
+    $me = require_active('admin');
+    if (trim((string) in('confirm', '')) !== 'پاکسازی') fail('برای تأیید، کلمه «پاکسازی» را بنویسید.', 422);
+    $parts = array_map('strval', arr_in('parts'));
+    $done = [];
+    db()->beginTransaction();
+    if (in_array('users', $parts, true)) {
+        foreach (rows("SELECT id FROM users WHERE role <> 'admin'") as $u) delete_user_data((int) $u['id']);
+        $done[] = 'کاربران';
+    } elseif (in_array('demo', $parts, true)) {
+        foreach (rows('SELECT id FROM users WHERE is_demo = 1') as $u) delete_user_data((int) $u['id']);
+        $done[] = 'حساب‌های نمونه';
+    }
+    if (in_array('orders', $parts, true)) {
+        foreach (['order_events', 'order_messages', 'orders', 'payments', 'transactions', 'payouts', 'purchases', 'ticket_replies', 'tickets', 'notifications'] as $t) q("DELETE FROM $t");
+        wipe_files("'attachment','deliverable'");
+        q('UPDATE users SET wallet = 0');
+        $done[] = 'سفارش‌ها، پرداخت‌ها و تیکت‌ها';
+    }
+    if (in_array('products', $parts, true)) {
+        q('DELETE FROM purchases');
+        q('DELETE FROM favorites');
+        if (table_exists('reviews')) q('DELETE FROM reviews');
+        q('DELETE FROM products');
+        wipe_files("'product','cover','gallery'");
+        $done[] = 'محصولات فروشگاه';
+    }
+    if (in_array('portfolio', $parts, true)) {
+        q('DELETE FROM portfolio');
+        wipe_files("'portfolio'");
+        $done[] = 'نمونه‌کارها';
+    }
+    if (in_array('tools', $parts, true)) {
+        foreach (['tool_events', 'short_clicks', 'short_links'] as $t) if (table_exists($t)) q("DELETE FROM $t");
+        $done[] = 'آمار ابزارها و لینک‌های کوتاه';
+    }
+    if (in_array('chats', $parts, true)) {
+        foreach (['chat_messages', 'chats'] as $t) if (table_exists($t)) q("DELETE FROM $t");
+        $done[] = 'گفتگوهای پشتیبانی';
+    }
+    if (in_array('coupons', $parts, true)) {
+        q('DELETE FROM coupons');
+        $done[] = 'کدهای تخفیف';
+    }
+    db()->commit();
+    $g = setting('general');
+    $g['demoMode'] = false;
+    save_setting('general', $g);
+    done($done ? 'پاک شد: ' . implode('، ', $done) . '.' : 'چیزی انتخاب نشده بود.');
+}
+
 // ------------------------------------------------------------------ admin: finance
 function a_payout_paid(): void
 {
@@ -781,6 +883,7 @@ function a_payout_paid(): void
     update('payouts', ['status' => 'paid'], 'id = ?', [$p['id']]);
     tx((int) $p['user_id'], 'payout', -(int) $p['amount'], 'تسویه حساب');
     notify((int) $p['user_id'], 'مبلغ ' . toman((int) $p['amount']) . ' به حساب شما واریز شد.', 'earnings');
+    sms_user('payout_paid', (int) $p['user_id'], ['amount' => number_format((int) $p['amount'])]);
     done('واریز ثبت شد.');
 }
 function a_payout_reject(): void
@@ -970,6 +1073,14 @@ function a_settings_save(): void
                 'price' => (int) en_digits((string) ($p['price'] ?? 0)), 'days' => max(1, (int) en_digits((string) ($p['days'] ?? 1))), 'selected' => !empty($p['selected'])];
         }, $current['packages'])));
     }
+    if ($group === 'sms_events') {
+        $clean = [];
+        foreach (array_keys(sms_events_def()) as $eid) {
+            $e = (array) ($current[$eid] ?? []);
+            $clean[$eid] = ['on' => !empty($e['on']), 'template' => mb_substr(trim((string) ($e['template'] ?? '')), 0, 60)];
+        }
+        $current = $clean;
+    }
     if (strpos($group, 'bnpl_') === 0) {
         foreach (['min', 'max'] as $k) $current[$k] = max(0, (int) $current[$k]);
         $current['installments'] = max(0, min(24, (int) $current['installments']));
@@ -988,6 +1099,55 @@ function a_settings_save(): void
     if ($group === 'sms' && !in_array($current['driver'], ['none', 'kavenegar', 'smsir'], true)) $current['driver'] = 'none';
     save_setting($group, $current);
     done('تنظیمات ذخیره شد.');
+}
+// Sends one event SMS with sample values to the admin's own phone
+function a_sms_eventTest(): void
+{
+    $u = require_active('admin');
+    $event = str_in('event', 32);
+    $defs = sms_events_def();
+    if (!isset($defs[$event])) fail('رویداد نامعتبر است.', 422);
+    if (setting('sms', 'driver') === 'none' || !setting('sms', 'apiKey')) fail('ابتدا در «تنظیمات ← پیامک» سرویس و کلید API را ذخیره کنید.', 422);
+    if (empty((setting('sms_events') ?: [])[$event]['template'])) fail('نام / شناسه الگو برای این رویداد وارد نشده است.', 422);
+    $vars = [];
+    foreach ($defs[$event][2] as $v) $vars[$v] = SMS_VARS[$v][2];
+    $ok = sms_notify($event, (string) $u['phone'], $vars, true);
+    $resp = (string) val('SELECT response FROM sms_log ORDER BY id DESC LIMIT 1');
+    if (!$ok) fail('ارسال ناموفق بود' . ($resp ? ": $resp" : '') . ' — نام الگو، تأیید الگو در پنل پیامک و اعتبار را بررسی کنید.', 502);
+    done('پیامک آزمایشی «' . $defs[$event][0] . '» به شماره شما ارسال شد.');
+}
+// Checks the bank gateway: creates a 1,000 Toman wallet top-up and returns its payment URL
+function a_payment_test(): void
+{
+    $u = require_active('admin');
+    $p = setting('payment');
+    if ($p['driver'] === 'test') fail('درگاه روی «تست» است؛ ابتدا زرین‌پال یا زیبال و مرچنت کد را ذخیره کنید.', 422);
+    $url = payment_start((int) $u['id'], 'charge', [], 1000, 'تست درگاه پرداخت');
+    done('اتصال به درگاه برقرار شد ✅', ['payUrl' => $url]);
+}
+// Checks an installment provider's credentials (login only — no purchase)
+function a_bnpl_test(): void
+{
+    require_active('admin');
+    $id = str_in('id', 16);
+    if (!isset(BNPL_PROVIDERS[$id])) fail('درگاه نامعتبر است.', 422);
+    $c = bnpl_cfg($id);
+    try {
+        if ($id === 'azki') {
+            if (empty($c['merchantId']) || empty($c['key'])) fail('Merchant ID و کلید را وارد و ذخیره کنید.', 422);
+            [$code, $b] = http_call('POST', bnpl_api($c, 'https://api.azkivam.com') . '/payment/status', ['ticket_id' => 'connection-test'],
+                ['Signature: ' . azki_signature('/payment/status', (string) $c['key']), 'MerchantId: ' . $c['merchantId']]);
+            if (!$code) fail('سرور ازکی پاسخ نداد؛ اتصال اینترنت هاست را بررسی کنید.', 502);
+            if ((int) ($b['rsCode'] ?? -1) === 18 || (int) ($b['rsCode'] ?? -1) === 15) fail('امضا یا دسترسی نامعتبر است؛ Merchant ID و کلید را بررسی کنید.', 502);
+            done('ارتباط با ازکی وام برقرار است و امضا پذیرفته شد ✅');
+        }
+        $api = bnpl_api($c, ['snapppay' => 'https://fms-gateway-staging.apps.public.teh-1.snappcloud.io', 'torobpay' => 'https://cpg.torobpay.com', 'digipay' => 'https://api.mydigipay.com'][$id]);
+        $url = $id === 'digipay' ? "$api/digipay/api/oauth/token" : "$api/api/online/v1/oauth/token";
+        bnpl_oauth($url, $c, $id !== 'snapppay', $id === 'snapppay' ? ['scope' => 'online-merchant'] : []);
+        done('ورود به ' . BNPL_PROVIDERS[$id] . ' موفق بود ✅ اطلاعات پذیرنده درست است.');
+    } catch (RuntimeException $e) {
+        fail('ورود ناموفق بود؛ Client ID، Client Secret، نام کاربری، رمز یا آدرس API را بررسی کنید.', 502);
+    }
 }
 function a_sms_test(): void
 {

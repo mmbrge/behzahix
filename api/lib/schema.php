@@ -4,13 +4,20 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 3;
+const BX_SCHEMA_VERSION = 4;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
 {
     return [
         ['products', 'image', 'VARCHAR(20) NULL'], // v3 — cover image (files.id, kind = cover)
+        ['orders', 'paid_amount', 'BIGINT NOT NULL DEFAULT 0'], // v4 — staged (deposit) payments
+        ['users', 'ref_code', 'VARCHAR(16) NULL'], // v4 — referral program
+        ['users', 'referred_by', 'INT UNSIGNED NULL'],
+        ['users', 'ref_rewarded', 'TINYINT(1) NOT NULL DEFAULT 0'],
+        ['users', 'cart', 'LONGTEXT NULL'], // v4 — server copy of the shop cart (abandoned-cart reminder)
+        ['users', 'cart_at', 'DATETIME NULL'],
+        ['users', 'cart_reminded', 'TINYINT(1) NOT NULL DEFAULT 0'],
     ];
 }
 
@@ -249,6 +256,16 @@ function bx_schema(): array
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL
+        ) $t",
+        // v4 — event SMS log
+        "CREATE TABLE IF NOT EXISTS sms_log (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            event VARCHAR(32) NOT NULL,
+            phone VARCHAR(15) NOT NULL,
+            ok TINYINT(1) NOT NULL DEFAULT 0,
+            response VARCHAR(190) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL,
+            KEY created (created_at)
         ) $t",
         // v2 — free tools: usage log, short links and their clicks
         "CREATE TABLE IF NOT EXISTS tool_events (

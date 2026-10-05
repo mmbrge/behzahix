@@ -9,6 +9,12 @@
 
   const API = "api/index.php";
   let csrf = "";
+  // Invite links (?ref=CODE) are remembered so the code reaches registration
+  try {
+    const ref = new URLSearchParams(location.search).get("ref");
+    if (ref && /^[a-z0-9]{4,16}$/i.test(ref)) localStorage.setItem("bx-ref", ref.toLowerCase());
+  } catch (e) { /* storage blocked */ }
+  const REF_ROUTES = ["auth.register", "auth.otp.login", "order.submit"];
 
   class ApiError extends Error {
     constructor(message, code, status) {
@@ -19,6 +25,9 @@
   }
 
   async function call(route, data = {}, files = null, retried = false) {
+    if (REF_ROUTES.includes(route)) {
+      try { const ref = localStorage.getItem("bx-ref"); if (ref && !data.ref) data = { ...data, ref }; } catch (e) { /* ignore */ }
+    }
     const opts = { method: "POST", credentials: "same-origin", headers: { "X-CSRF": csrf } };
     // files: array of File (sent as files[]); named extras like files.cover are sent under their own key
     const named = files ? Object.keys(files).filter((k) => isNaN(k) && files[k] instanceof Blob) : [];

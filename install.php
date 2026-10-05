@@ -144,7 +144,7 @@ if (!$locked && $_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="field"><label class="field-label" for="admin_phone">موبایل مدیر (نام کاربری)</label><input class="input" id="admin_phone" name="admin_phone" dir="ltr" value="<?= $v('admin_phone') ?>" placeholder="09xxxxxxxxx"></div>
         <div class="field"><label class="field-label" for="admin_pass">رمز مدیر (حداقل ۸ کاراکتر)</label><input class="input" id="admin_pass" name="admin_pass" type="password" dir="ltr"></div>
       </div>
-      <label class="switch mt-2"><input type="checkbox" name="demo" value="1" <?= !$_POST || !empty($_POST['demo']) ? 'checked' : '' ?>><span class="track"></span>نصب داده‌های نمایشی (کاربران، سفارش‌ها و محصولات نمونه — بعداً از پنل قابل حذف است)</label>
+      <label class="switch mt-2"><input type="checkbox" name="demo" value="1" <?= !empty($_POST["demo"]) ? "checked" : "" ?>><span class="track"></span>نصب داده‌های نمایشی (کاربران، سفارش‌ها و محصولات نمونه — بعداً از پنل قابل حذف است)</label>
       <button class="btn btn-primary mt-2" type="submit">نصب سایت</button>
     </form>
 <?php endif; ?>

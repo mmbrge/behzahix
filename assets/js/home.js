@@ -49,7 +49,7 @@ window.BX.ready.then(() => {
   const c = window.BX.settings.contact || {};
   const so = window.BX.settings.socials || {};
   const tel = document.getElementById("cta-phone");
-  if (tel && c.phone) { tel.href = `tel:${c.phone}`; tel.querySelector("span").textContent = faDigits(c.phone); }
+  if (tel) c.phone ? ((tel.href = `tel:${c.phone}`), (tel.querySelector("span").textContent = faDigits(c.phone))) : (tel.innerHTML = `ثبت سفارش آنلاین <svg class="icon"><use href="#i-arrow"/></svg>`, (tel.href = "order.html"));
   const tg = document.getElementById("cta-telegram");
   if (tg) so.telegram ? (tg.href = so.telegram) : tg.remove();
   const em = document.getElementById("cta-email");

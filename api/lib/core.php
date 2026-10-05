@@ -400,6 +400,60 @@ function file_out(array $f): array
     return ['id' => (string) $f['id'], 'name' => $f['name'], 'size' => (int) $f['size'], 'at' => ms($f['created_at'])];
 }
 
+// ------------------------------------------------------------------ referrals
+function ref_code_for(int $uid): string
+{
+    $code = (string) val('SELECT ref_code FROM users WHERE id = ?', [$uid]);
+    if ($code !== '') return $code;
+    $abc = 'abcdefghjkmnpqrstuvwxyz23456789';
+    do {
+        $code = '';
+        for ($i = 0; $i < 6; $i++) $code .= $abc[random_int(0, strlen($abc) - 1)];
+    } while (val('SELECT id FROM users WHERE ref_code = ?', [$code]));
+    q('UPDATE users SET ref_code = ? WHERE id = ?', [$code, $uid]);
+    return $code;
+}
+// Links a freshly created account to the inviter (code sent by the browser as "ref")
+function referral_attach(int $newUserId): void
+{
+    $code = preg_replace('/[^a-z0-9]/', '', strtolower((string) (input()['ref'] ?? '')));
+    if ($code === '' || empty(setting('referral', 'enabled'))) return;
+    $inviter = (int) val('SELECT id FROM users WHERE ref_code = ?', [$code]);
+    if ($inviter && $inviter !== $newUserId) q('UPDATE users SET referred_by = ? WHERE id = ? AND referred_by IS NULL', [$inviter, $newUserId]);
+}
+// After a payment: reward inviter + friend once the friend has spent minPurchase
+function referral_check(int $uid): void
+{
+    $r = setting('referral');
+    if (empty($r['enabled'])) return;
+    $u = row('SELECT id, name, referred_by, ref_rewarded FROM users WHERE id = ?', [$uid]);
+    if (!$u || !$u['referred_by'] || $u['ref_rewarded']) return;
+    $spent = -(int) val("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type IN ('payment', 'purchase')", [$uid]);
+    if ($spent < (int) $r['minPurchase']) return;
+    q('UPDATE users SET ref_rewarded = 1 WHERE id = ?', [$uid]);
+    $inv = (int) $u['referred_by'];
+    if ((int) $r['rewardInviter'] > 0) {
+        wallet_add($inv, (int) $r['rewardInviter']);
+        tx($inv, 'referral', (int) $r['rewardInviter'], 'هدیه معرفی ' . $u['name']);
+        notify($inv, 'دوست شما ' . $u['name'] . ' اولین خریدش را انجام داد؛ ' . toman((int) $r['rewardInviter']) . ' هدیه گرفتید 🎁', 'wallet');
+        if (function_exists('sms_user')) sms_user('referral_reward', $inv, ['amount' => number_format((int) $r['rewardInviter'])]);
+    }
+    if ((int) $r['rewardFriend'] > 0) {
+        wallet_add($uid, (int) $r['rewardFriend']);
+        tx($uid, 'referral', (int) $r['rewardFriend'], 'هدیه دعوت دوستان');
+        notify($uid, toman((int) $r['rewardFriend']) . ' هدیه دعوت به کیف پول شما اضافه شد 🎁', 'wallet');
+    }
+}
+
+// Deposit the customer may pay first (0 when staged payment does not apply)
+function order_deposit(array $o): int
+{
+    $c = setting('orders');
+    $price = $o['quote'] !== null ? (int) $o['quote'] : (int) $o['estimate'];
+    if (empty($c['stagedEnabled']) || $o['paid'] || (int) ($o['paid_amount'] ?? 0) > 0 || $price < (int) ($c['stagedMin'] ?? 0)) return 0;
+    $pct = max(10, min(90, (int) ($c['stagedPercent'] ?? 50)));
+    return (int) (ceil($price * $pct / 100 / 1000) * 1000);
+}
 function order_out(array $o, bool $full = true, bool $withContact = true): array
 {
     $id = (int) $o['id'];
@@ -407,7 +461,7 @@ function order_out(array $o, bool $full = true, bool $withContact = true): array
         'status' => $o['status'], 'designerId' => $o['designer_id'] ? (string) $o['designer_id'] : null, 'estimate' => (int) $o['estimate'],
         'quote' => $o['quote'] !== null ? (int) $o['quote'] : null, 'discount' => (int) $o['discount'], 'deadline' => $o['deadline'],
         'addons' => jdec($o['addons'], []), 'budget' => $o['budget'], 'details' => jdec($o['details'], []), 'desc' => $o['descr'],
-        'style' => jdec($o['style'], []), 'coupon' => $o['coupon'], 'paid' => (bool) $o['paid'], 'rating' => $o['rating'] !== null ? (int) $o['rating'] : null,
+        'style' => jdec($o['style'], []), 'coupon' => $o['coupon'], 'paid' => (bool) $o['paid'], 'paidAmount' => (int) ($o['paid_amount'] ?? 0), 'deposit' => order_deposit($o), 'rating' => $o['rating'] !== null ? (int) $o['rating'] : null,
         'review' => $o['review'], 'applicants' => array_map('strval', jdec($o['applicants'], [])), 'createdAt' => ms($o['created_at'])];
     if ($withContact) $out['contact'] = jdec($o['contact'], []);
     if ($full) {

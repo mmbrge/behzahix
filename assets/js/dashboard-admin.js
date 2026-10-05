@@ -423,11 +423,15 @@
         ["address", "آدرس", "text"], ["hours", "ساعات کاری", "text"],
       ]],
       ["socials", [
-        ["instagram", "لینک اینستاگرام", "ltr"], ["telegram", "لینک تلگرام", "ltr"], ["whatsapp", "لینک واتساپ (wa.me/98…)", "ltr"],
+        ["instagram", "لینک اینستاگرام", "ltr"], ["telegram", "لینک تلگرام", "ltr"], ["whatsapp", "لینک واتساپ (wa.me/98…)", "ltr"], ["bale", "لینک بله (ble.ir/…)", "ltr"],
         ["linkedin", "لینک لینکدین", "ltr"], ["youtube", "لینک یوتیوب", "ltr"], ["aparat", "لینک آپارات", "ltr"], ["x", "لینک ایکس (توییتر)", "ltr"],
       ], "لینک هر شبکه‌ای که خالی باشد در سایت نمایش داده نمی‌شود."],
     ] },
     home: { title: "صفحه اصلی", icon: "home", groups: [
+      ["about", [
+        ["stats", "آمار صفحه «درباره ما» — هر خط: مقدار | عنوان (مثلاً: ۲ ساعت | زمان پاسخ‌گویی). {services} = تعداد خدمات", "lines"],
+        ["designerStats", "آمار صفحه «طراحان» — همان قالب. {share} = سهم طراح بر اساس کارمزد", "lines"],
+      ], "فقط عددهای واقعی بنویسید؛ مثلاً تعداد پروژه‌ها را وقتی واقعاً به آن رسیدید اضافه کنید."],
       ["home", [
         ["badge", "برچسب بالای عنوان", "text"], ["title1", "خط اول عنوان", "text"], ["title2", "خط دوم عنوان (قبل از لوگو)", "text"],
         ["morphItems", "کلمات انیمیشن ذره‌ای بالای صفحه (بدون محدودیت؛ هر کلمه با یک زیرنویس. کلمه لاتینی که به X ختم شود، مثل BEHIX، با X نارنجی نمایش داده می‌شود)", "morph"],
@@ -452,9 +456,16 @@
     orders: { title: "سفارش‌ها", icon: "list", groups: [
       ["orders", [
         ["guestOrders", "ثبت سفارش بدون ورود (ساخت خودکار حساب)", "switch"], ["revisions", "تعداد اصلاح رایگان", "number"],
+        ["stagedEnabled", "پرداخت مرحله‌ای (پیش‌پرداخت + مانده) برای سفارش‌های بزرگ", "switch"], ["stagedMin", "حداقل مبلغ سفارش برای پرداخت مرحله‌ای (تومان)", "number"], ["stagedPercent", "درصد پیش‌پرداخت", "number"],
         ["deadlines", "سرعت‌های تحویل", "deadlines"], ["addons", "خدمات تکمیلی (درصدی)", "addons"],
         ["styles", "سبک‌های پیشنهادی (هر خط یکی)", "lines"], ["budgets", "بازه‌های بودجه (هر خط یکی)", "lines"],
       ]],
+      ["referral", [
+        ["enabled", "برنامه دعوت از دوستان فعال باشد", "switch"], ["rewardInviter", "هدیه معرف (تومان، به کیف پول)", "number"],
+        ["rewardFriend", "هدیه دوست دعوت‌شده (تومان)", "number"], ["minPurchase", "حداقل مبلغ اولین خرید دوست برای دریافت هدیه (تومان)", "number"],
+      ], "هدیه‌ها فقط بعد از اولین پرداخت واقعی دوست داده می‌شود تا از سوءاستفاده جلوگیری شود."],
+      ["cart", [["reminder", "پیامک یادآوری سبد خرید رهاشده", "switch"], ["hours", "ارسال یادآوری بعد از چند ساعت", "number"]],
+        "برای کاربران واردشده‌ای که فایل در سبد گذاشته‌اند و خرید نکرده‌اند؛ یک بار برای هر سبد. قالب «یادآوری سبد خرید» را در قالب‌های پیامک فعال کنید."],
     ] },
     payment: { title: "درگاه پرداخت", icon: "wallet", groups: [
       ["payment", [
@@ -465,9 +476,10 @@
     sms: { title: "پیامک", icon: "chat", groups: [
       ["sms", [
         ["driver", "سرویس پیامک", "select", [["none", "غیرفعال (فقط ورود با رمز)"], ["kavenegar", "کاوه‌نگار"], ["smsir", "اس‌ام‌اس دات آی‌آر"]]],
-        ["apiKey", "کلید API", "ltr"], ["template", "نام الگوی تأیید (کاوه‌نگار)", "ltr"], ["templateId", "شناسه قالب (SMS.ir)", "ltr"], ["paramName", "نام پارامتر کد در قالب (SMS.ir)", "ltr"],
+        ["apiKey", "کلید API", "ltr"], ["adminPhone", "شماره موبایل مدیر برای پیامک‌های مدیریتی", "ltr"], ["template", "نام الگوی تأیید (کاوه‌نگار)", "ltr"], ["templateId", "شناسه قالب (SMS.ir)", "ltr"], ["paramName", "نام پارامتر کد در قالب (SMS.ir)", "ltr"],
       ], "در پنل پیامک یک الگوی «کد تأیید» بسازید که متغیر %token% (کاوه‌نگار) یا #CODE# (SMS.ir) را داشته باشد."],
     ] },
+    smsTpl: { title: "قالب‌های پیامک", icon: "send", groups: [] },
     theme: { title: "ظاهر", icon: "palette", groups: [
       ["theme", [
         ["brand", "رنگ اصلی", "color"], ["brand2", "رنگ دوم (گرادیان)", "color"],
@@ -547,22 +559,74 @@
           <p class="mt-2">وضعیت فعلی: ${demo ? '<span class="badge badge--warn">روشن</span>' : '<span class="badge badge--ok">خاموش</span>'} · ${faDigits(S.demoUsers || 0)} حساب نمونه</p>
           <div class="row mt-2"><button class="btn btn-ghost" data-act="demo-toggle">${demo ? "خاموش کردن حالت نمایشی" : "روشن کردن حالت نمایشی"}</button></div>
         </section>
+        <section class="card box danger-zone" style="grid-column:1/-1"><div class="box-head"><h2>${icon("refresh")}شروع واقعی سایت (پاکسازی کامل)</h2></div>
+          <p class="muted lh small">هر چیزی که در دوره آزمایش ساخته شده و نمی‌خواهید بماند را انتخاب کنید. تنظیمات سایت، خدمات و شاخه‌ها و حساب‌های مدیر همیشه می‌مانند. این کار برگشت‌پذیر نیست.</p>
+          <form data-form="fresh-start" class="mt-2">
+            <div class="checks-grid">${[["demo", "حساب‌های نمونه (نمایشی)", true], ["orders", "همه سفارش‌ها، پرداخت‌ها، تراکنش‌ها، تیکت‌ها و اعلان‌ها", true], ["products", "همه محصولات فروشگاه و خریدها", false],
+              ["portfolio", "همه نمونه‌کارها", true], ["users", "همه کاربران غیرمدیر (مشتری، طراح، فروشنده)", false], ["tools", "آمار ابزارها و لینک‌های کوتاه", true], ["chats", "گفتگوهای پشتیبانی", true], ["coupons", "کدهای تخفیف", false]]
+              .map(([v, l, on]) => `<label class="switch"><input type="checkbox" name="parts" value="${v}" ${on ? "checked" : ""}><span class="track"></span>${l}</label>`).join("")}</div>
+            <div class="row mt-2"><input class="input" name="confirm" placeholder="برای تأیید بنویسید: پاکسازی" style="max-width:260px"><button class="btn btn-danger">${icon("trash")} پاکسازی</button></div>
+          </form>
+        </section>
         <section class="card box danger-zone"><div class="box-head"><h2>${icon("trash")}حذف داده‌های نمایشی</h2></div>
           <p class="muted lh small">همه کاربران نمونه، سفارش‌ها، محصولات، تراکنش‌ها و پیام‌های آن‌ها حذف می‌شود و حالت نمایشی خاموش می‌شود. خدمات، تنظیمات و حساب شما دست‌نخورده می‌ماند. پیش از راه‌اندازی واقعی سایت این کار را انجام دهید.</p>
           <button class="btn btn-danger mt-2" data-act="demo-purge" ${S.demoUsers ? "" : "disabled"}>${icon("trash")} حذف داده‌های نمایشی</button>
         </section></div>`;
     }
+    if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", shop: "فروشگاه", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { general: "اطلاعات سایت", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">
          ${fields.map((f) => fieldInput(group, f, (S.settings[group] || {})[f[0]])).join("")}
          <div class="span-2 row"><button class="btn btn-primary" type="submit">${icon("check")} ذخیره</button>
-           ${group === "sms" ? `<button class="btn btn-ghost" type="button" data-act="sms-test">${icon("send")} ارسال پیامک آزمایشی به شماره من</button>` : ""}
+           ${group === "sms" ? `<button class="btn btn-ghost" type="button" data-act="sms-test">${icon("send")} ارسال کد تأیید آزمایشی به شماره من</button><a class="btn btn-ghost" href="#settings/smsTpl">${icon("list")} قالب‌های پیامک رویدادها</a>` : ""}
+           ${group === "payment" ? `<button class="btn btn-ghost" type="button" data-act="payment-test">${icon("zap")} تست اتصال درگاه</button>` : ""}
+           ${group.startsWith("bnpl_") ? `<button class="btn btn-ghost" type="button" data-act="bnpl-test" data-id="${group.slice(5)}">${icon("zap")} تست اتصال (پس از ذخیره)</button>` : ""}
            ${group === "legal" ? '<a class="btn btn-ghost" href="terms.html" target="_blank">مشاهده صفحه قوانین</a>' : ""}</div>
        </form>`)).join("")}</div>`;
+  };
+
+  // Ready-made SMS templates per event: copy into the SMS panel, then enter the template name/id here
+  function smsTemplatesView() {
+    const { S, box, icon, esc, faDigits, ago, table } = h();
+    const driver = S.settings.sms?.driver || "none";
+    const cfg = S.settings.sms_events || {};
+    const show = driver === "smsir" ? "smsir" : "kavenegar";
+    const EVENT_TITLE = Object.fromEntries((S.smsEvents || []).map((e) => [e.id, e.title]));
+    const guide = driver === "smsir"
+      ? "در پنل SMS.ir بخش «قالب‌ها» هر متن زیر را به‌عنوان قالب جدید ثبت کنید (متغیرها با #…# هستند). پس از تأیید، «شناسه قالب» را در کادر همان رویداد بنویسید."
+      : "در پنل کاوه‌نگار بخش «اعتبارسنجی ← الگوها» هر متن زیر را با یک نام انگلیسی (مثلاً order-new) ثبت کنید. پس از تأیید الگو، همان نام را در کادر رویداد بنویسید.";
+    return `<div class="dash-grid">
+      ${driver === "none" ? `<div class="banner">${icon("info")}<span>هنوز سرویس پیامک انتخاب نشده است. ابتدا در <a class="brand" href="#settings/sms">تنظیمات ← پیامک</a> کاوه‌نگار یا SMS.ir و کلید API را ذخیره کنید. متن قالب‌ها برای کاوه‌نگار نمایش داده می‌شود.</span></div>` : ""}
+      <div class="banner">${icon("send")}<span>${guide} برای پیامک‌های مدیریتی، شماره موبایل مدیر را در تنظیمات پیامک وارد کنید.</span></div>
+      <form data-form="sms-events" class="sms-events">
+        ${(S.smsEvents || []).map((e) => {
+          const c = cfg[e.id] || {};
+          return `<section class="card box sms-ev" data-ev="${e.id}">
+            <div class="box-head"><h2>${icon("send")}${esc(e.title)} <span class="badge">${esc(e.to)}</span></h2>
+              <label class="switch"><input type="checkbox" name="on" ${c.on ? "checked" : ""}><span class="track"></span>ارسال فعال</label></div>
+            <div class="sms-tpl"><pre data-tpl>${esc(e[show])}</pre><button type="button" class="btn btn-ghost btn-xs" data-act="copy-tpl" data-ev="${e.id}">${icon("link")} کپی متن</button></div>
+            <p class="small muted mt-1">متغیرها: ${e.vars.map((v) => `<code dir="ltr">${esc(v[show])}</code> = ${esc(v.label)}`).join("، ")}</p>
+            <div class="row mt-2"><input class="input" name="template" dir="ltr" value="${esc(c.template || "")}" placeholder="${show === "smsir" ? "شناسه قالب، مثلاً 123456" : "نام الگو، مثلاً order-new"}" style="max-width:280px">
+              <button type="button" class="btn btn-ghost btn-sm" data-act="sms-event-test" data-ev="${e.id}">${icon("send")} ارسال آزمایشی به شماره من</button></div>
+          </section>`;
+        }).join("")}
+        <div class="row"><button class="btn btn-primary" type="submit">${icon("check")} ذخیره همه</button></div>
+      </form>
+      ${box("آخرین پیامک‌های ارسالی", "list", table(["زمان", "رویداد", "شماره", "نتیجه", "پاسخ سرویس"], (S.smsLog || []).map((l) => `<tr><td class="muted">${ago(l.at)}</td><td>${esc(EVENT_TITLE[l.event] || l.event)}</td><td dir="ltr">${faDigits(l.phone)}</td>
+        <td>${l.ok ? '<span class="badge badge--ok">ارسال شد</span>' : '<span class="badge badge--bad">ناموفق</span>'}</td><td class="small muted">${esc(l.response || "")}</td></tr>`), "هنوز پیامکی ارسال نشده است."))}
+    </div>`;
+  }
+  BXD.forms["sms-events"] = (form) => {
+    const value = {};
+    form.querySelectorAll("[data-ev]").forEach((sec) => {
+      if (!sec.matches("section")) return;
+      value[sec.dataset.ev] = { on: sec.querySelector("[name=on]").checked, template: sec.querySelector("[name=template]").value.trim() };
+    });
+    BXD.quiet(BXD.act("settings.save", { group: "sms_events", value }));
   };
 
   function collect(form, group) {
@@ -591,6 +655,11 @@
     }
     return out;
   }
+
+  BXD.forms["fresh-start"] = (form) => {
+    const parts = [...form.querySelectorAll("[name=parts]:checked")].map((x) => x.value);
+    BXD.quiet(BXD.act("fresh.start", { parts, confirm: form.elements.confirm.value }));
+  };
 
   BXD.forms.settings = (form) => {
     const group = form.dataset.group;
@@ -621,6 +690,32 @@
       BX.modal({ title: "پیش‌نمایش", wide: true, body: `<div class="prose">${ta.value}</div>` });
     },
     "sms-test": () => BXD.quiet(BXD.act("sms.test")),
+    "copy-tpl": (el) => {
+      const text = el.closest(".sms-tpl").querySelector("[data-tpl]").textContent;
+      navigator.clipboard?.writeText(text).then(() => BX.toast("متن قالب کپی شد.", "ok"), () => BX.toast("کپی نشد؛ متن را دستی انتخاب کنید.", "bad"));
+    },
+    "sms-event-test": async (el) => {
+      // save this event's template first so the test uses what is on screen
+      const sec = el.closest("section");
+      const S = BXD.S;
+      const value = { ...(S.settings.sms_events || {}), [el.dataset.ev]: { on: sec.querySelector("[name=on]").checked, template: sec.querySelector("[name=template]").value.trim() } };
+      try {
+        await BX.api("a.settings.save", { group: "sms_events", value });
+        const r = await BX.api("a.sms.eventTest", { event: el.dataset.ev });
+        BX.toast(r.message, "ok");
+      } catch (err) { BX.toast(err.message, "bad"); }
+    },
+    "payment-test": async () => {
+      try {
+        const r = await BX.api("a.payment.test");
+        BX.modal({ title: "تست درگاه پرداخت", body: `<p class="lh">${BX.esc(r.message)}</p><p class="muted small lh mt-1">برای اطمینان کامل، یک پرداخت واقعی ۱,۰۰۰ تومانی انجام دهید؛ مبلغ به کیف پول خودتان در سایت اضافه می‌شود و بعد از بازگشت، نتیجه نمایش داده می‌شود.</p>`,
+          actions: [{ label: "بستن" }, { label: "پرداخت آزمایشی ۱,۰۰۰ تومان", primary: true, onClick: () => { location.href = r.payUrl; } }] });
+      } catch (err) { BX.toast(err.message, "bad"); }
+    },
+    "bnpl-test": async (el) => {
+      try { const r = await BX.api("a.bnpl.test", { id: el.dataset.id }); BX.toast(r.message, "ok"); }
+      catch (err) { BX.toast(err.message, "bad"); }
+    },
     "demo-purge": () => BXD.ui.confirmBox("حذف داده‌های نمایشی", "همه حساب‌ها و داده‌های نمونه برای همیشه حذف می‌شوند. ادامه می‌دهید؟", () => BXD.quiet(BXD.act("demo.purge")), "حذف"),
     "demo-toggle": () => {
       const g = { ...BXD.S.settings.general, demoMode: !BXD.S.settings.general.demoMode };

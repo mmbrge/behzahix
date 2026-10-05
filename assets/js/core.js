@@ -15,6 +15,7 @@
     "arrow-right": '<path d="M5 12h14M13 6l6 6-6 6"/>',
     "chevron-down": '<path d="m6 9 6 6 6-6"/>',
     "chevron-up": '<path d="m18 15-6-6-6 6"/>',
+    bale: '<path d="M12 3a9 9 0 0 0-8.4 12.2L3 21l5.8-.6A9 9 0 1 0 12 3z"/><path d="M9.5 8v8h3.2a2.1 2.1 0 0 0 0-4.2H9.5m0 0h2.6a1.9 1.9 0 0 0 0-3.8H9.5"/>',
     qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4h-4z"/>',
     hash: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
     wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
@@ -240,6 +241,22 @@
     update();
   }
 
+  // ---------------------------------------------------------------- Editable stat strips (about / designers)
+  function renderStats() {
+    document.querySelectorAll("[data-stats]").forEach((box) => {
+      const a = BX.settings.about || {};
+      const lines = box.dataset.stats === "designers" ? a.designerStats : a.stats;
+      if (!Array.isArray(lines) || !lines.length) return;
+      const services = BX.CATALOG.reduce((n, c) => n + c.services.length, 0);
+      const share = Math.round(100 - (BX.settings.commission?.percent ?? 20));
+      box.innerHTML = lines.map((l, i) => {
+        const [v, label = ""] = String(l).split("|").map((x) => x.trim());
+        const val = v.replace("{services}", faDigits(services)).replace("{share}", faDigits(share));
+        return `<div class="card stat-box is-visible" style="--d:${i * 80}ms"><b>${esc(val)}</b><span>${esc(label)}</span></div>`;
+      }).join("");
+    });
+  }
+
   // ---------------------------------------------------------------- Installments (BNPL)
   // Providers enabled in settings whose min/max allow this amount (Toman)
   BX.bnplFor = (amount) => (BX.settings?.bnpl || []).filter((b) => (!b.min || amount >= b.min) && (!b.max || amount <= b.max));
@@ -273,6 +290,7 @@
       c.phone && [`tel:${c.phone}`, "phone", "تماس"],
       tg && [tg, "telegram", "تلگرام"],
       so.whatsapp && [so.whatsapp, "whatsapp", "واتساپ"],
+      so.bale && [so.bale, "bale", "بله"],
       so.instagram && [so.instagram, "instagram", "اینستاگرام"],
       c.email && [`mailto:${c.email}`, "mail", "ایمیل"],
     ].filter(Boolean).slice(0, 4);
@@ -446,7 +464,7 @@
   }, { passive: true });
 
   const SOCIALS = [
-    ["instagram", "اینستاگرام"], ["telegram", "تلگرام"], ["whatsapp", "واتساپ"], ["linkedin", "لینکدین"],
+    ["instagram", "اینستاگرام"], ["telegram", "تلگرام"], ["whatsapp", "واتساپ"], ["bale", "بله"], ["linkedin", "لینکدین"],
     ["youtube", "یوتیوب"], ["aparat", "آپارات"], ["x", "ایکس"],
   ];
   function socialLinks() {
@@ -838,6 +856,7 @@
       renderAnnouncement();
       renderHeader();
       renderFooter();
+      renderStats();
       initReveal();
       document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = faDigits(new Date().getFullYear())));
     })
