@@ -654,6 +654,21 @@
     tick();
   }
 
+  // ---------------------------------------------------------------- Performance
+  // Looping animations keep running (and repainting) even when scrolled far
+  // away; pause everything inside a section while it is off-screen.
+  function initAnimPause() {
+    if (!("IntersectionObserver" in window) || document.body.dataset.page === "dashboard") return;
+    const io = new IntersectionObserver((entries) => {
+      for (const en of entries) en.target.classList.toggle("anim-off", !en.isIntersecting);
+    });
+    const watch = () => document.querySelectorAll("main > section, main > div, #site-footer, .hero-visual").forEach((el) => {
+      if (!el.dataset.animWatch) { el.dataset.animWatch = "1"; io.observe(el); }
+    });
+    watch();
+    BX.ready.then(() => setTimeout(watch, 300)).catch(() => {});
+  }
+
   // ---------------------------------------------------------------- Code background
   // Two slow columns of faint, syntax-coloured code behind the content.
   const CODE = [
@@ -814,4 +829,5 @@
   initTheme();
   initScrollFx();
   initCodeBg();
+  initAnimPause();
 })();

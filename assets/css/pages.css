@@ -668,8 +668,9 @@
 .old-nav { padding: .35em; background: #c0c0c0; border-bottom: 2px outset #eee; text-align: center; color: #333; }
 .old-nav u, .old-side u { color: #0000ee; }
 .old-marquee { position: relative; flex-shrink: 0; height: 1.7em; overflow: hidden; white-space: nowrap; background: #000; color: #00ff3c; font-family: "Courier New", monospace; }
-.old-marquee span { position: absolute; top: .1em; left: 100%; animation: old-marquee 11s linear infinite; }
-@keyframes old-marquee { to { left: 0; transform: translateX(-100%); } }
+.old-marquee span { position: absolute; top: .1em; left: 0; will-change: transform; animation: old-marquee 11s linear infinite; }
+/* transform-only (no layout per frame); 100cqw = width of the compare frame */
+@keyframes old-marquee { from { transform: translateX(100cqw); } to { transform: translateX(-100%); } }
 .old-body { flex: 1; min-height: 0; display: flex; gap: .8em; padding: .6em .8em; }
 .old-side { width: 30%; padding: .5em; border: 2px inset #d8d8d8; background: #fff; list-style: square inside; }
 .old-side li { margin-bottom: .3em; }

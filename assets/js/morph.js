@@ -28,6 +28,8 @@
   let shapes = []; // per stage: { pts:[{x,y,z,c,orb}], size }
   let P = [];
   let glyphs = [];
+  let bufs = null; // per-colour Float32Array(x, y, size …) reused every frame
+  const counts = new Int32Array(6);
   let stagePos = 0, from = 0, to = 0, tStart = 0, tDur = 1500;
   let running = false, visible = true, built = false;
   let interval = 3500, timer = null, last = performance.now(), time = 0;
@@ -35,7 +37,15 @@
   let items = DEFAULT_ITEMS;
   let intro = DEFAULT_INTRO;
 
-  const brand = () => getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#ff7a1a";
+  let brandColor = "#ff7a1a", brandAt = 0;
+  const brand = () => {
+    const now = performance.now();
+    if (now - brandAt > 2000) {
+      brandColor = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#ff7a1a";
+      brandAt = now;
+    }
+    return brandColor;
+  };
 
   // ------------------------------------------------------------ shapes
   function sampleText(text, isLogo) {
@@ -129,8 +139,9 @@
 
   function build() {
     const r = canvas.getBoundingClientRect();
-    DPR = Math.min(2, window.devicePixelRatio || 1);
     W = r.width;
+    // Phones: 1.5x is visually the same for square particles and fills ~45% fewer pixels
+    DPR = Math.min(W < 640 ? 1.5 : 2, window.devicePixelRatio || 1);
     H = r.height;
     canvas.width = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
@@ -145,8 +156,8 @@
     }
     glyphs = Array.from({ length: W < 640 ? 10 : 22 }, () => ({
       g: GLYPHS[(Math.random() * GLYPHS.length) | 0], x: Math.random() * W, y: Math.random() * H,
-      v: 0.15 + Math.random() * 0.35, s: 11 + Math.random() * 10, o: 0.05 + Math.random() * 0.1,
-    }));
+      v: 0.15 + Math.random() * 0.35, s: 11 + 3 * Math.floor(Math.random() * 4), o: 0.05 + Math.random() * 0.1,
+    })).sort((a, b) => a.s - b.s);
     built = true;
   }
 
@@ -194,7 +205,7 @@
   function frame(now) {
     if (!running) return;
     requestAnimationFrame(frame);
-    if (!visible || !built) return;
+    if (!visible || !built || document.documentElement.classList.contains("menu-open")) return;
     const dt = Math.min(50, now - last);
     last = now;
     time += dt / 1000;
@@ -220,21 +231,22 @@
     ctx.clearRect(0, 0, W, H);
 
     // floating code glyphs
-    ctx.font = "600 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     ctx.textAlign = "center";
+    ctx.fillStyle = "#ffbe5c";
+    let curSize = 0;
     for (const g of glyphs) {
       g.y -= g.v;
       if (g.y < -20) { g.y = H + 20; g.x = Math.random() * W; }
       ctx.globalAlpha = g.o;
-      ctx.fillStyle = "#ffbe5c";
-      ctx.font = `600 ${g.s}px ui-monospace, Menlo, Consolas, monospace`;
+      if (g.s !== curSize) { curSize = g.s; ctx.font = `600 ${g.s}px ui-monospace, Menlo, Consolas, monospace`; }
       ctx.fillText(g.g, g.x, g.y);
     }
     ctx.globalAlpha = 1;
 
     ctx.globalCompositeOperation = "lighter";
     const sizeA = A.size, sizeB = B.size;
-    const buckets = PALETTE.map(() => []);
+    if (!bufs || bufs[0].length < N * 3) bufs = PALETTE.map(() => new Float32Array(N * 3));
+    counts.fill(0);
     for (let n = 0; n < N; n++) {
       const p = P[n];
       const a = A.pts[n], b = B.pts[n];
@@ -261,12 +273,16 @@
       p.x += (px - p.x) * 0.2;
       p.y += (py - p.y) * 0.2;
       const sz = (sizeA + (sizeB - sizeA) * tt) * sc * p.s;
-      buckets[tt < 0.5 ? a.c : b.c].push(p.x - sz / 2, p.y - sz / 2, sz);
+      const ci = tt < 0.5 ? a.c : b.c, buf = bufs[ci];
+      let o = counts[ci];
+      buf[o++] = p.x - sz / 2; buf[o++] = p.y - sz / 2; buf[o++] = sz;
+      counts[ci] = o;
     }
-    for (let c = 0; c < buckets.length; c++) {
-      const arr = buckets[c];
+    for (let c = 0; c < PALETTE.length; c++) {
+      const arr = bufs[c], len = counts[c];
+      if (!len) continue;
       ctx.fillStyle = c === 3 ? brand() : PALETTE[c];
-      for (let q = 0; q < arr.length; q += 3) ctx.fillRect(arr[q], arr[q + 1], arr[q + 2], arr[q + 2]);
+      for (let q = 0; q < len; q += 3) ctx.fillRect(arr[q], arr[q + 1], arr[q + 2], arr[q + 2]);
     }
     ctx.globalCompositeOperation = "source-over";
   }

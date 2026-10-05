@@ -155,7 +155,12 @@ a.logo:hover .logo-a { animation-duration: 1.6s; }
 .logo--sm::after { display: none; }
 .logo--md { font-size: 2rem; }
 .logo--hero { display: flex; width: fit-content; margin-top: 8px; font-size: 3.75rem; }
-.logo--hero .logo-x { animation: x-glow 3s ease-in-out infinite; }
+/* Pulsing glow behind the hero X: an opacity/scale layer instead of an
+   animated filter, so it is composited rather than repainted every frame */
+.logo--hero::before { content: ""; position: absolute; z-index: -1; right: -.15em; top: -.05em; width: 1em; height: 1.2em; pointer-events: none;
+  background: radial-gradient(closest-side, rgb(255 122 26 / .55), transparent); opacity: .35; will-change: opacity, transform;
+  animation: x-pulse 3s ease-in-out infinite; }
+@keyframes x-pulse { 50% { opacity: 1; transform: scale(1.15); } }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -506,24 +511,28 @@ a.logo:hover .logo-a { animation-duration: 1.6s; }
 @keyframes burst { to { transform: rotate(var(--a)) translateY(-26px) scaleY(.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .cursor-x, .cursor-dot, .cursor-burst { display: none; } }
 
+/* Off-screen sections pause their looping animations (see initAnimPause) */
+.anim-off, .anim-off *, .anim-off *::before, .anim-off *::after { animation-play-state: paused !important; }
+
 /* ---------- Code background (programming texture behind every page) ---------- */
 .code-bg { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; direction: ltr;
   background-image: radial-gradient(rgb(255 255 255 / .07) 1px, transparent 1.4px); background-size: 26px 26px;
   -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 25%, transparent 85%); mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 25%, transparent 85%); }
-.code-col { position: absolute; top: 0; width: min(440px, 40vw); font: 500 12.5px/1.95 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; white-space: pre; color: #94a3b8; opacity: .17; animation: code-up var(--dur, 90s) linear infinite; }
+.code-col { position: absolute; top: 0; will-change: transform; width: min(440px, 40vw); font: 500 12.5px/1.95 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; white-space: pre; color: #94a3b8; opacity: .17; animation: code-up var(--dur, 90s) linear infinite; }
 .code-col:nth-child(1) { left: 2.5vw; }
 .code-col:nth-child(2) { right: 2.5vw; text-align: left; animation-delay: -40s; }
 .code-col .ln { display: inline-block; width: 2.4em; color: #475569; text-align: right; margin-right: 1.2em; user-select: none; }
-.code-col div:nth-child(23n + 7) { color: #e2e8f0; text-shadow: 0 0 10px rgb(255 122 26 / .5); animation: code-hot 7s ease-in-out infinite; }
+.code-col div:nth-child(23n + 7) { position: relative; color: #e2e8f0; text-shadow: 0 0 10px rgb(255 122 26 / .5); }
+.code-col div:nth-child(23n + 7)::before { content: ""; position: absolute; inset: 0 -.4em; z-index: -1; background: rgb(255 122 26 / .1); opacity: 0; will-change: opacity; animation: code-hot 7s ease-in-out infinite; }
 .code-col .k { color: #c084fc; } .code-col .s { color: #ffbe5c; } .code-col .f { color: #7dd3fc; } .code-col .c { color: #64748b; font-style: italic; } .code-col .n { color: #ff7a1a; } .code-col .t { color: #4ade80; }
 @keyframes code-up { to { transform: translateY(-50%); } }
-@keyframes code-hot { 50% { background: rgb(255 122 26 / .1); } }
+@keyframes code-hot { 50% { opacity: 1; } }
 :root[data-theme="light"] .code-bg { background-image: radial-gradient(rgb(15 23 42 / .09) 1px, transparent 1.4px); }
 :root[data-theme="light"] .code-col { color: #334155; opacity: .13; }
 :root[data-theme="light"] .code-col .k { color: #7c3aed; } :root[data-theme="light"] .code-col .s { color: #c2410c; } :root[data-theme="light"] .code-col .f { color: #0369a1; } :root[data-theme="light"] .code-col .t { color: #15803d; }
 :root[data-theme="light"] .code-col div:nth-child(23n + 7) { color: #0f172a; text-shadow: none; }
 @media (max-width: 899px) { .code-col { width: 92vw; opacity: .09; } .code-col:nth-child(2) { display: none; } }
-@media (prefers-reduced-motion: reduce) { .code-col, .code-col div { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .code-col, .code-col div, .code-col div::before { animation: none !important; } }
 
 /* ---------- Keyframes ---------- */
 @keyframes header-drop { from { transform: translateY(-140%); opacity: 0; } to { transform: none; opacity: 1; } }
