@@ -163,6 +163,7 @@
     { id: "shop", label: "فروشگاه", href: "shop.html" },
     { id: "designers", label: "طراحان", href: "designers.html" },
     { id: "tools", label: "ابزارها", href: "tools.html" },
+    { id: "blog", label: "وبلاگ", href: "blog.html" },
     { id: "pricing", label: "تعرفه‌ها", href: "index.html#packages" },
     { id: "about", label: "درباره ما", href: "about.html" },
   ];
@@ -173,11 +174,11 @@
       <div class="mega-grid">
         ${BX.CATALOG.map((c) => `
           <div class="mega-col" style="--h:${c.hue}">
-            <a class="mega-head" href="services.html#${c.id}">
+            <a class="mega-head" href="services.html#cat-${c.id}">
               <span class="mega-icon">${icon(c.icon)}</span>
               <span><b>${esc(c.title)}</b><small dir="ltr">${esc(c.en)}</small></span>
             </a>
-            <ul>${c.services.map((s) => `<li><a href="order.html?service=${s.id}">${icon(s.icon)}${esc(s.title)}</a></li>`).join("")}</ul>
+            <ul>${c.services.map((s) => `<li><a href="service.html?id=${encodeURIComponent(s.id)}">${icon(s.icon)}${esc(s.title)}</a></li>`).join("")}</ul>
           </div>`).join("")}
       </div>
       <div class="mega-foot">
@@ -306,6 +307,7 @@
       shopOn && ["shop.html", "store", "فروشگاه فایل", "shop"],
       ["designers.html", "users", "طراحان", "designers"],
       ["tools.html", "wrench", "ابزارهای رایگان", "tools"],
+      ["blog.html", "book", "وبلاگ و آموزش", "blog"],
       ["index.html#packages", "percent", "تعرفه‌ها و پکیج‌ها", "pricing"],
       ["about.html", "info", "درباره ما و سوالات", "about"],
       [user ? "dashboard.html" : "auth.html", user ? "layout" : "user", user ? "پنل کاربری" : "ورود / ثبت‌نام", "auth"],
@@ -492,12 +494,13 @@
             <p class="muted lh">${esc(g.siteNameFa || "بهیکس")}؛ ${esc(g.tagline || "")}. از ایده تا اتوماسیون، کنار کسب‌وکار شما.</p>
             <ul class="socials">${socialLinks()}</ul>
           </div>
-          ${fcol(`خدمات`, `<ul class="footer-links">${BX.CATALOG.map((cat) => `<li><a href="services.html#${cat.id}">${esc(cat.title)}</a></li>`).join("")}</ul>`)}
+          ${fcol(`خدمات`, `<ul class="footer-links">${BX.CATALOG.map((cat) => `<li><a href="services.html#cat-${cat.id}">${esc(cat.title)}</a></li>`).join("")}</ul>`)}
           ${fcol(`${esc(g.siteNameFa || "بهیکس")}`, `<ul class="footer-links">
               <li><a href="portfolio.html">نمونه‌کارها</a></li>
               ${st.shop?.enabled !== false ? '<li><a href="shop.html">فروشگاه فایل</a></li>' : ""}
               <li><a href="designers.html">طراحان</a></li>
               <li><a href="tools.html">ابزارهای رایگان</a></li>
+              <li><a href="blog.html">وبلاگ</a></li>
               <li><a href="about.html">درباره ما</a></li>
               <li><a href="about.html#faq">سوالات متداول</a></li>
               <li><a href="terms.html">قوانین و مقررات</a></li>

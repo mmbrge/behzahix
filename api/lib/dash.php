@@ -1209,3 +1209,79 @@ function a_review_delete(): void
     product_rating_refresh((int) $r['product_id']);
     done('نظر حذف شد.');
 }
+
+// ------------------------------------------------------------------ blog (admin)
+function post_out(array $p, bool $full = false): array
+{
+    $o = ['id' => (int) $p['id'], 'slug' => $p['slug'], 'title' => $p['title'], 'excerpt' => (string) $p['excerpt'], 'cover' => $p['cover'], 'category' => $p['category'],
+        'tags' => jdec($p['tags'], []) ?: [], 'status' => $p['status'], 'views' => (int) $p['views'], 'seoTitle' => $p['seo_title'], 'seoDesc' => $p['seo_desc'],
+        'publishedAt' => ms($p['published_at']), 'updatedAt' => ms($p['updated_at'])];
+    if ($full) $o['body'] = (string) $p['body'];
+    return $o;
+}
+function a_post_list(): void
+{
+    require_active('admin');
+    out(['posts' => array_map('post_out', rows('SELECT * FROM posts ORDER BY COALESCE(published_at, created_at) DESC LIMIT 500'))]);
+}
+function a_post_get(): void
+{
+    require_active('admin');
+    $p = row('SELECT * FROM posts WHERE id = ?', [int_in('id')]);
+    if (!$p) fail('مطلب پیدا نشد.', 404);
+    out(['post' => post_out($p, true)]);
+}
+function post_slug(string $s): string
+{
+    $s = mb_strtolower(trim(en_digits($s)));
+    $s = preg_replace('/[\x{200C}\s_]+/u', '-', $s);
+    $s = preg_replace('/[^\p{L}\p{N}-]+/u', '', $s);
+    return trim(preg_replace('/-+/', '-', $s), '-') ?: 'post';
+}
+function a_post_save(): void
+{
+    $u = require_active('admin');
+    require_once __DIR__ . '/seo.php';
+    $id = int_in('id');
+    $title = str_in('title', 255);
+    if (mb_strlen($title) < 3) fail('عنوان مطلب را بنویسید.', 422);
+    $slug = post_slug(str_in('slug', 190) ?: $title);
+    $base = $slug;
+    for ($i = 2; val('SELECT id FROM posts WHERE slug = ? AND id <> ?', [$slug, $id]); $i++) $slug = $base . '-' . $i;
+    $status = str_in('status', 12) === 'published' ? 'published' : 'draft';
+    $tags = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,،#]/u', str_in('tags', 500))))));
+    $pub = str_in('publishedAt', 30);
+    $pubAt = $pub !== '' && strtotime($pub) ? gmdate('Y-m-d H:i:s', strtotime($pub)) : null;
+    $data = ['title' => $title, 'slug' => $slug, 'excerpt' => str_in('excerpt', 600), 'body' => seo_clean_html((string) in('body', '')), 'category' => str_in('category', 80),
+        'tags' => jenc($tags), 'status' => $status, 'seo_title' => str_in('seoTitle', 255), 'seo_desc' => str_in('seoDesc', 400), 'updated_at' => now()];
+    $old = $id ? row('SELECT * FROM posts WHERE id = ?', [$id]) : null;
+    if ($id && !$old) fail('مطلب پیدا نشد.', 404);
+    if ($status === 'published') $data['published_at'] = $pubAt ?: ($old['published_at'] ?? null) ?: now();
+    elseif ($pubAt) $data['published_at'] = $pubAt;
+    if ($old) update('posts', $data, 'id = ?', [$id]);
+    else $id = insert('posts', $data + ['author_id' => $u['id'], 'views' => 0, 'created_at' => now()]);
+    $cover = uploaded_files('cover')[0] ?? null;
+    if ($cover || in('removeCover')) {
+        if (!empty($old['cover'])) delete_file_row((int) $old['cover']);
+        update('posts', ['cover' => $cover ? (string) store_upload($cover, 'blog', $id, (int) $u['id'])['id'] : null], 'id = ?', [$id]);
+    }
+    out(['ok' => true, 'id' => $id, 'slug' => $slug, 'message' => $status === 'published' ? 'مطلب منتشر شد.' : 'پیش‌نویس ذخیره شد.']);
+}
+function a_post_delete(): void
+{
+    require_active('admin');
+    $p = row('SELECT * FROM posts WHERE id = ?', [int_in('id')]);
+    if (!$p) fail('مطلب پیدا نشد.', 404);
+    foreach (rows("SELECT id FROM files WHERE kind = 'blog' AND ref_id = ?", [$p['id']]) as $f) delete_file_row((int) $f['id']);
+    q('DELETE FROM posts WHERE id = ?', [$p['id']]);
+    done('مطلب حذف شد.');
+}
+// Image inside a post body → public URL
+function a_post_image(): void
+{
+    $u = require_active('admin');
+    $f = uploaded_files('image')[0] ?? null;
+    if (!$f || !preg_match('/\.(jpe?g|png|webp|gif)$/i', (string) $f['name'])) fail('یک تصویر JPG، PNG یا WebP انتخاب کنید.', 422);
+    $r = store_upload($f, 'blog', int_in('id') ?: null, (int) $u['id']);
+    out(['url' => 'api/index.php?r=file&id=' . $r['id']]);
+}

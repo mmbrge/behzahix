@@ -36,6 +36,13 @@ start_session();
 try { lazy_cron(($route === 'cron')); } catch (Throwable $e) { error_log('[BEHIX] cron: ' . $e->getMessage()); }
 if ($route === 'cron') out(['ok' => true]);
 $get = ['boot' => 'r_boot', 'file' => 'r_file', 'pay.callback' => 'payment_callback', 'go' => 'r_short_go', 'invoice' => 'r_invoice'];
+// SEO feeds (also reachable as /sitemap.xml and /robots.txt through seo.php)
+$feeds = ['feed.torob' => 'seo_feed_torob', 'feed.blog' => 'blog', 'feed.products' => 'products', 'sitemap' => 'seo_sitemap', 'robots' => 'seo_robots'];
+if (isset($feeds[$route])) {
+    require_once __DIR__ . '/lib/seo.php';
+    $f = $feeds[$route];
+    function_exists($f) ? $f() : seo_feed_rss($f);
+}
 if (isset($get[$route])) {
     if ($route === 'pay.callback') require_once __DIR__ . '/lib/gateways.php';
     if ($route === 'invoice') require_once __DIR__ . '/lib/invoice.php';

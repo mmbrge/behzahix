@@ -44,6 +44,10 @@ function default_settings(): array
         'seo' => [
             'title' => 'بهیکس | خلق ارزش دیجیتال با هوش مصنوعی',
             'description' => 'طراحی سایت، استودیو برندینگ، تولید محتوای هوش مصنوعی و اتوماسیون کسب‌وکار.',
+            // Per page: one line each «page | title | description» (page = services, shop, portfolio, designers, about, tools, blog, order, terms)
+            'pages' => [],
+            'ogImage' => '', 'googleVerify' => '', 'bingVerify' => '', 'gaId' => '', 'headCode' => '',
+            'orgType' => 'ProfessionalService', 'city' => 'تهران', 'priceRange' => '$$', 'noindex' => false,
         ],
         'legal' => [
             'terms' => default_terms(), 'privacy' => default_privacy(),
@@ -110,7 +114,7 @@ function public_settings(): array
         'home' => $s['home'],
         'about' => $s['about'],
         'referral' => $s['referral'],
-        'seo' => $s['seo'],
+        'seo' => ['title' => $s['seo']['title'], 'description' => $s['seo']['description']],
         'legal' => ['enamadCode' => $s['legal']['enamadCode'], 'samandehiCode' => $s['legal']['samandehiCode'], 'extraBadgesCode' => $s['legal']['extraBadgesCode']],
         'commission' => $s['commission'],
         'orders' => $s['orders'],

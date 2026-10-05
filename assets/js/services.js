@@ -25,12 +25,12 @@
               <span class="svc-icon-lg">${icon(s.icon)}</span>
               <span class="badge">${icon("clock")} ${faDigits(s.days)} روز</span>
             </div>
-            <h3>${esc(s.title)}</h3>
+            <h3><a href="service.html?id=${encodeURIComponent(s.id)}">${esc(s.title)}</a></h3>
             <p class="muted small lh">${esc(s.desc)}</p>
             <ul class="svc-fields">${s.fields.slice(0, 4).map((f) => `<li>${icon("check")}${esc(f.label)}</li>`).join("")}</ul>
             <div class="row-between mt-2">
               <span class="small muted">شروع قیمت<br><b class="brand">${toman(s.base)}</b></span>
-              <a href="order.html?service=${s.id}" class="btn btn-primary btn-sm">ثبت سفارش ${icon("arrow")}</a>
+              <span class="row" style="gap:6px"><a href="service.html?id=${encodeURIComponent(s.id)}" class="btn btn-ghost btn-sm">جزئیات</a><a href="order.html?service=${s.id}" class="btn btn-primary btn-sm">ثبت سفارش ${icon("arrow")}</a></span>
             </div>
           </article>`).join("")}
       </div>

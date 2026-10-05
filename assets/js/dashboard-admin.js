@@ -416,7 +416,6 @@
         ["maintenance", "حالت تعمیر و نگهداری (فقط مدیر سایت را می‌بیند)", "switch"], ["maintenanceText", "متن صفحه تعمیر", "textarea"],
       ]],
       ["shop", [["enabled", "فروشگاه فایل فعال باشد", "switch"]]],
-      ["seo", [["title", "عنوان سئو صفحه اصلی", "text"], ["description", "توضیحات متا", "textarea"]]],
     ] },
     contact: { title: "تماس و شبکه‌ها", icon: "phone", groups: [
       ["contact", [
@@ -467,6 +466,17 @@
       ], "هدیه‌ها فقط بعد از اولین پرداخت واقعی دوست داده می‌شود تا از سوءاستفاده جلوگیری شود."],
       ["cart", [["reminder", "پیامک یادآوری سبد خرید رهاشده", "switch"], ["hours", "ارسال یادآوری بعد از چند ساعت", "number"]],
         "برای کاربران واردشده‌ای که فایل در سبد گذاشته‌اند و خرید نکرده‌اند؛ یک بار برای هر سبد. قالب «یادآوری سبد خرید» را در قالب‌های پیامک فعال کنید."],
+    ] },
+    seo: { title: "سئو", icon: "search", groups: [
+      ["seo", [
+        ["title", "عنوان صفحه اصلی در گوگل (۵۰ تا ۶۰ کاراکتر)", "text"], ["description", "توضیحات متای صفحه اصلی (۱۲۰ تا ۱۶۰ کاراکتر)", "textarea"],
+        ["pages", "عنوان و توضیحات سایر صفحات — هر خط: صفحه | عنوان | توضیحات (صفحه‌ها: services، shop، portfolio، designers، about، tools، blog، order، terms)", "lines"],
+        ["ogImage", "آدرس تصویر اشتراک‌گذاری (۱۲۰۰×۶۳۰؛ خالی = تصویر پیش‌فرض)", "ltr"],
+        ["googleVerify", "کد تأیید Google Search Console (فقط مقدار content)", "ltr"], ["bingVerify", "کد تأیید Bing Webmaster", "ltr"],
+        ["gaId", "شناسه Google Analytics 4 (مثل G-XXXXXXX)", "ltr"], ["headCode", "کد دلخواه داخل head همه صفحات (مثلاً Microsoft Clarity یا Yandex Metrica)", "code"],
+        ["orgType", "نوع کسب‌وکار در داده ساختاریافته", "select", [["ProfessionalService", "خدمات حرفه‌ای"], ["Organization", "سازمان"], ["LocalBusiness", "کسب‌وکار محلی"], ["Store", "فروشگاه"]]],
+        ["city", "شهر", "text"], ["noindex", "فعلاً در گوگل ایندکس نشود (برای دوره راه‌اندازی)", "switch"],
+      ], "نقشه سایت: /sitemap.xml · فایل robots: /robots.txt · فید ترب: /api/index.php?r=feed.torob — این آدرس‌ها خودکار به‌روز می‌شوند."],
     ] },
     invoice: { title: "فاکتور", icon: "file", groups: [
       ["invoice", [
@@ -593,7 +603,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { general: "اطلاعات سایت", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">

@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 6;
+const BX_SCHEMA_VERSION = 7;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -257,6 +257,27 @@ function bx_schema(): array
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL
+        ) $t",
+        // v7 — blog
+        "CREATE TABLE IF NOT EXISTS posts (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            slug VARCHAR(190) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            excerpt TEXT NULL,
+            body LONGTEXT NULL,
+            cover VARCHAR(20) NULL,
+            tags LONGTEXT NULL,
+            category VARCHAR(80) NOT NULL DEFAULT '',
+            status VARCHAR(12) NOT NULL DEFAULT 'draft',
+            seo_title VARCHAR(255) NOT NULL DEFAULT '',
+            seo_desc VARCHAR(400) NOT NULL DEFAULT '',
+            views INT UNSIGNED NOT NULL DEFAULT 0,
+            author_id INT UNSIGNED NULL,
+            published_at DATETIME NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            UNIQUE KEY slug (slug),
+            KEY status_time (status, published_at)
         ) $t",
         // v6 — shop product reviews (buyers only)
         "CREATE TABLE IF NOT EXISTS product_reviews (
