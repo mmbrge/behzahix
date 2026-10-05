@@ -304,3 +304,7 @@
 .meta-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; background: var(--hover); font-size: .72rem; }
 .meta-chip small { color: var(--muted); }
 .ellipsis { display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.cover-pick { display: flex; align-items: center; gap: 14px; }
+.cover-prev { display: grid; place-items: center; flex-shrink: 0; width: 120px; height: 90px; border: 1px dashed var(--line-strong); border-radius: 14px; background: var(--inset) center / cover no-repeat; color: var(--muted); }
+.d-block { display: block; }
+.steps-list { display: flex; flex-direction: column; gap: 8px; padding-right: 20px; list-style: decimal; font-size: .88rem; line-height: 1.9; }

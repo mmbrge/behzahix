@@ -152,7 +152,49 @@
     return box("محصولات فروشگاه", "box", `
       ${seg("aprod", [["all", "همه", S.products.length], ["pending", "در انتظار تأیید", S.products.filter((p) => p.status === "pending").length], ["active", "فعال"], ["hidden", "مخفی"], ["rejected", "رد شده"]], f)}
       <div class="mt-2">${table(["محصول", "قیمت", "فروش", "وضعیت", ""], productRows(list, true), "محصولی در این وضعیت نیست.")}</div>`,
-      `<button class="btn btn-primary btn-sm" data-act="add-product">${icon("plus")} محصول جدید</button>`);
+      `<button class="btn btn-ghost btn-sm" data-act="product-import">${icon("upload")} ورود گروهی از اکسل</button><button class="btn btn-primary btn-sm" data-act="add-product">${icon("plus")} محصول جدید</button>`);
+  }
+
+  // Bulk import: CSV saved from Excel / Google Sheets
+  function productImport() {
+    const { icon, faDigits, esc, modal, toast } = h();
+    const cats = (BXD.S.productCategories || BX.PRODUCT_CATEGORIES).map((c) => c.title);
+    const template = () => {
+      const rows = [["عنوان", "دسته", "قیمت", "تخفیف", "برچسب‌ها", "توضیحات", "وضعیت"],
+        ["قالب پاورپوینت شرکتی", cats[0] || "", "490000", "10", "پاورپوینت، شرکتی", "۲۰ اسلاید قابل ویرایش", "فعال"]];
+      const csv = "\uFEFF" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      a.download = "behix-products-template.csv";
+      a.click();
+    };
+    modal({
+      title: "ورود گروهی محصولات", wide: true,
+      body: `<ol class="steps-list">
+          <li>فایل نمونه را دانلود و در اکسل باز کنید؛ هر سطر یک محصول است.</li>
+          <li>ستون «دسته» باید یکی از این‌ها باشد: ${cats.map((c) => `<span class="badge">${esc(c)}</span>`).join(" ")}</li>
+          <li>در اکسل: File ← Save As ← نوع <b dir="ltr">CSV UTF-8</b> را انتخاب و فایل را اینجا بارگذاری کنید.</li>
+          <li>بعد از ورود، برای هر محصول عکس کاور و فایل‌های دانلودی را از دکمه ویرایش اضافه کنید.</li>
+        </ol>
+        <button type="button" class="btn btn-ghost btn-sm mt-2" data-tpl>${icon("download")} دانلود فایل نمونه</button>
+        <label class="drop mt-2">${icon("upload")}<b class="small">انتخاب فایل CSV</b><small data-picked>حداکثر ۵۰۰ محصول در هر بار</small><input type="file" accept=".csv,text/csv" hidden data-csv></label>
+        <div data-result></div>`,
+      onOpen: (wrap) => {
+        wrap.querySelector("[data-tpl]").onclick = template;
+        wrap.querySelector("[data-csv]").addEventListener("change", async (e) => {
+          const f = e.target.files[0];
+          if (!f) return;
+          wrap.querySelector("[data-picked]").textContent = f.name;
+          try {
+            const r = await BXD.act("product.import", { csv: await f.text() });
+            const errs = r.errors || [];
+            wrap.querySelector("[data-result]").innerHTML = `<div class="banner mt-2">${icon(r.created ? "check-circle" : "info")}<span>${esc(r.message || "")}</span></div>
+              ${errs.length ? `<ul class="small mt-1">${errs.slice(0, 20).map((x) => `<li>سطر ${faDigits(x.row)}: ${esc(x.msg)}</li>`).join("")}</ul>` : ""}`;
+          } catch (err) { toast(err.message, "bad"); }
+        });
+      },
+      actions: [{ label: "بستن" }],
+    });
   }
 
   function pcatsTab() {
@@ -433,6 +475,32 @@
       ]],
       ["uploads", [["maxMB", "حداکثر حجم هر فایل (مگابایت)", "number"], ["ext", "پسوندهای مجاز (با کاما)", "ltr"]], "حداکثر حجم واقعی به تنظیمات PHP هاست (upload_max_filesize) هم بستگی دارد."],
     ] },
+    bnpl: { title: "پرداخت اقساطی", icon: "wallet", groups: [
+      ["bnpl_snapppay", [
+        ["enabled", "فعال باشد (پس از عقد قرارداد پذیرندگی)", "switch"], ["label", "نام نمایشی", "text"], ["note", "توضیح کوتاه برای مشتری (مثلاً ۴ قسط بدون کارمزد)", "text"],
+        ["installments", "تعداد قسط برای نمایش مبلغ هر قسط (۰ = نمایش نده)", "number"], ["min", "حداقل مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"], ["max", "حداکثر مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"],
+        ["apiUrl", "آدرس API (خالی = پیش‌فرض)", "ltr"],
+        ["clientId", "Client ID", "ltr"], ["clientSecret", "Client Secret", "ltr"], ["username", "نام کاربری", "ltr"], ["password", "رمز عبور", "ltr"],
+      ], "اطلاعات پذیرنده را پس از قرارداد از اسنپ‌پی بگیرید. آدرس پیش‌فرض، محیط آزمایشی (staging) است؛ برای فروش واقعی آدرس نهایی را که اسنپ‌پی می‌دهد وارد کنید."],
+      ["bnpl_digipay", [
+        ["enabled", "فعال باشد (پس از عقد قرارداد پذیرندگی)", "switch"], ["label", "نام نمایشی", "text"], ["note", "توضیح کوتاه برای مشتری (مثلاً ۴ قسط بدون کارمزد)", "text"],
+        ["installments", "تعداد قسط برای نمایش مبلغ هر قسط (۰ = نمایش نده)", "number"], ["min", "حداقل مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"], ["max", "حداکثر مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"],
+        ["apiUrl", "آدرس API (خالی = پیش‌فرض)", "ltr"],
+        ["clientId", "Client ID", "ltr"], ["clientSecret", "Client Secret", "ltr"], ["username", "نام کاربری", "ltr"], ["password", "رمز عبور", "ltr"],
+      ], "در صفحه پرداخت دیجی‌پی، مشتری بین پرداخت کارتی، کیف پول و خرید اعتباری/اقساطی انتخاب می‌کند."],
+      ["bnpl_azki", [
+        ["enabled", "فعال باشد (پس از عقد قرارداد پذیرندگی)", "switch"], ["label", "نام نمایشی", "text"], ["note", "توضیح کوتاه برای مشتری (مثلاً ۴ قسط بدون کارمزد)", "text"],
+        ["installments", "تعداد قسط برای نمایش مبلغ هر قسط (۰ = نمایش نده)", "number"], ["min", "حداقل مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"], ["max", "حداکثر مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"],
+        ["apiUrl", "آدرس API (خالی = پیش‌فرض)", "ltr"],
+        ["merchantId", "Merchant ID", "ltr"], ["key", "کلید (Key) — رشته هگز", "ltr"],
+      ], "اطلاعات را از پنل پذیرندگان ازکی وام بگیرید."],
+      ["bnpl_torobpay", [
+        ["enabled", "فعال باشد (پس از عقد قرارداد پذیرندگی)", "switch"], ["label", "نام نمایشی", "text"], ["note", "توضیح کوتاه برای مشتری (مثلاً ۴ قسط بدون کارمزد)", "text"],
+        ["installments", "تعداد قسط برای نمایش مبلغ هر قسط (۰ = نمایش نده)", "number"], ["min", "حداقل مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"], ["max", "حداکثر مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"],
+        ["apiUrl", "آدرس API (خالی = پیش‌فرض)", "ltr"],
+        ["clientId", "Client ID", "ltr"], ["clientSecret", "Client Secret", "ltr"], ["username", "نام کاربری", "ltr"], ["password", "رمز عبور", "ltr"],
+      ], "اطلاعات پذیرنده را پس از قرارداد از ترب‌پی بگیرید."],
+    ] },
     tools: { title: "ابزارها", icon: "wrench", groups: [
       ["tools", [
         ["enabled", "صفحه ابزارهای رایگان فعال باشد", "switch"], ["shortRequireLogin", "ساخت لینک کوتاه فقط برای کاربران واردشده", "switch"],
@@ -486,7 +554,7 @@
     }
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", shop: "فروشگاه", tools: "ابزارهای رایگان", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { general: "اطلاعات سایت", shop: "فروشگاه", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">
@@ -660,6 +728,7 @@
   };
   const toolsEl = () => document.querySelector("[data-tools-admin]");
   Object.assign(BXD.acts, {
+    "product-import": () => productImport(),
     "tool-log": (el) => { toolsState.log.tool = el.dataset.tool; location.hash = "tools/log"; },
     "tool-log-more": () => { toolsState.log.page += 1; toolsLog(toolsEl(), true); },
     "short-stats": (el) => BX.api("a.short.stats", { id: el.dataset.id }).then((d) => BX.shortStatsModal?.(d)).catch((err) => BX.toast(err.message, "bad")),

@@ -23,7 +23,11 @@ function db_in_tx(): bool
 
 $route = preg_replace('/[^a-zA-Z0-9_.]/', '', (string) ($_GET['r'] ?? ''));
 if (!installed()) fail('سایت هنوز نصب نشده است. فایل install.php را اجرا کنید.', 503, 'not_installed');
-ensure_schema();
+try {
+    ensure_schema();
+} catch (Throwable $e) {
+    error_log('[BEHIX] schema migration: ' . $e->getMessage()); // keep the site up; retried next request
+}
 start_session();
 
 // GET routes (no state change, no CSRF)

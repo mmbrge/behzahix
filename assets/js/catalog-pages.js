@@ -33,6 +33,11 @@
           ${sorts ? `<select class="select sort-select" data-sort aria-label="مرتب‌سازی">${sorts.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select>` : ""}
         </div>`;
     }
+    // "or N instalments of X with SnappPay" under a price
+    const bnplHint = (amount) => {
+      const b = BX.bnplFor(amount).find((x) => x.installments > 1);
+      return b ? `<p class="bnpl-hint">${icon("calendar")}<span>یا ${faDigits(b.installments)} قسط ${toman(Math.ceil(amount / b.installments / 1000) * 1000)} با <b>${esc(b.label)}</b></span></p>` : "";
+    };
     const failView = (err) => (view.innerHTML = `<div class="card empty">${icon("info")}<p>${esc(err.message)}</p></div>`);
 
     // ============================================================= Portfolio
@@ -170,8 +175,8 @@
           return `
             <article class="work-card" data-reveal style="--d:${(i % 6) * 60}ms">
               <button type="button" class="work-thumb w-full" data-open="${p.id}" aria-label="جزئیات ${esc(p.title)}">
-                <span class="bg" style="background:${art(p.id)}"></span>
-                <span class="thumb-icon">${icon(c.icon)}</span>
+                <span class="bg" style='background:${thumbBg(p)}'></span>
+                ${p.image ? "" : `<span class="thumb-icon">${icon(c.icon)}</span>`}
                 ${p.discount ? `<span class="off">${faDigits(p.discount)}٪</span>` : ""}
               </button>
               <div class="work-body">
@@ -211,7 +216,7 @@
             <div class="drawer-items">
               ${items.length ? items.map((p) => `
                 <div class="drawer-item">
-                  <span class="mini" style="background:${art(p.id)}"></span>
+                  <span class="mini" style='background:${thumbBg(p)}'></span>
                   <div class="grow"><b>${esc(p.title)}</b><br><span class="muted">${toman(finalPrice(p))}</span></div>
                   <button type="button" class="icon-btn" data-remove="${p.id}" aria-label="حذف">${icon("trash")}</button>
                 </div>`).join("") : `<div class="empty">${icon("cart")}<p>سبد خرید خالی است.</p></div>`}
@@ -219,6 +224,7 @@
             ${items.length ? `<form class="coupon-row" data-coupon><input class="input" name="code" dir="ltr" placeholder="کد تخفیف" value="${esc(couponCode)}" aria-label="کد تخفیف"><button class="btn btn-ghost btn-sm" type="submit">اعمال</button></form><p class="small" data-coupon-note></p>` : ""}
             <div class="row-between"><span class="muted">جمع کل</span><b class="price" style="font-size:1.4rem" data-total>${toman(total)}</b></div>
             ${user ? `<p class="small muted mt-1">موجودی کیف پول: ${toman(wallet)}${wallet && wallet < total ? ` — ${toman(total - wallet)} از درگاه پرداخت می‌شود` : ""}</p>` : '<p class="small muted mt-1">برای خرید ابتدا وارد شوید.</p>'}
+            ${user && items.length && wallet < total && BX.bnplFor(total - wallet).length ? `<p class="small mt-2"><b>روش پرداخت</b></p>${BX.payOptions(total - wallet)}` : ""}
             <button type="button" class="btn btn-primary btn-block mt-2" data-checkout ${items.length ? "" : "disabled"}>${icon("lock")} ${user && wallet >= total ? "پرداخت از کیف پول" : "پرداخت و دانلود"}</button>
           </aside>`;
         const close = () => wrap.remove();
@@ -263,7 +269,8 @@
         }
         btn.disabled = true;
         try {
-          const r = await api("shop.checkout", { items: cart, coupon: couponCode });
+          const method = btn.closest(".drawer")?.querySelector("[name=method]:checked")?.value || "gateway";
+          const r = await api("shop.checkout", { items: cart, coupon: couponCode, method });
           if (r.redirect) {
             location.href = r.redirect;
             return;
@@ -312,8 +319,9 @@
           modal({
             title: p.title, wide: true,
             body: `
-              <div class="detail-thumb" style="background:${art(p.id)}">${icon(c.icon)}</div>
+              <div class="detail-thumb" style='background:${thumbBg(p)}'>${p.image ? "" : icon(c.icon)}</div>
               <div class="row-between mt-2"><div class="price-row" style="margin:0"><span class="now price">${toman(finalPrice(p))}</span>${p.discount ? `<span class="was">${num(p.price)}</span>` : ""}</div>${stars(p.rating)}</div>
+              ${bnplHint(finalPrice(p))}
               ${p.desc ? `<p class="muted small lh mt-2" style="white-space:pre-line">${esc(p.desc)}</p>` : ""}
               <dl class="kv mt-2">
                 <dt>دسته</dt><dd>${esc(c.title)}</dd>

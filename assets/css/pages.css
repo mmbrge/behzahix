@@ -710,3 +710,10 @@
 .nw-cards b { font-size: .9em; }
 .nw-cards small { color: #a3a8b6; font-size: .7em; }
 @media (max-width: 767px) { .compare .panel-label { bottom: 8px; padding: 2px 10px; font-size: .7rem; } .compare .panel--before .panel-label { right: 8px; } .compare .panel--after .panel-label { left: 8px; } }
+
+/* Installment hint & payment-method cards */
+.bnpl-hint { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 12px; border: 1px dashed rgb(255 122 26 / .45); border-radius: 12px; background: rgb(255 122 26 / .06); font-size: .82rem; }
+.bnpl-hint .icon { flex-shrink: 0; width: 18px; height: 18px; color: var(--brand); }
+.pay-opts { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.pay-opt[data-bnpl] { border-color: rgb(255 122 26 / .35); }
+.pay-opt small b { font-size: .72rem; }

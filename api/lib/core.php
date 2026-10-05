@@ -256,6 +256,10 @@ function ensure_schema(): void
     $v = (int) val("SELECT v FROM settings WHERE k = 'schema_version'");
     if ($v >= BX_SCHEMA_VERSION) return;
     foreach (bx_schema() as $sql) db()->exec($sql);
+    foreach (bx_columns() as [$table, $col, $def]) {
+        $has = val('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$table, $col]);
+        if (!$has) db()->exec("ALTER TABLE `$table` ADD COLUMN `$col` $def");
+    }
     q("INSERT INTO settings (k, v) VALUES ('schema_version', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)", [(string) BX_SCHEMA_VERSION]);
 }
 function settings(): array
@@ -426,7 +430,7 @@ function product_out(array $p, bool $withFiles = false): array
 {
     $o = ['id' => (string) $p['id'], 'sellerId' => (string) $p['seller_id'], 'title' => $p['title'], 'category' => $p['category_id'],
         'price' => (int) $p['price'], 'discount' => (int) $p['discount'], 'sales' => (int) $p['sales'], 'rating' => (float) $p['rating'],
-        'status' => $p['status'], 'tags' => jdec($p['tags'], []), 'desc' => $p['descr'], 'createdAt' => ms($p['created_at'])];
+        'status' => $p['status'], 'tags' => jdec($p['tags'], []), 'desc' => $p['descr'], 'image' => $p['image'] ?? null, 'createdAt' => ms($p['created_at'])];
     if ($withFiles) $o['files'] = array_map('file_out', rows("SELECT * FROM files WHERE kind = 'product' AND ref_id = ?", [$p['id']]));
     return $o;
 }

@@ -240,6 +240,20 @@
     update();
   }
 
+  // ---------------------------------------------------------------- Installments (BNPL)
+  // Providers enabled in settings whose min/max allow this amount (Toman)
+  BX.bnplFor = (amount) => (BX.settings?.bnpl || []).filter((b) => (!b.min || amount >= b.min) && (!b.max || amount <= b.max));
+  // Payment-method cards: bank gateway (+ optional wallet) and installment providers
+  BX.payOptions = (amount, { wallet = null, gatewayNote = "پرداخت آنلاین با همه کارت‌ها" } = {}) => {
+    const inst = BX.bnplFor(amount);
+    const card = (v, ic, title, note, checked, extra = "") => `<label class="opt-card pay-opt" ${extra}><input type="radio" name="method" value="${v}" ${checked ? "checked" : ""}><span class="opt-icon">${icon(ic)}</span><b>${title}</b><small>${note}</small></label>`;
+    return `<div class="opt-cards pay-opts">
+      ${wallet ? card("wallet", "wallet", "کیف پول", wallet.note, wallet.checked, wallet.disabled ? 'style="opacity:.5;pointer-events:none"' : "") : ""}
+      ${card("gateway", "lock", "درگاه بانکی", gatewayNote, !wallet?.checked)}
+      ${inst.map((b) => card(b.id, "calendar", esc(b.label), `${esc(b.note)}${b.installments > 1 ? `<br><b class="brand">${faDigits(b.installments)} قسط × ${num(Math.ceil(amount / b.installments / 1000) * 1000)} تومان</b>` : ""}`, false, 'data-bnpl')).join("")}
+    </div>`;
+  };
+
   // ---------------------------------------------------------------- Mobile: menu sheet
   // Full-screen menu that grows out of the menu button (phones & tablets).
   let installPrompt = null;

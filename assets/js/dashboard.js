@@ -593,7 +593,7 @@
         const c = (S.productCategories || BX.PRODUCT_CATEGORIES).find((x) => x.id === p.category);
         const seller = userById(p.sellerId);
         return `<tr>
-          <td><div class="cell-title"><span class="mini-thumb" style="background:${art(p.id)}">${icon(c?.icon || "box")}</span><span><b>${esc(p.title)}</b><small>${esc(c?.title || "")}${admin ? ` · ${esc(seller?.shopName || seller?.name || "")}` : ""} · ${faDigits((p.files || []).length)} فایل</small></span></div></td>
+          <td><div class="cell-title"><span class="mini-thumb" style='background:${p.image ? `url("${fileUrl(p.image)}") center/cover, ` : ""}${art(p.id)}'>${p.image ? "" : icon(c?.icon || "box")}</span><span><b>${esc(p.title)}</b><small>${esc(c?.title || "")}${admin ? ` · ${esc(seller?.shopName || seller?.name || "")}` : ""} · ${faDigits((p.files || []).length)} فایل</small></span></div></td>
           <td>${money(p.price)}${p.discount ? ` <span class="badge badge--bad">${faDigits(p.discount)}٪</span>` : ""}</td>
           <td>${faDigits(p.sales)}</td>
           <td>${pill(PRODUCT_STATUS[p.status] || ["—", "info"])}</td>
@@ -813,6 +813,13 @@
           ${isAdmin ? `
             <div class="field"><label class="field-label" for="pd-seller">فروشنده</label><select class="select" id="pd-seller" name="sellerId">${sellers.map((u) => `<option value="${u.id}" ${u.id === (p.sellerId || me.id) ? "selected" : ""}>${esc(u.shopName || u.name)}${u.role === "admin" ? " (فروشگاه سایت)" : ""}</option>`).join("")}</select></div>
             <div class="field"><label class="field-label" for="pd-status">وضعیت</label><select class="select" id="pd-status" name="status">${Object.entries(PRODUCT_STATUS).map(([k, [l]]) => `<option value="${k}" ${k === (p.status || "active") ? "selected" : ""}>${l}</option>`).join("")}</select></div>` : ""}
+          <div class="field span-2"><span class="field-label">عکس کاور محصول</span>
+            <div class="cover-pick">
+              <span class="cover-prev" data-cover-prev style="${p.image ? `background-image:url('${fileUrl(p.image)}')` : ""}">${p.image ? "" : icon("image")}</span>
+              <div class="grow"><label class="btn btn-ghost btn-sm">${icon("upload")} انتخاب عکس<input type="file" name="cover" accept="image/*" hidden></label>
+              ${p.image ? `<label class="switch small mt-1"><input type="checkbox" name="removeCover"><span class="track"></span>حذف عکس فعلی</label>` : ""}
+              <small class="muted d-block mt-1">JPG، PNG یا WebP — ترجیحاً ۱۲۰۰×۹۰۰. بدون عکس، طرح رنگی خودکار نمایش داده می‌شود.</small></div>
+            </div></div>
           <div class="field span-2"><label class="field-label" for="pd-desc">توضیحات</label><textarea class="textarea" id="pd-desc" name="desc">${esc(p.desc || "")}</textarea></div>
           <div class="field span-2"><span class="field-label">فایل‌های محصول</span>
             ${(p.files || []).map((f) => `<div class="deliv">${icon("file")}<div class="grow"><b dir="ltr" style="text-align:right">${esc(f.name)}</b></div><a class="btn btn-ghost btn-xs" href="${fileUrl(f.id)}">${icon("download")}</a><button type="button" class="icon-btn icon-btn-sm" data-act="delete-file" data-id="${f.id}" aria-label="حذف">${icon("trash")}</button></div>`).join("")}
@@ -823,13 +830,23 @@
         onOpen: (wrap) => {
           const input = wrap.querySelector("input[type=file]");
           input.addEventListener("change", () => (wrap.querySelector("[data-picked]").textContent = [...input.files].map((f) => f.name).join("، ")));
+          const cover = wrap.querySelector("input[name=cover]");
+          cover.addEventListener("change", () => {
+            const prev = wrap.querySelector("[data-cover-prev]");
+            if (!cover.files[0]) return;
+            prev.style.backgroundImage = `url('${URL.createObjectURL(cover.files[0])}')`;
+            prev.innerHTML = "";
+          });
         },
         actions: [{ label: "انصراف" }, {
           label: isAdmin ? "ذخیره" : "ذخیره و ارسال برای بررسی", primary: true, onClick: (wrap) => {
             const f = wrap.querySelector("#product-form").elements;
             const data = { id: p.id || 0, title: f.title.value, category: f.category.value, tags: f.tags.value, price: f.price.value, discount: f.discount.value, desc: f.desc.value };
             if (isAdmin) Object.assign(data, { sellerId: f.sellerId.value, status: f.status.value });
-            quiet(act("product.save", data, [...f.files.files]));
+            if (f.removeCover?.checked) data.removeCover = 1;
+            const files = [...f.files.files];
+            if (f.cover.files[0]) files.cover = f.cover.files[0];
+            quiet(act("product.save", data, files));
           },
         }],
       });
@@ -886,10 +903,10 @@
         modal({
           title: `پرداخت ${o.code}`,
           body: `<p class="price">${money(amount)}</p>
-            <div class="opt-cards mt-2">
-              <label class="opt-card"><input type="radio" name="method" value="gateway" ${canWallet ? "" : "checked"}><span class="opt-icon">${icon("lock")}</span><b>درگاه بانکی</b><small>${me.wallet ? `${money(Math.max(0, amount - me.wallet))} از درگاه` : "پرداخت آنلاین"}</small></label>
-              <label class="opt-card" ${canWallet ? "" : 'style="opacity:.5;pointer-events:none"'}><input type="radio" name="method" value="wallet" ${canWallet ? "checked" : ""}><span class="opt-icon">${icon("wallet")}</span><b>کیف پول</b><small>موجودی ${money(me.wallet)}</small></label>
-            </div>`,
+            <div class="mt-2">${BX.payOptions(Math.max(1000, amount - Math.max(0, me.wallet || 0)), {
+              wallet: { note: `موجودی ${money(me.wallet)}`, checked: canWallet, disabled: !canWallet },
+              gatewayNote: me.wallet ? `${money(Math.max(0, amount - me.wallet))} از درگاه` : "پرداخت آنلاین با همه کارت‌ها",
+            })}</div>`,
           actions: [{ label: "انصراف" }, { label: "پرداخت", primary: true, onClick: (wrap) => quiet(act("order.pay", { id: o.id, method: wrap.querySelector("[name=method]:checked")?.value || "gateway" })) }],
         });
       },

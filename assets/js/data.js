@@ -20,10 +20,13 @@
 
   async function call(route, data = {}, files = null, retried = false) {
     const opts = { method: "POST", credentials: "same-origin", headers: { "X-CSRF": csrf } };
-    if (files && files.length) {
+    // files: array of File (sent as files[]); named extras like files.cover are sent under their own key
+    const named = files ? Object.keys(files).filter((k) => isNaN(k) && files[k] instanceof Blob) : [];
+    if (files && (files.length || named.length)) {
       const fd = new FormData();
       fd.append("payload", JSON.stringify(data));
       for (const f of files) fd.append("files[]", f, f.name);
+      for (const k of named) fd.append(k, files[k], files[k].name);
       opts.body = fd;
     } else {
       opts.headers["Content-Type"] = "application/json";

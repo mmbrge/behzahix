@@ -4,7 +4,15 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 2;
+const BX_SCHEMA_VERSION = 3;
+
+// Columns added after the first release: [table, column, definition]
+function bx_columns(): array
+{
+    return [
+        ['products', 'image', 'VARCHAR(20) NULL'], // v3 — cover image (files.id, kind = cover)
+    ];
+}
 
 function bx_schema(): array
 {
@@ -80,6 +88,7 @@ function bx_schema(): array
             status VARCHAR(16) NOT NULL DEFAULT 'pending',
             tags LONGTEXT NULL,
             descr TEXT NULL,
+            image VARCHAR(20) NULL,
             created_at DATETIME NOT NULL,
             INDEX (seller_id), INDEX (status)
         ) $t",

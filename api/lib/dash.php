@@ -312,7 +312,7 @@ function a_order_pay(): void
         done('پرداخت با موفقیت انجام شد.');
     }
     $need = $amount - max(0, (int) $u['wallet']);
-    $url = payment_start((int) $u['id'], 'order', ['orderId' => (int) $o['id']], max(1000, $need), 'پرداخت سفارش ' . $o['code']);
+    $url = payment_start((int) $u['id'], 'order', ['orderId' => (int) $o['id']], max(1000, $need), 'پرداخت سفارش ' . $o['code'], str_in('method', 16));
     done('', ['redirect' => $url]);
 }
 function a_order_approve(): void
@@ -468,8 +468,64 @@ function a_product_save(): void
         $id = insert('products', $data);
     }
     foreach (array_slice(uploaded_files(), 0, 10) as $f) store_upload($f, 'product', $id, (int) $u['id']);
+    // Cover image (public). A new upload replaces the old one; removeCover clears it.
+    $cover = uploaded_files('cover')[0] ?? null;
+    $oldCover = val('SELECT image FROM products WHERE id = ?', [$id]);
+    if ($cover || in('removeCover')) {
+        if ($oldCover) delete_file_row((int) $oldCover);
+        update('products', ['image' => $cover ? (string) store_upload($cover, 'cover', $id, (int) $u['id'])['id'] : null], 'id = ?', [$id]);
+    }
     if ($u['role'] !== 'admin') notify_admins('محصول «' . $title . '» برای تأیید ارسال شد.', 'sellers');
     done($u['role'] === 'admin' ? 'محصول ذخیره شد.' : 'محصول برای بررسی ارسال شد.');
+}
+// Bulk import products from CSV (Excel "Save as CSV UTF-8"). Admin only.
+function a_product_import(): void
+{
+    $u = require_active('admin');
+    $csv = (string) in('csv', '');
+    if (strlen($csv) > 2 * 1024 * 1024) fail('فایل خیلی بزرگ است (حداکثر ۲ مگابایت).', 422);
+    $csv = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
+    if (!mb_check_encoding($csv, 'UTF-8') && function_exists('iconv')) $csv = (string) @iconv('Windows-1256', 'UTF-8//IGNORE', $csv);
+    $lines = preg_split('/\r\n|\r|\n/', trim($csv));
+    if (count($lines) < 2) fail('فایل خالی است یا فقط سطر عنوان دارد.', 422);
+    $delim = substr_count($lines[0], ';') > substr_count($lines[0], ',') ? ';' : (substr_count($lines[0], "\t") > substr_count($lines[0], ',') ? "\t" : ',');
+    $alias = ['title' => ['title', 'عنوان', 'نام محصول', 'نام'], 'category' => ['category', 'دسته', 'دسته‌بندی', 'دسته بندی'], 'price' => ['price', 'قیمت'],
+        'discount' => ['discount', 'تخفیف'], 'tags' => ['tags', 'برچسب‌ها', 'برچسب ها', 'برچسب'], 'desc' => ['desc', 'description', 'توضیحات'], 'status' => ['status', 'وضعیت']];
+    $head = array_map(function ($h) { return trim(mb_strtolower((string) $h)); }, str_getcsv($lines[0], $delim));
+    $col = [];
+    foreach ($alias as $key => $names) foreach ($head as $i => $h) if (in_array($h, $names, true)) $col[$key] = $i;
+    if (!isset($col['title'], $col['price'])) fail('ستون‌های «عنوان» و «قیمت» در سطر اول پیدا نشد. از فایل نمونه استفاده کنید.', 422);
+    $cats = rows('SELECT id, title FROM product_categories');
+    $findCat = function (string $v) use ($cats) {
+        $v = trim($v);
+        foreach ($cats as $c) if ($v !== '' && ($c['id'] === $v || $c['title'] === $v)) return $c['id'];
+        return $cats[0]['id'] ?? null;
+    };
+    $statusMap = ['active' => 'active', 'فعال' => 'active', 'hidden' => 'hidden', 'مخفی' => 'hidden', 'pending' => 'pending', 'در انتظار' => 'pending'];
+    $created = 0; $errors = [];
+    foreach (array_slice($lines, 1, 500) as $n => $line) {
+        if (trim($line) === '') continue;
+        $r = str_getcsv($line, $delim);
+        $get = function ($k) use ($r, $col) { return isset($col[$k]) ? trim((string) ($r[$col[$k]] ?? '')) : ''; };
+        $title = mb_substr($get('title'), 0, 190);
+        $price = (int) preg_replace('/\D/', '', en_digits($get('price')));
+        if (mb_strlen($title) < 3 || $price < 1000) { $errors[] = ['row' => $n + 2, 'msg' => 'عنوان یا قیمت نامعتبر است']; continue; }
+        $cat = $findCat($get('category'));
+        if (!$cat) { $errors[] = ['row' => $n + 2, 'msg' => 'دسته‌بندی پیدا نشد']; continue; }
+        $tags = array_values(array_filter(array_map('trim', preg_split('/[,،|]/u', $get('tags')))));
+        insert('products', ['seller_id' => $u['id'], 'title' => $title, 'category_id' => $cat, 'price' => $price,
+            'discount' => max(0, min(90, (int) en_digits($get('discount')))), 'tags' => jenc($tags), 'descr' => mb_substr($get('desc'), 0, 5000),
+            'status' => $statusMap[$get('status')] ?? 'active', 'sales' => 0, 'rating' => 0, 'created_at' => now()]);
+        $created++;
+    }
+    done($created ? fa_digits((string) $created) . ' محصول اضافه شد.' . ($errors ? ' ' . fa_digits((string) count($errors)) . ' سطر رد شد.' : '') : 'هیچ محصولی اضافه نشد.', ['created' => $created, 'errors' => $errors]);
+}
+function delete_file_row(int $fileId): void
+{
+    $f = row('SELECT * FROM files WHERE id = ?', [$fileId]);
+    if (!$f) return;
+    if ($f['path'] && is_file(dirname(__DIR__, 2) . '/uploads/' . $f['path'])) @unlink(dirname(__DIR__, 2) . '/uploads/' . $f['path']);
+    q('DELETE FROM files WHERE id = ?', [$fileId]);
 }
 function own_product(): array
 {
@@ -913,6 +969,13 @@ function a_settings_save(): void
             return ['id' => preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($p['id'] ?? ''))) ?: 'p' . random_int(100, 999), 'title' => mb_substr((string) $p['title'], 0, 120),
                 'price' => (int) en_digits((string) ($p['price'] ?? 0)), 'days' => max(1, (int) en_digits((string) ($p['days'] ?? 1))), 'selected' => !empty($p['selected'])];
         }, $current['packages'])));
+    }
+    if (strpos($group, 'bnpl_') === 0) {
+        foreach (['min', 'max'] as $k) $current[$k] = max(0, (int) $current[$k]);
+        $current['installments'] = max(0, min(24, (int) $current['installments']));
+        $current['apiUrl'] = preg_match('~^https://[^\s]+$~', trim((string) $current['apiUrl'])) ? rtrim(trim((string) $current['apiUrl']), '/') : '';
+        foreach (['label', 'note'] as $k) $current[$k] = mb_substr(trim((string) $current[$k]), 0, 80);
+        if ($current['label'] === '') $current['label'] = $defaults[$group]['label'];
     }
     if ($group === 'tools') {
         $current['disabled'] = array_values(array_intersect(array_map('strval', (array) $current['disabled']), array_keys(BX_TOOLS)));

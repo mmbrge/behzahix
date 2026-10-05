@@ -216,7 +216,7 @@ function store_upload(array $file, string $kind, ?int $refId, int $ownerId): arr
     $name = mb_substr(preg_replace('/[\\\\\/:*?"<>|]+/', '_', basename($file['name'])), 0, 180);
     $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
     $allowed = array_filter(array_map('trim', explode(',', strtolower(setting('uploads', 'ext', '')))));
-    if ($kind === 'portfolio') $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    if (in_array($kind, ['portfolio', 'cover'], true)) $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
     if (!$ext || !in_array($ext, $allowed, true)) fail("پسوند «.$ext» مجاز نیست.", 422);
     $dir = dirname(__DIR__, 2) . '/uploads/' . gmdate('Y/m');
     if (!is_dir($dir) && !mkdir($dir, 0755, true)) fail('پوشه آپلود قابل ساخت نیست.', 500);
@@ -250,7 +250,7 @@ function r_order_attach(): void
 
 function can_access_file(array $f, ?array $u): bool
 {
-    if ($f['kind'] === 'portfolio') return true;
+    if (in_array($f['kind'], ['portfolio', 'cover'], true)) return true;
     if (!$u) return false;
     if ($u['role'] === 'admin' || (int) $f['owner_id'] === (int) $u['id']) return true;
     if (in_array($f['kind'], ['attachment', 'deliverable'], true)) {
@@ -277,7 +277,7 @@ function r_file(): void
         header('Content-Type: text/plain; charset=utf-8');
         exit('این فایل نمونه است و محتوای واقعی ندارد.');
     }
-    $isImage = $f['kind'] === 'portfolio' && preg_match('/^image\/(png|jpe?g|webp|gif)$/', (string) $f['mime']);
+    $isImage = in_array($f['kind'], ['portfolio', 'cover'], true) && preg_match('/^image\/(png|jpe?g|webp|gif)$/', (string) $f['mime']);
     header('X-Content-Type-Options: nosniff');
     header('Content-Type: ' . ($isImage ? $f['mime'] : 'application/octet-stream'));
     header('Content-Length: ' . filesize($path));
@@ -493,6 +493,6 @@ function r_shop_checkout(): void
         db()->commit();
         out(['done' => true, 'paidFromWallet' => $r['total']]);
     }
-    $url = payment_start((int) $u['id'], 'cart', ['items' => array_map(function ($p) { return (int) $p['id']; }, $items), 'coupon' => $code], $total - max(0, $wallet), 'خرید از فروشگاه');
+    $url = payment_start((int) $u['id'], 'cart', ['items' => array_map(function ($p) { return (int) $p['id']; }, $items), 'coupon' => $code], $total - max(0, $wallet), 'خرید از فروشگاه', str_in('method', 16));
     out(['redirect' => $url]);
 }

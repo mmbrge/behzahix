@@ -63,6 +63,15 @@ function default_settings(): array
         'uploads' => ['maxMB' => 50, 'ext' => 'jpg,jpeg,png,webp,gif,svg,pdf,zip,rar,7z,psd,ai,eps,pptx,ppt,docx,doc,xlsx,xls,mp4,mov,mp3,wav,aep,prproj,fig,txt'],
         'shop' => ['enabled' => true],
         'tools' => ['enabled' => true, 'disabled' => [], 'shortRequireLogin' => false, 'shortGuestDaily' => 10, 'blockedDomains' => []],
+        // Installment (BNPL) gateways — each enabled after signing a merchant contract
+        'bnpl_snapppay' => ['enabled' => false, 'label' => 'اسنپ‌پی', 'note' => '۴ قسط ماهانه، بدون کارمزد', 'installments' => 4, 'min' => 0, 'max' => 0,
+            'apiUrl' => '', 'clientId' => '', 'clientSecret' => '', 'username' => '', 'password' => ''],
+        'bnpl_digipay' => ['enabled' => false, 'label' => 'دیجی‌پی', 'note' => 'خرید اعتباری و اقساطی', 'installments' => 0, 'min' => 0, 'max' => 0,
+            'apiUrl' => '', 'clientId' => '', 'clientSecret' => '', 'username' => '', 'password' => ''],
+        'bnpl_azki' => ['enabled' => false, 'label' => 'ازکی وام', 'note' => 'خرید اقساطی با اعتبار ازکی', 'installments' => 0, 'min' => 0, 'max' => 0,
+            'apiUrl' => '', 'merchantId' => '', 'key' => ''],
+        'bnpl_torobpay' => ['enabled' => false, 'label' => 'ترب‌پی', 'note' => 'خرید اعتباری، پرداخت در اقساط', 'installments' => 4, 'min' => 0, 'max' => 0,
+            'apiUrl' => '', 'clientId' => '', 'clientSecret' => '', 'username' => '', 'password' => ''],
     ];
 }
 
@@ -85,6 +94,11 @@ function public_settings(): array
         'tools' => ['enabled' => (bool) $s['tools']['enabled'], 'disabled' => array_values((array) $s['tools']['disabled']), 'shortRequireLogin' => (bool) $s['tools']['shortRequireLogin']],
         'sms' => ['enabled' => $s['sms']['driver'] !== 'none'],
         'payment' => ['driver' => $s['payment']['driver']],
+        'bnpl' => array_values(array_filter(array_map(function ($id) use ($s) {
+            $c = $s['bnpl_' . $id] ?? [];
+            return empty($c['enabled']) ? null : ['id' => $id, 'label' => (string) $c['label'], 'note' => (string) $c['note'],
+                'installments' => (int) $c['installments'], 'min' => (int) $c['min'], 'max' => (int) $c['max']];
+        }, ['snapppay', 'digipay', 'azki', 'torobpay']))),
     ];
 }
 
