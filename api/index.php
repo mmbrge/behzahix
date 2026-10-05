@@ -35,9 +35,10 @@ start_session();
 // Scheduled jobs (abandoned-cart SMS…): piggyback on traffic; never blocks the request
 try { lazy_cron(($route === 'cron')); } catch (Throwable $e) { error_log('[BEHIX] cron: ' . $e->getMessage()); }
 if ($route === 'cron') out(['ok' => true]);
-$get = ['boot' => 'r_boot', 'file' => 'r_file', 'pay.callback' => 'payment_callback', 'go' => 'r_short_go'];
+$get = ['boot' => 'r_boot', 'file' => 'r_file', 'pay.callback' => 'payment_callback', 'go' => 'r_short_go', 'invoice' => 'r_invoice'];
 if (isset($get[$route])) {
     if ($route === 'pay.callback') require_once __DIR__ . '/lib/gateways.php';
+    if ($route === 'invoice') require_once __DIR__ . '/lib/invoice.php';
     $get[$route]();
     exit;
 }
@@ -54,6 +55,7 @@ $public = [
     'fav.toggle' => 'r_fav_toggle', 'shop.checkout' => 'r_shop_checkout', 'shop.quote' => 'r_shop_quote',
     'cart.sync' => 'r_cart_sync',
     'chat.open' => 'r_chat_open', 'chat.send' => 'r_chat_send', 'chat.poll' => 'r_chat_poll', 'chat.escalate' => 'r_chat_escalate', 'chat.feedback' => 'r_chat_feedback',
+    'product.reviews' => 'r_product_reviews', 'product.review' => 'r_product_review',
     'tools.track' => 'r_tools_track', 'tools.short.create' => 'r_short_create', 'tools.short.mine' => 'r_short_mine', 'tools.short.stats' => 'r_short_stats',
 ];
 if (isset($public[$route])) {

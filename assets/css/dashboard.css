@@ -400,3 +400,14 @@
   .sp-msg { max-width: 90%; }
   .sp-head .actions .btn span { display: none; }
 }
+
+/* product gallery editor */
+.gal-edit { display: flex; flex-wrap: wrap; gap: 8px; }
+.gal-th, .gal-add { position: relative; width: 84px; height: 64px; border-radius: 12px; cursor: pointer; }
+.gal-th { background: var(--inset) center/cover no-repeat; border: 1px solid var(--line); overflow: hidden; }
+.gal-th input { position: absolute; opacity: 0; }
+.gal-th span { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(220 38 38 / .65); color: #fff; opacity: 0; transition: opacity .2s; }
+.gal-th:hover span { opacity: .6; }
+.gal-th:has(input:checked) span { opacity: 1; }
+.gal-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1px dashed var(--line-strong); color: var(--muted); font-size: .72rem; }
+.gal-add:hover { border-color: var(--brand); color: var(--accent); }

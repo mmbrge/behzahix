@@ -258,6 +258,9 @@
         if (o.status === "done" && !o.rating) actions += `<button class="btn btn-primary btn-block" data-act="rate" data-id="${o.id}">${icon("star")} امتیاز به طراح</button>`;
         if (o.status === "done") actions += `<a class="btn btn-ghost btn-block" href="order.html?service=${encodeURIComponent(o.serviceId)}">${icon("refresh")} سفارش مجدد</a>`;
       }
+      if ((role === "customer" && o.quote != null) || role === "admin") {
+        actions += `<a class="btn btn-ghost btn-block btn-sm" href="api/index.php?r=invoice&order=${o.id}" target="_blank" rel="noopener">${icon("file")} ${o.paid ? "فاکتور فروش" : "پیش‌فاکتور"} (چاپ / PDF)</a>`;
+      }
       if (((role === "designer" && o.designerId === me.id) || role === "admin") && ["in_progress", "revision"].includes(o.status)) {
         actions += `<label class="drop" style="padding:16px">${icon("upload")}<b class="small">آپلود فایل تحویلی</b><small>حداکثر ${faDigits(S.settings.uploads?.maxMB || 50)} مگابایت</small><input type="file" multiple data-change="deliver" data-id="${o.id}"></label>
           <button class="btn btn-primary btn-block" data-act="submit-review" data-id="${o.id}">${icon("send")} ارسال برای تأیید مشتری</button>`;
@@ -477,7 +480,8 @@
           const p = S.products.find((x) => x.id === pu.productId);
           const pf = p?.files || [];
           return `<div class="deliv deliv--col"><div class="row"><span class="mini-thumb" style="background:${art(pu.productId)}">${icon("file")}</span><div class="grow"><b>${esc(p?.title || "محصول")}</b><br><small class="muted">${date(pu.at)} · ${money(pu.price)}</small></div></div>
-            <div class="row" style="flex-wrap:wrap">${pf.length ? pf.map((f) => `<a class="btn btn-ghost btn-xs" href="${fileUrl(f.id)}" download>${icon("download")} ${esc(f.name)}</a>`).join("") : '<small class="muted">فایل این محصول هنوز بارگذاری نشده است.</small>'}</div></div>`;
+            <div class="row" style="flex-wrap:wrap">${pf.length ? pf.map((f) => `<a class="btn btn-ghost btn-xs" href="${fileUrl(f.id)}" download>${icon("download")} ${esc(f.name)}</a>`).join("") : '<small class="muted">فایل این محصول هنوز بارگذاری نشده است.</small>'}</div>
+            <div class="row" style="flex-wrap:wrap"><a class="btn btn-ghost btn-xs" href="shop.html?product=${encodeURIComponent(pu.productId)}#review">${icon("star")} ثبت نظر و امتیاز</a><a class="btn btn-ghost btn-xs" href="api/index.php?r=invoice&purchase=${pu.id}" target="_blank" rel="noopener">${icon("file")} فاکتور</a></div></div>`;
         }).join("") : empty("هنوز خریدی نداشته‌اید.", "store"), S.settings.shop?.enabled !== false ? '<a class="btn btn-ghost btn-sm" href="shop.html">فروشگاه</a>' : "")}
         ${box("فایل‌های سفارش‌ها", "folder", files.length ? files.map((f) => fileRow(f)).join("") : empty("فایل تحویلی وجود ندارد.", "folder"))}
       </div>`;
@@ -841,6 +845,10 @@
               ${p.image ? `<label class="switch small mt-1"><input type="checkbox" name="removeCover"><span class="track"></span>حذف عکس فعلی</label>` : ""}
               <small class="muted d-block mt-1">JPG، PNG یا WebP — ترجیحاً ۱۲۰۰×۹۰۰. بدون عکس، طرح رنگی خودکار نمایش داده می‌شود.</small></div>
             </div></div>
+          <div class="field span-2"><span class="field-label">گالری تصاویر پیش‌نمایش (تا ۸ تصویر)</span>
+            <div class="gal-edit">${(p.gallery || []).map((g) => `<label class="gal-th" style="background-image:url('${fileUrl(g)}')"><input type="checkbox" name="removeGallery" value="${esc(g)}"><span>${icon("trash")}</span></label>`).join("")}
+              <label class="gal-add">${icon("plus")}<small>افزودن</small><input type="file" name="gallery" accept="image/*" multiple hidden></label></div>
+            <small class="muted d-block mt-1" data-gal-picked>برای حذف یک تصویر، رویش بزنید. تصاویر در صفحه محصول به‌صورت اسلاید نمایش داده می‌شوند.</small></div>
           <div class="field span-2"><label class="field-label" for="pd-desc">توضیحات</label><textarea class="textarea" id="pd-desc" name="desc">${esc(p.desc || "")}</textarea></div>
           <div class="field span-2"><span class="field-label">فایل‌های محصول</span>
             ${(p.files || []).map((f) => `<div class="deliv">${icon("file")}<div class="grow"><b dir="ltr" style="text-align:right">${esc(f.name)}</b></div><a class="btn btn-ghost btn-xs" href="${fileUrl(f.id)}">${icon("download")}</a><button type="button" class="icon-btn icon-btn-sm" data-act="delete-file" data-id="${f.id}" aria-label="حذف">${icon("trash")}</button></div>`).join("")}
@@ -851,6 +859,8 @@
         onOpen: (wrap) => {
           const input = wrap.querySelector("input[type=file]");
           input.addEventListener("change", () => (wrap.querySelector("[data-picked]").textContent = [...input.files].map((f) => f.name).join("، ")));
+          const gal = wrap.querySelector("input[name=gallery]");
+          gal.addEventListener("change", () => (wrap.querySelector("[data-gal-picked]").textContent = `${faDigits(gal.files.length)} تصویر جدید انتخاب شد: ${[...gal.files].map((x) => x.name).join("، ")}`));
           const cover = wrap.querySelector("input[name=cover]");
           cover.addEventListener("change", () => {
             const prev = wrap.querySelector("[data-cover-prev]");
@@ -867,6 +877,9 @@
             if (f.removeCover?.checked) data.removeCover = 1;
             const files = [...f.files.files];
             if (f.cover.files[0]) files.cover = f.cover.files[0];
+            [...f.gallery.files].slice(0, 8).forEach((g, i) => { files["gallery" + i] = g; });
+            const rm = [...wrap.querySelectorAll("input[name=removeGallery]:checked")].map((x) => x.value);
+            if (rm.length) data.removeGallery = rm;
             quiet(act("product.save", data, files));
           },
         }],

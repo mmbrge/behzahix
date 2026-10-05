@@ -253,7 +253,7 @@ function r_order_attach(): void
 
 function can_access_file(array $f, ?array $u): bool
 {
-    if (in_array($f['kind'], ['portfolio', 'cover'], true)) return true;
+    if (in_array($f['kind'], ['portfolio', 'cover', 'gallery'], true)) return true;
     if (!$u) return false;
     if ($u['role'] === 'admin' || (int) $f['owner_id'] === (int) $u['id']) return true;
     if (in_array($f['kind'], ['attachment', 'deliverable'], true)) {
@@ -280,7 +280,7 @@ function r_file(): void
         header('Content-Type: text/plain; charset=utf-8');
         exit('این فایل نمونه است و محتوای واقعی ندارد.');
     }
-    $isImage = in_array($f['kind'], ['portfolio', 'cover'], true) && preg_match('/^image\/(png|jpe?g|webp|gif)$/', (string) $f['mime']);
+    $isImage = in_array($f['kind'], ['portfolio', 'cover', 'gallery'], true) && preg_match('/^image\/(png|jpe?g|webp|gif)$/', (string) $f['mime']);
     header('X-Content-Type-Options: nosniff');
     header('Content-Type: ' . ($isImage ? $f['mime'] : 'application/octet-stream'));
     header('Content-Length: ' . filesize($path));
@@ -538,4 +538,52 @@ function r_shop_checkout(): void
     }
     $url = payment_start((int) $u['id'], 'cart', ['items' => array_map(function ($p) { return (int) $p['id']; }, $items), 'coupon' => $code], $total - max(0, $wallet), 'خرید از فروشگاه', str_in('method', 16));
     out(['redirect' => $url]);
+}
+
+// ------------------------------------------------------------------ product reviews (buyers only)
+function review_out(array $r, bool $admin = false): array
+{
+    $name = trim((string) ($r['uname'] ?? ''));
+    $parts = preg_split('/\s+/u', $name);
+    $o = ['id' => (int) $r['id'], 'rating' => (int) $r['rating'], 'text' => $r['body'], 'reply' => $r['reply'], 'at' => ms($r['created_at']),
+        'name' => $admin ? $name : (($parts[0] ?? '') ?: 'خریدار') . (count($parts) > 1 ? ' ' . mb_substr(end($parts), 0, 1) . '.' : '')];
+    if ($admin) $o += ['hidden' => (bool) $r['hidden'], 'productId' => (int) $r['product_id'], 'product' => $r['ptitle'] ?? '', 'userId' => (int) $r['user_id']];
+    return $o;
+}
+function product_rating_refresh(int $pid): void
+{
+    $s = row('SELECT COUNT(*) n, AVG(rating) a FROM product_reviews WHERE product_id = ? AND hidden = 0', [$pid]);
+    update('products', ['rating' => round((float) $s['a'], 2), 'reviews' => (int) $s['n']], 'id = ?', [$pid]);
+}
+function r_product_reviews(): void
+{
+    $pid = int_in('id');
+    $list = rows('SELECT r.*, u.name uname FROM product_reviews r JOIN users u ON u.id = r.user_id WHERE r.product_id = ? AND r.hidden = 0 ORDER BY r.id DESC LIMIT 50', [$pid]);
+    $dist = array_fill(1, 5, 0);
+    foreach (rows('SELECT rating, COUNT(*) n FROM product_reviews WHERE product_id = ? AND hidden = 0 GROUP BY rating', [$pid]) as $d) $dist[(int) $d['rating']] = (int) $d['n'];
+    $u = me();
+    $mine = $u ? row('SELECT * FROM product_reviews WHERE product_id = ? AND user_id = ?', [$pid, $u['id']]) : null;
+    $bought = $u && val('SELECT 1 FROM purchases WHERE user_id = ? AND product_id = ?', [$u['id'], $pid]);
+    out(['reviews' => array_map('review_out', $list), 'dist' => $dist, 'canReview' => (bool) $bought,
+        'mine' => $mine ? ['rating' => (int) $mine['rating'], 'text' => $mine['body']] : null]);
+}
+function r_product_review(): void
+{
+    $u = require_user();
+    rate_limit('review', 10, 3600);
+    $pid = int_in('id');
+    if (!val('SELECT 1 FROM purchases WHERE user_id = ? AND product_id = ?', [$u['id'], $pid])) fail('فقط خریداران این محصول می‌توانند نظر ثبت کنند.', 403);
+    $rating = max(1, min(5, int_in('rating')));
+    $text = str_in('text', 1500);
+    if (mb_strlen($text) < 3) fail('چند کلمه درباره محصول بنویسید.', 422);
+    $old = row('SELECT id FROM product_reviews WHERE product_id = ? AND user_id = ?', [$pid, $u['id']]);
+    if ($old) update('product_reviews', ['rating' => $rating, 'body' => $text], 'id = ?', [$old['id']]);
+    else insert('product_reviews', ['product_id' => $pid, 'user_id' => $u['id'], 'rating' => $rating, 'body' => $text, 'created_at' => now()]);
+    product_rating_refresh($pid);
+    $p = row('SELECT title, seller_id FROM products WHERE id = ?', [$pid]);
+    if ($p) {
+        notify((int) $p['seller_id'], '⭐ نظر جدید (' . fa_digits((string) $rating) . ' ستاره) برای «' . $p['title'] . '»', 'products');
+        if (!$old) notify_admins('⭐ نظر جدید برای «' . $p['title'] . '»', 'catalog/reviews');
+    }
+    out(['ok' => true, 'message' => 'نظر شما ثبت شد؛ ممنون!']);
 }

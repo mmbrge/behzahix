@@ -75,6 +75,8 @@ function default_settings(): array
             'stats' => ['{services} | خدمت تخصصی', '۲ ساعت | پاسخ‌گویی در ساعات کاری', '۲ مرحله | اصلاح رایگان در هر سفارش', '۱۰۰٪ | پرداخت امن و شفاف'],
             'designerStats' => ['{share}٪ | سهم طراح از هر پروژه', 'هفتگی | تسویه درآمد', '{services} | نوع خدمت', 'اختصاصی | پنل مدیریت پروژه'],
         ],
+        // Seller details printed on invoices (empty = taken from site name / contact)
+        'invoice' => ['sellerName' => '', 'economicCode' => '', 'nationalId' => '', 'regNo' => '', 'address' => '', 'postalCode' => '', 'phone' => '', 'vatPercent' => 0, 'note' => ''],
         // Floating support: smart bot + live chat. faq: one per line «keyword, keyword | answer»
         'chat' => [
             'enabled' => true, 'botName' => 'دستیار بهیکس',

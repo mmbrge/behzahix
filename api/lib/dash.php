@@ -510,6 +510,18 @@ function a_product_save(): void
         if ($oldCover) delete_file_row((int) $oldCover);
         update('products', ['image' => $cover ? (string) store_upload($cover, 'cover', $id, (int) $u['id'])['id'] : null], 'id = ?', [$id]);
     }
+    // Gallery: extra public preview images (gallery0…gallery7), up to 8 in total
+    foreach (array_map('intval', arr_in('removeGallery')) as $gid) {
+        if (val("SELECT id FROM files WHERE id = ? AND kind = 'gallery' AND ref_id = ?", [$gid, $id])) delete_file_row($gid);
+    }
+    $room = 8 - (int) val("SELECT COUNT(*) FROM files WHERE kind = 'gallery' AND ref_id = ?", [$id]);
+    for ($i = 0; $i < 8 && $room > 0; $i++) {
+        $g = uploaded_files('gallery' . $i)[0] ?? null;
+        if (!$g) continue;
+        if (!preg_match('/\.(jpe?g|png|webp|gif)$/i', (string) $g['name'])) continue;
+        store_upload($g, 'gallery', $id, (int) $u['id']);
+        $room--;
+    }
     if ($u['role'] !== 'admin') notify_admins('محصول «' . $title . '» برای تأیید ارسال شد.', 'sellers');
     done($u['role'] === 'admin' ? 'محصول ذخیره شد.' : 'محصول برای بررسی ارسال شد.');
 }
@@ -846,7 +858,7 @@ function a_fresh_start(): void
     if (in_array('products', $parts, true)) {
         q('DELETE FROM purchases');
         q('DELETE FROM favorites');
-        if (table_exists('reviews')) q('DELETE FROM reviews');
+        if (table_exists('product_reviews')) q('DELETE FROM product_reviews');
         q('DELETE FROM products');
         wipe_files("'product','cover','gallery'");
         $done[] = 'محصولات فروشگاه';
@@ -1156,4 +1168,44 @@ function a_sms_test(): void
     if (!sms_enabled()) fail('ابتدا سرویس پیامک و کلید API را ذخیره کنید.', 422);
     if (!sms_send_code($u['phone'], '12345')) fail('ارسال ناموفق بود؛ کلید، الگو و اعتبار پنل پیامک را بررسی کنید.', 502);
     done('پیامک آزمایشی به شماره شما ارسال شد.');
+}
+
+// ------------------------------------------------------------------ product reviews (admin)
+function a_review_list(): void
+{
+    $u = require_active('admin', 'seller');
+    $where = $u['role'] === 'admin' ? '1 = 1' : 'p.seller_id = ' . (int) $u['id'];
+    $list = rows("SELECT r.*, u.name uname, p.title ptitle FROM product_reviews r JOIN users u ON u.id = r.user_id JOIN products p ON p.id = r.product_id WHERE $where ORDER BY r.id DESC LIMIT 300");
+    out(['reviews' => array_map(function ($r) { return review_out($r, true); }, $list)]);
+}
+function review_owned(array $u): array
+{
+    $r = row('SELECT r.*, p.seller_id FROM product_reviews r JOIN products p ON p.id = r.product_id WHERE r.id = ?', [int_in('id')]);
+    if (!$r || ($u['role'] !== 'admin' && (int) $r['seller_id'] !== (int) $u['id'])) fail('نظر پیدا نشد.', 404);
+    return $r;
+}
+function a_review_toggle(): void
+{
+    $u = require_active('admin');
+    $r = review_owned($u);
+    update('product_reviews', ['hidden' => (int) $r['hidden'] ? 0 : 1], 'id = ?', [$r['id']]);
+    product_rating_refresh((int) $r['product_id']);
+    done((int) $r['hidden'] ? 'نظر نمایش داده شد.' : 'نظر مخفی شد.');
+}
+function a_review_reply(): void
+{
+    $u = require_active('admin', 'seller');
+    $r = review_owned($u);
+    $text = str_in('reply', 1500);
+    update('product_reviews', ['reply' => $text !== '' ? $text : null], 'id = ?', [$r['id']]);
+    if ($text !== '') notify((int) $r['user_id'], 'به نظر شما درباره محصول پاسخ داده شد.', 'shop.html?product=' . $r['product_id']);
+    done('پاسخ ذخیره شد.');
+}
+function a_review_delete(): void
+{
+    $u = require_active('admin');
+    $r = review_owned($u);
+    q('DELETE FROM product_reviews WHERE id = ?', [$r['id']]);
+    product_rating_refresh((int) $r['product_id']);
+    done('نظر حذف شد.');
 }

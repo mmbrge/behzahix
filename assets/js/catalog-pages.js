@@ -188,7 +188,7 @@
               </button>
               <div class="work-body">
                 <h3>${esc(p.title)}</h3>
-                <div class="work-meta"><span>${icon("store")} ${esc(seller?.shopName || seller?.name || BX.settings.general?.siteNameFa || "")}</span>${stars(p.rating)}</div>
+                <div class="work-meta"><span>${icon("store")} ${esc(seller?.shopName || seller?.name || BX.settings.general?.siteNameFa || "")}</span>${stars(p.rating)}${p.reviews ? `<small class="muted">(${faDigits(p.reviews)})</small>` : ""}</div>
                 <div class="price-row"><span class="now">${toman(finalPrice(p))}</span>${p.discount ? `<span class="was">${num(p.price)}</span>` : ""}</div>
                 <div class="card-actions">
                   ${mine ? `<a class="btn btn-ghost" href="dashboard.html#downloads">${icon("download")} خریده‌اید</a>` : `<button type="button" class="btn ${inCart ? "btn-ghost" : "btn-primary"}" data-add="${p.id}">${inCart ? `${icon("check")} در سبد` : `${icon("cart")} افزودن`}</button>`}
@@ -319,30 +319,74 @@
         }
         if (e.target.closest("[data-cart]")) return openCart();
         const open = e.target.closest("[data-open]");
-        if (open) {
-          const p = data.products.find((x) => x.id === open.dataset.open);
-          const c = catOf(p);
-          const seller = sellers[p.sellerId];
-          modal({
-            title: p.title, wide: true,
-            body: `
-              <div class="detail-thumb" style='background:${thumbBg(p)}'>${p.image ? "" : icon(c.icon)}</div>
-              <div class="row-between mt-2"><div class="price-row" style="margin:0"><span class="now price">${toman(finalPrice(p))}</span>${p.discount ? `<span class="was">${num(p.price)}</span>` : ""}</div>${stars(p.rating)}</div>
-              ${bnplHint(finalPrice(p))}
-              ${p.desc ? `<p class="muted small lh mt-2" style="white-space:pre-line">${esc(p.desc)}</p>` : ""}
-              <dl class="kv mt-2">
-                <dt>دسته</dt><dd>${esc(c.title)}</dd>
-                <dt>فروشنده</dt><dd>${esc(seller?.shopName || seller?.name || "")}</dd>
-                <dt>فروش</dt><dd>${faDigits(p.sales)} بار</dd>
-                ${p.tags.length ? `<dt>برچسب‌ها</dt><dd>${p.tags.map((t) => `<span class="badge">${esc(t)}</span>`).join(" ")}</dd>` : ""}
-              </dl>
-              <p class="muted small lh mt-2">پس از پرداخت، لینک دانلود دائمی در پنل کاربری شما قرار می‌گیرد.</p>`,
-            actions: owned.has(p.id)
-              ? [{ label: "بستن" }, { label: "رفتن به دانلودها", primary: true, onClick: () => { location.href = "dashboard.html#downloads"; } }]
-              : [{ label: "بستن" }, { label: cart.includes(p.id) ? "مشاهده سبد" : "افزودن به سبد", primary: true, onClick: () => (cart.includes(p.id) ? openCart() : addToCart(p.id)) }],
-          });
-        }
+        if (open) openProduct(open.dataset.open);
       });
+      function openProduct(id, toReview) {
+        const p = data.products.find((x) => x.id === String(id));
+        if (!p) return;
+        const c = catOf(p);
+        const seller = sellers[p.sellerId];
+        const imgs = [p.image, ...(p.gallery || [])].filter(Boolean);
+        const imgUrl = (fid) => `api/index.php?r=file&id=${encodeURIComponent(fid)}`;
+        modal({
+          title: p.title, wide: true,
+          body: `
+            <div class="detail-thumb" data-main style='background:${thumbBg(p)}'>${p.image ? "" : icon(c.icon)}</div>
+            ${imgs.length > 1 ? `<div class="gal-strip">${imgs.map((fid, i) => `<button type="button" class="${i ? "" : "is-on"}" data-gal="${esc(fid)}" style="background-image:url('${imgUrl(fid)}')" aria-label="تصویر ${faDigits(i + 1)}"></button>`).join("")}</div>` : ""}
+            <div class="row-between mt-2"><div class="price-row" style="margin:0"><span class="now price">${toman(finalPrice(p))}</span>${p.discount ? `<span class="was">${num(p.price)}</span>` : ""}</div><span>${stars(p.rating)}${p.reviews ? ` <small class="muted">(${faDigits(p.reviews)} نظر)</small>` : ""}</span></div>
+            ${bnplHint(finalPrice(p))}
+            ${p.desc ? `<p class="muted small lh mt-2" style="white-space:pre-line">${esc(p.desc)}</p>` : ""}
+            <dl class="kv mt-2">
+              <dt>دسته</dt><dd>${esc(c.title)}</dd>
+              <dt>فروشنده</dt><dd>${esc(seller?.shopName || seller?.name || "")}</dd>
+              <dt>فروش</dt><dd>${faDigits(p.sales)} بار</dd>
+              ${p.tags.length ? `<dt>برچسب‌ها</dt><dd>${p.tags.map((t) => `<span class="badge">${esc(t)}</span>`).join(" ")}</dd>` : ""}
+            </dl>
+            <p class="muted small lh mt-2">پس از پرداخت، لینک دانلود دائمی در پنل کاربری شما قرار می‌گیرد.</p>
+            <section class="rv mt-2" data-reviews><h4>${icon("star")} نظرات خریداران</h4><div class="skeleton" style="height:80px"></div></section>`,
+          onOpen: (wrap) => {
+            wrap.addEventListener("click", (ev) => {
+              const g = ev.target.closest("[data-gal]");
+              if (!g) return;
+              const main = wrap.querySelector("[data-main]");
+              main.style.background = `url("${imgUrl(g.dataset.gal)}") center/contain no-repeat, var(--inset)`;
+              main.innerHTML = "";
+              wrap.querySelectorAll("[data-gal]").forEach((b) => b.classList.toggle("is-on", b === g));
+            });
+            loadReviews(wrap.querySelector("[data-reviews]"), p, toReview);
+          },
+          actions: owned.has(p.id)
+            ? [{ label: "بستن" }, { label: "رفتن به دانلودها", primary: true, onClick: () => { location.href = "dashboard.html#downloads"; } }]
+            : [{ label: "بستن" }, { label: cart.includes(p.id) ? "مشاهده سبد" : "افزودن به سبد", primary: true, onClick: () => (cart.includes(p.id) ? openCart() : addToCart(p.id)) }],
+        });
+      }
+      const starRow = (n) => `<span class="rv-stars" aria-label="${faDigits(n)} از ۵">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? "on" : ""}">★</i>`).join("")}</span>`;
+      async function loadReviews(box, p, focus) {
+        let r;
+        try { r = await api("product.reviews", { id: p.id }); } catch (err) { box.remove(); return; }
+        const total = Object.values(r.dist).reduce((a, b) => a + b, 0);
+        const avg = total ? Object.entries(r.dist).reduce((a, [k, n]) => a + k * n, 0) / total : 0;
+        box.innerHTML = `<h4>${icon("star")} نظرات خریداران</h4>
+          ${total ? `<div class="rv-sum"><div class="rv-avg"><b>${faDigits(avg.toFixed(1))}</b>${starRow(Math.round(avg))}<small>${faDigits(total)} نظر</small></div>
+            <div class="rv-dist">${[5, 4, 3, 2, 1].map((k) => `<div><span>${faDigits(k)}★</span><i><b style="width:${(r.dist[k] / total) * 100}%"></b></i><small>${faDigits(r.dist[k])}</small></div>`).join("")}</div></div>` : `<p class="muted small">هنوز نظری ثبت نشده است${r.canReview ? "؛ اولین نفر باشید!" : "."}</p>`}
+          ${r.canReview ? `<form class="rv-form" data-rv-form>
+              <b class="small">${r.mine ? "ویرایش نظر شما" : "نظر شما درباره این فایل"}</b>
+              <div class="rv-pick">${[5, 4, 3, 2, 1].map((i) => `<input type="radio" name="rating" id="rv${i}" value="${i}" ${(r.mine?.rating || 5) === i ? "checked" : ""}><label for="rv${i}" title="${faDigits(i)} ستاره">★</label>`).join("")}</div>
+              <textarea class="textarea" name="text" rows="2" maxlength="1500" placeholder="کیفیت، کاربردی بودن، مطابقت با توضیحات…" required>${esc(r.mine?.text || "")}</textarea>
+              <button class="btn btn-primary btn-sm" type="submit">${icon("send")} ثبت نظر</button></form>`
+            : BX.me ? "" : `<p class="muted small">خریداران این فایل پس از ورود می‌توانند نظر بدهند.</p>`}
+          <div class="rv-list">${r.reviews.map((x) => `<div class="rv-item"><div class="row-between"><b>${esc(x.name)}</b>${starRow(x.rating)}</div><p>${esc(x.text)}</p>${x.reply ? `<p class="rv-reply"><b>پاسخ فروشنده:</b> ${esc(x.reply)}</p>` : ""}<small class="muted">${BX.date(x.at)}</small></div>`).join("")}</div>`;
+        const f = box.querySelector("[data-rv-form]");
+        if (f) f.addEventListener("submit", async (ev) => {
+          ev.preventDefault();
+          try {
+            const res = await api("product.review", { id: p.id, rating: f.elements.rating.value, text: f.elements.text.value });
+            toast(res.message, "ok");
+            loadReviews(box, p);
+          } catch (err) { toast(err.message, "bad"); }
+        });
+        if (focus) box.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
       view.addEventListener("input", (e) => {
         if (e.target.matches("[data-search]")) { term = e.target.value.trim(); render(); }
       });
@@ -350,6 +394,7 @@
         if (e.target.matches("[data-sort]")) { sort = e.target.value; render(); }
       });
       render();
+      if (qs("product")) openProduct(qs("product"), location.hash === "#review");
     }
 
     // ============================================================= Designers

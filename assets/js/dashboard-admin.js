@@ -122,7 +122,8 @@
   // ============================================================ CATALOG
   BXD.routes.catalog = function (param) {
     const tab = param || "services";
-    const head = tabs("catalog", [["services", "خدمات و شاخه‌ها", "layers"], ["products", "محصولات فروشگاه", "box"], ["pcats", "دسته‌های فروشگاه", "folder"]], tab);
+    const head = tabs("catalog", [["services", "خدمات و شاخه‌ها", "layers"], ["products", "محصولات فروشگاه", "box"], ["pcats", "دسته‌های فروشگاه", "folder"], ["reviews", "نظرات محصولات", "star"]], tab);
+    if (tab === "reviews") return head + `<div data-reviews-admin><div class="card box skeleton" style="height:300px"></div></div>`;
     if (tab === "products") return head + productsTab();
     if (tab === "pcats") return head + pcatsTab();
     return head + servicesTab();
@@ -467,6 +468,13 @@
       ["cart", [["reminder", "پیامک یادآوری سبد خرید رهاشده", "switch"], ["hours", "ارسال یادآوری بعد از چند ساعت", "number"]],
         "برای کاربران واردشده‌ای که فایل در سبد گذاشته‌اند و خرید نکرده‌اند؛ یک بار برای هر سبد. قالب «یادآوری سبد خرید» را در قالب‌های پیامک فعال کنید."],
     ] },
+    invoice: { title: "فاکتور", icon: "file", groups: [
+      ["invoice", [
+        ["sellerName", "نام فروشنده روی فاکتور (شخص یا شرکت)", "text"], ["economicCode", "کد اقتصادی", "ltr"], ["nationalId", "شناسه ملی / کد ملی", "ltr"], ["regNo", "شماره ثبت", "ltr"],
+        ["address", "نشانی", "text"], ["postalCode", "کد پستی", "ltr"], ["phone", "تلفن", "ltr"],
+        ["vatPercent", "مالیات بر ارزش افزوده (٪) — اگر مشمول نیستید ۰ بگذارید", "number"], ["note", "توضیح پایین فاکتور", "textarea"],
+      ], "مشتری از صفحه هر سفارش یا خرید، پیش‌فاکتور/فاکتور را می‌بیند و چاپ یا PDF می‌کند. فیلدهای خالی از نام سایت و اطلاعات تماس پر می‌شوند."],
+    ] },
     payment: { title: "درگاه پرداخت", icon: "wallet", groups: [
       ["payment", [
         ["driver", "درگاه", "select", [["test", "تست (بدون پول — فقط در حالت نمایشی)"], ["zarinpal", "زرین‌پال"], ["zibal", "زیبال"]]],
@@ -585,7 +593,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", chat: "گفتگوی آنلاین", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { general: "اطلاعات سایت", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">
@@ -830,6 +838,36 @@
     const el = view.querySelector("[data-tools-admin]");
     if (el) loadToolsView(el);
   };
+  // ---------- product reviews (moderation + replies)
+  async function loadReviewsAdmin(el) {
+    const { box, table, icon, esc, faDigits, ago } = h();
+    let r;
+    try { r = await BX.api("a.review.list"); } catch (err) { el.innerHTML = `<div class="card empty">${icon("info")}<p>${esc(err.message)}</p></div>`; return; }
+    const st = (n) => `<span class="rv-stars">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? "on" : ""}">★</i>`).join("")}</span>`;
+    el.innerHTML = box("نظرات خریداران", "star", table(["محصول", "کاربر", "امتیاز", "نظر", "زمان", "وضعیت", ""], r.reviews.map((x) => `<tr>
+        <td><a class="brand" href="shop.html?product=${x.productId}" target="_blank">${esc(x.product)}</a></td><td>${esc(x.name)}</td><td>${st(x.rating)}</td>
+        <td style="max-width:340px"><span style="white-space:normal">${esc(x.text)}</span>${x.reply ? `<br><small class="muted">↩ ${esc(x.reply)}</small>` : ""}</td>
+        <td class="muted">${ago(x.at)}</td><td>${x.hidden ? '<span class="badge badge--bad">مخفی</span>' : '<span class="badge badge--ok">نمایش</span>'}</td>
+        <td><div class="actions"><button class="btn btn-ghost btn-xs" data-act="review-reply" data-id="${x.id}" data-reply="${esc(x.reply || "")}">${icon("chat")} پاسخ</button>
+          <button class="btn btn-ghost btn-xs" data-act="review-toggle" data-id="${x.id}">${x.hidden ? "نمایش" : "مخفی"}</button>
+          <button class="icon-btn icon-btn-sm" data-act="review-delete" data-id="${x.id}" aria-label="حذف">${icon("trash")}</button></div></td></tr>`), "هنوز نظری ثبت نشده است.") + `<p class="muted small mt-2">فقط خریداران هر فایل می‌توانند نظر بدهند. امتیاز محصول میانگین نظرهای «نمایش» است.</p>`);
+    BXD.labelTables?.(el);
+  }
+  const reviewsEl = () => document.querySelector("[data-reviews-admin]");
+  const prevAfter2 = BXD.afterRender;
+  BXD.afterRender = (view, id, param) => {
+    if (prevAfter2) prevAfter2(view, id, param);
+    const el = view.querySelector("[data-reviews-admin]");
+    if (el) loadReviewsAdmin(el);
+  };
+  Object.assign(BXD.acts, {
+    "review-toggle": (el) => BX.api("a.review.toggle", { id: el.dataset.id }).then((r) => { BX.toast(r.message, "ok"); loadReviewsAdmin(reviewsEl()); }).catch((e) => BX.toast(e.message, "bad")),
+    "review-delete": (el) => BXD.ui.confirmBox("حذف نظر", "این نظر برای همیشه حذف می‌شود.", () => BX.api("a.review.delete", { id: el.dataset.id }).then(() => loadReviewsAdmin(reviewsEl())), "حذف"),
+    "review-reply": (el) => BX.modal({
+      title: "پاسخ به نظر", body: `<textarea class="textarea" id="rv-reply" rows="4" placeholder="پاسخ شما زیر نظر کاربر نمایش داده می‌شود (خالی = حذف پاسخ)">${BX.esc(el.dataset.reply)}</textarea>`,
+      actions: [{ label: "انصراف" }, { label: "ذخیره پاسخ", primary: true, onClick: (w) => { BX.api("a.review.reply", { id: el.dataset.id, reply: w.querySelector("#rv-reply").value }).then(() => { BX.toast("پاسخ ذخیره شد.", "ok"); loadReviewsAdmin(reviewsEl()); }).catch((e) => BX.toast(e.message, "bad")); } }],
+    }),
+  });
   const toolsEl = () => document.querySelector("[data-tools-admin]");
   Object.assign(BXD.acts, {
     "product-import": () => productImport(),

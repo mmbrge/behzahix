@@ -484,7 +484,9 @@ function product_out(array $p, bool $withFiles = false): array
 {
     $o = ['id' => (string) $p['id'], 'sellerId' => (string) $p['seller_id'], 'title' => $p['title'], 'category' => $p['category_id'],
         'price' => (int) $p['price'], 'discount' => (int) $p['discount'], 'sales' => (int) $p['sales'], 'rating' => (float) $p['rating'],
-        'status' => $p['status'], 'tags' => jdec($p['tags'], []), 'desc' => $p['descr'], 'image' => $p['image'] ?? null, 'createdAt' => ms($p['created_at'])];
+        'status' => $p['status'], 'tags' => jdec($p['tags'], []), 'desc' => $p['descr'], 'image' => $p['image'] ?? null, 'createdAt' => ms($p['created_at']),
+        'reviews' => (int) ($p['reviews'] ?? 0),
+        'gallery' => array_map('strval', array_column(rows("SELECT id FROM files WHERE kind = 'gallery' AND ref_id = ? ORDER BY id", [$p['id']]), 'id'))];
     if ($withFiles) $o['files'] = array_map('file_out', rows("SELECT * FROM files WHERE kind = 'product' AND ref_id = ?", [$p['id']]));
     return $o;
 }

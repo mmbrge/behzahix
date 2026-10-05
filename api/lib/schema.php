@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 5;
+const BX_SCHEMA_VERSION = 6;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -18,6 +18,7 @@ function bx_columns(): array
         ['users', 'cart', 'LONGTEXT NULL'], // v4 — server copy of the shop cart (abandoned-cart reminder)
         ['users', 'cart_at', 'DATETIME NULL'],
         ['users', 'cart_reminded', 'TINYINT(1) NOT NULL DEFAULT 0'],
+        ['products', 'reviews', 'INT UNSIGNED NOT NULL DEFAULT 0'], // v6 — review count (rating = average)
     ];
 }
 
@@ -256,6 +257,19 @@ function bx_schema(): array
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL
+        ) $t",
+        // v6 — shop product reviews (buyers only)
+        "CREATE TABLE IF NOT EXISTS product_reviews (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            product_id INT UNSIGNED NOT NULL,
+            user_id INT UNSIGNED NOT NULL,
+            rating TINYINT UNSIGNED NOT NULL,
+            body TEXT NOT NULL,
+            reply TEXT NULL,
+            hidden TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            UNIQUE KEY one_per_user (product_id, user_id),
+            KEY product (product_id, hidden)
         ) $t",
         // v5 — support chat: smart bot + live chat with the admin (every conversation is archived)
         "CREATE TABLE IF NOT EXISTS chats (
