@@ -266,6 +266,7 @@ function ensure_schema(): void
         $has = val('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [$table, $col]);
         if (!$has) db()->exec("ALTER TABLE `$table` ADD COLUMN `$col` $def");
     }
+    bx_migrate($v);
     q("INSERT INTO settings (k, v) VALUES ('schema_version', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)", [(string) BX_SCHEMA_VERSION]);
 }
 function settings(): array
@@ -392,11 +393,14 @@ function user_out(?array $u, bool $private = false): ?array
     if (!$u) return null;
     $o = ['id' => (string) $u['id'], 'name' => $u['name'], 'role' => $u['role'], 'status' => $u['status'], 'hue' => (int) $u['hue'],
         'level' => $u['level'], 'rating' => (float) $u['rating'], 'bio' => $u['bio'], 'shopName' => $u['shop_name'],
-        'skills' => jdec($u['skills'], []), 'createdAt' => ms($u['created_at'])];
+        'skills' => jdec($u['skills'], []), 'createdAt' => ms($u['created_at']),
+        // X PRO badge (shown next to the user everywhere)
+        'pro' => !empty($u['pro_until']) && strtotime($u['pro_until'] . ' UTC') > time(), 'proBiz' => !empty($u['pro_biz']) && !empty($u['pro_until']) && strtotime($u['pro_until'] . ' UTC') > time()];
     if ($private) {
         $o += ['phone' => $u['phone'], 'email' => $u['email'], 'business' => $u['business'], 'card' => $u['card'], 'wallet' => (int) $u['wallet'],
             'commission' => $u['commission'] === null ? null : (float) $u['commission'], 'cats' => jdec($u['cats'], []),
-            'portfolioUrl' => $u['portfolio_url'], 'prefs' => jdec($u['prefs'], ['email' => true, 'sms' => true]), 'isDemo' => (bool) $u['is_demo']];
+            'portfolioUrl' => $u['portfolio_url'], 'prefs' => jdec($u['prefs'], ['email' => true, 'sms' => true]), 'isDemo' => (bool) $u['is_demo'],
+            'proUntil' => !empty($u['pro_until']) ? ms($u['pro_until']) : null];
         if (in_array($u['role'], ['designer', 'seller'], true)) $o['effectiveCommission'] = commission_for($u);
     }
     return $o;

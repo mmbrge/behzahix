@@ -14,24 +14,50 @@
   BXD.routes.studio = () => `<div data-studio-panel><div class="card box skeleton" style="height:320px"></div></div>`;
 
   async function mine(el) {
-    const { box, table } = BXD.ui;
+    const { box } = BXD.ui;
     const r = await BX.api("a.studio.list");
+    ST.formats = r.formats || {};
+    ST.items = r.items;
+    const pro = r.pro || {};
+    const proName = BX.settings.pro?.name || "X PRO";
     el.innerHTML = `<div class="dash-grid">
-      <div class="banner banner--info">${icon("sparkles")}<span>هر چیزی در <a class="brand" href="studio.html">استودیو</a> بسازید اینجا ذخیره می‌شود؛ فایل‌های خریداری‌شده را هر زمان دوباره ویرایش و دانلود کنید.</span></div>
+      ${pro.active ? `<div class="banner banner--ok">${icon("star")}<span>اشتراک <b>${esc(proName)}${pro.business ? " Business" : ""}</b> فعال است تا ${BX.date(pro.until)} — ${faDigits(pro.studioLeft ?? 0)} فایل استودیو در این ماه باقی مانده و همه طرح‌ها قابل ویرایش‌اند.</span></div>`
+        : `<div class="banner banner--info">${icon("sparkles")}<span>هر چیزی در <a class="brand" href="studio.html">استودیو</a> بسازید اینجا ذخیره می‌شود. فایل‌های خریداری‌شده همیشه قابل دانلودند؛ برای ویرایش آن‌ها اشتراک <a class="brand" href="#pro">${esc(proName)}</a> لازم است.</span></div>`}
       ${box("صفحه‌های من", "globe", r.pages.length ? `<div class="sp-pages">${r.pages.map((p) => `
         <div class="sp-page"><span class="cell-icon">${icon(p.kind === "menu" ? "list" : "user")}</span>
-          <div class="grow"><b>${esc(p.title || p.slug)}</b> ${p.active ? '<span class="badge badge--ok">فعال</span>' : '<span class="badge badge--bad">غیرفعال</span>'}<br>
-          <small class="muted">${esc(p.kindTitle)} · <a dir="ltr" class="brand" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, ""))}</a> · ${faDigits(p.views)} بازدید${p.expiresAt ? ` · تا ${BX.date(p.expiresAt)}` : ""}</small></div>
+          <div class="grow"><b>${esc(p.title || p.slug)}</b> ${p.active ? `<span class="badge badge--ok">${p.viaPro ? `فعال با ${esc(proName)}` : "فعال"}</span>` : '<span class="badge badge--bad">غیرفعال</span>'}<br>
+          <small class="muted">${esc(p.kindTitle)} · <a dir="ltr" class="brand" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, ""))}</a> · ${faDigits(p.views)} بازدید${p.expiresAt && !p.viaPro ? ` · تا ${BX.date(p.expiresAt)}` : ""}</small></div>
           <a class="btn btn-ghost btn-xs" href="studio.html#page-${p.kind}/${p.id}">${icon("edit")} ویرایش و تمدید</a></div>`).join("")}</div>`
         : `<p class="muted small">هنوز صفحه‌ای نساخته‌اید. <a class="brand" href="studio.html#page-card">کارت ویزیت دیجیتال</a> یا <a class="brand" href="studio.html#page-menu">منوی QR</a> بسازید.</p>`)}
-      ${box("طرح‌ها و فایل‌ها", "layers", table(["طرح", "نوع", "وضعیت", "آخرین تغییر", ""], r.items.map((i) => `<tr>
-          <td><span class="cell-icon">${icon(KIND_ICON[i.kind] || "file")}</span> <b>${esc(i.title)}</b></td><td>${esc(i.kindTitle)}</td>
-          <td>${i.paid ? '<span class="badge badge--ok">خریداری شده</span>' : '<span class="badge">پیش‌نویس</span>'}</td><td class="muted">${ago(i.updatedAt)}</td>
-          <td><div class="actions"><a class="btn ${i.paid ? "btn-primary" : "btn-ghost"} btn-xs" href="studio.html#${ROUTE[i.kind]}/${i.id}">${icon(i.paid ? "download" : "edit")} ${i.paid ? "باز کردن و دانلود" : "ادامه"}</a>
-            ${i.paid ? "" : `<button class="icon-btn icon-btn-sm" data-act="studio-del" data-id="${i.id}" aria-label="حذف">${icon("trash")}</button>`}</div></td></tr>`), "هنوز طرحی نساخته‌اید."),
+      ${box(`ساخته‌های من <small class="muted">(${faDigits(r.items.length)})</small>`, "layers", r.items.length ? `<div class="sd-grid">${r.items.map((i) => {
+        const locked = i.paid && !pro.active;
+        return `<article class="sd-item card">
+          <a class="sd-thumb sd-thumb--${i.kind}" href="studio.html#${ROUTE[i.kind]}/${i.id}">${i.thumb ? `<img src="${i.thumb}" alt="" loading="lazy">` : icon(KIND_ICON[i.kind] || "file")}</a>
+          <div class="sd-body"><b title="${esc(i.title)}">${esc(i.title)}</b>
+            <small class="muted">${esc(i.kindTitle)} · ${ago(i.updatedAt)}</small>
+            <div>${i.paid ? `<span class="badge badge--ok">${i.via === "pro" ? `با ${esc(proName)}` : "خریداری شده"}</span>` : '<span class="badge">پیش‌نویس</span>'}</div></div>
+          <div class="sd-actions">
+            ${i.paid ? `<button class="btn btn-primary btn-xs" data-act="studio-dl" data-id="${i.id}">${icon("download")} دانلود</button>` : `<a class="btn btn-primary btn-xs" href="studio.html#${ROUTE[i.kind]}/${i.id}">${icon("edit")} ادامه</a>`}
+            ${locked ? `<a class="btn btn-ghost btn-xs" href="#pro" title="ویرایش طرح خریداری‌شده با ${esc(proName)}">${icon("lock")} ویرایش</a>` : i.paid ? `<a class="btn btn-ghost btn-xs" href="studio.html#${ROUTE[i.kind]}/${i.id}">${icon("edit")} ویرایش</a>` : ""}
+            <button class="icon-btn icon-btn-sm" data-act="studio-copy" data-id="${i.id}" title="ساخت نسخه جدید" aria-label="نسخه جدید">${icon("copy")}</button>
+            ${i.paid ? "" : `<button class="icon-btn icon-btn-sm" data-act="studio-del" data-id="${i.id}" aria-label="حذف">${icon("trash")}</button>`}
+          </div></article>`; }).join("")}</div>` : `<div class="empty">${icon("layers")}<p>هنوز طرحی نساخته‌اید.</p></div>`,
         `<a class="btn btn-primary btn-sm" href="studio.html">${icon("plus")} ساخت جدید</a>`)}
     </div>`;
-    BXD.labelTables?.(el);
+  }
+  // Download a bought design in one of its formats (rendered on the server)
+  async function fetchFile(id, fmt) {
+    const res = await fetch("api/index.php?r=a.studio.export", { method: "POST", credentials: "same-origin", headers: { "X-CSRF": BX.csrf(), "Content-Type": "application/json" }, body: JSON.stringify({ id, format: fmt }) });
+    if (!res.ok || (res.headers.get("Content-Type") || "").includes("json")) { let j = null; try { j = await res.json(); } catch (e) { /* */ } throw new Error(j?.message || "دریافت فایل ناموفق بود."); }
+    const cd = res.headers.get("Content-Disposition") || ""; const m = cd.match(/filename\*=UTF-8''([^;]+)/i);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(await res.blob()); a.download = m ? decodeURIComponent(m[1]) : "behix-file"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+  function dlModal(id) {
+    const it = ST.items.find((x) => String(x.id) === String(id));
+    const f = ST.formats[it?.kind] || {};
+    BX.modal({ title: `دانلود «${it?.title || ""}»`, body: `<div class="st-fmts">${Object.entries(f).map(([k, l], i) => `<button type="button" class="st-fmt ${i ? "" : "is-main"}" data-fmt="${k}"><b>${k.toUpperCase()}</b><span>${esc(l)}</span></button>`).join("")}</div>`,
+      actions: [{ label: "بستن" }],
+      onOpen: (m) => m.addEventListener("click", async (e) => { const b = e.target.closest("[data-fmt]"); if (!b) return; b.classList.add("is-busy"); try { await fetchFile(id, b.dataset.fmt); BX.toast("فایل دانلود شد.", "ok"); } catch (err) { BX.toast(err.message, "bad"); } b.classList.remove("is-busy"); }) });
   }
 
   async function admin(el, param) {
@@ -63,7 +89,7 @@
     }
     BXD.labelTables?.(el);
   }
-  const ST = { docs: [] };
+  const ST = { docs: [], items: [], formats: {} };
   function docModal(d) {
     BX.modal({
       title: d ? "ویرایش قالب سند" : "قالب سند جدید", wide: true,
@@ -88,6 +114,8 @@
   const prevAfter = BXD.afterRender;
   BXD.afterRender = (view, id, param) => { if (prevAfter) prevAfter(view, id, param); if (view.querySelector("[data-studio-panel]")) load(); };
   Object.assign(BXD.acts, {
+    "studio-dl": (b) => dlModal(b.dataset.id),
+    "studio-copy": (b) => BX.api("a.studio.copy", { id: b.dataset.id }).then((r) => { location.href = `studio.html#${ROUTE[r.kind]}/${r.id}`; }).catch((e) => BX.toast(e.message, "bad")),
     "studio-del": (b) => BXD.ui.confirmBox("حذف پیش‌نویس", "این طرح حذف می‌شود.", () => BX.api("a.studio.delete", { id: b.dataset.id }).then(load), "حذف"),
     "page-del": (b) => BXD.ui.confirmBox("حذف صفحه", "صفحه و آدرسش برای همیشه حذف می‌شود.", () => BX.api("a.page.delete", { id: b.dataset.id }).then(load), "حذف"),
     "doctpl-edit": (b) => docModal(ST.docs.find((x) => String(x.id) === b.dataset.id)),

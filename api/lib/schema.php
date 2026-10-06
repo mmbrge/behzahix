@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 10;
+const BX_SCHEMA_VERSION = 11;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -20,8 +20,34 @@ function bx_columns(): array
         ['users', 'cart_reminded', 'TINYINT(1) NOT NULL DEFAULT 0'],
         ['products', 'reviews', 'INT UNSIGNED NOT NULL DEFAULT 0'], // v6 — review count (rating = average)
         ['services', 'delivery', 'TINYINT(1) NOT NULL DEFAULT 0'],
-        ['users', 'session_ver', 'INT UNSIGNED NOT NULL DEFAULT 0'], // v10 — «sign out everywhere» // v8 — in-person delivery: customer books a date and time slot
+        ['users', 'session_ver', 'INT UNSIGNED NOT NULL DEFAULT 0'], // v10 — «sign out everywhere»
+        ['users', 'pro_until', 'DATETIME NULL'], // v11 — X PRO membership
+        ['users', 'pro_biz', 'TINYINT(1) NOT NULL DEFAULT 0'],
+        ['studio_items', 'thumb', 'MEDIUMTEXT NULL'], // v11 — small preview for «my designs»
+        ['studio_items', 'via', "VARCHAR(8) NOT NULL DEFAULT ''"], // pay | pro
     ];
+}
+
+// One-time data changes when an install moves past a version
+function bx_migrate(int $from): void
+{
+    if ($from < 11) {
+        // market-based prices (Oct 2026): only rows still at the old default are changed
+        $svc = ['pptx' => [1500000, 690000], 'resume' => [900000, 450000], 'excel' => [2000000, 1800000], 'docs' => [1800000, 1600000], 'landing' => [6000000, 5600000],
+            'corporate' => [14000000, 23000000], 'shop' => [22000000, 32000000], 'uiux' => [8000000, 7400000], 'seo' => [5000000, 4600000], 'ai-teaser' => [3500000, 3100000],
+            'motion' => [5000000, 4700000], 'edit' => [1500000, 1390000], 'lipsync' => [2500000, 2300000], 'reels' => [2400000, 2200000], 'logo' => [4000000, 2900000],
+            'poster' => [700000, 590000], 'social' => [2000000, 1690000], 'ai-art' => [1200000, 990000], 'packaging' => [3500000, 3200000], 'chatbot' => [7000000, 6500000],
+            'automation' => [6000000, 5500000], 'infra' => [3000000, 2790000]];
+        foreach ($svc as $id => [$old, $new]) q('UPDATE services SET base = ? WHERE id = ? AND base = ?', [$new, $id, $old]);
+        $st = jdec((string) val("SELECT v FROM settings WHERE k = 'studio'"), null);
+        if (is_array($st)) {
+            $old = ['resume' => 290000, 'card' => 190000, 'post' => 90000, 'doc' => 150000, 'slides' => 390000, 'pageCardMonth' => 99000, 'pageCardYear' => 790000, 'pageMenuMonth' => 149000, 'pageMenuYear' => 1190000];
+            $new = ['resume' => 45000, 'card' => 89000, 'post' => 45000, 'doc' => 49000, 'slides' => 129000, 'pageCardMonth' => 29000, 'pageCardYear' => 265000, 'pageMenuMonth' => 169000, 'pageMenuYear' => 1690000];
+            foreach ($old as $k => $v) if ((int) ($st[$k] ?? -1) === $v) $st[$k] = $new[$k];
+            q("UPDATE settings SET v = ? WHERE k = 'studio'", [jenc($st)]);
+        }
+        q('UPDATE doc_templates SET price = NULL WHERE price = 150000');
+    }
 }
 
 function bx_schema(): array
@@ -259,6 +285,16 @@ function bx_schema(): array
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL
+        ) $t",
+        // v11 — usage of premium tools and PRO studio allowance
+        "CREATE TABLE IF NOT EXISTS usage_log (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id INT UNSIGNED NULL,
+            ip VARCHAR(45) NOT NULL DEFAULT '',
+            k VARCHAR(32) NOT NULL,
+            at DATETIME NOT NULL,
+            KEY k_user (k, user_id, at),
+            KEY k_ip (k, ip, at)
         ) $t",
         // v10 — security: event log, per-IP throttling, blocked addresses
         "CREATE TABLE IF NOT EXISTS security_log (

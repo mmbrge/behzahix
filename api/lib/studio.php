@@ -2,8 +2,8 @@
 // BEHIX — Studio: self-service products made entirely by the site (no outside
 // AI service): resume, business card, social post/poster, document templates,
 // PowerPoint, brand names, SEO audit, and hosted pages (digital card, QR menu).
-// Builders run in the browser; the server stores designs, sells the final file
-// and serves hosted pages at /c/<slug>.
+// Forms run in the browser; every preview and final file is drawn on the server
+// (studio_render.php), so nothing printable leaves before the purchase check.
 if (!defined('BX')) { http_response_code(403); exit; }
 
 const STUDIO_KINDS = ['resume' => 'رزومه', 'card' => 'کارت ویزیت', 'post' => 'پست و پوستر', 'doc' => 'سند و قرارداد', 'slides' => 'پاورپوینت'];
@@ -23,7 +23,7 @@ function studio_price(string $kind, ?array $item = null): int
 function studio_item_out(array $i, bool $withData = false): array
 {
     $o = ['id' => (int) $i['id'], 'kind' => $i['kind'], 'kindTitle' => STUDIO_KINDS[$i['kind']] ?? $i['kind'], 'title' => $i['title'], 'paid' => (bool) $i['paid'],
-        'price' => (int) $i['price'], 'paidAt' => ms($i['paid_at']), 'updatedAt' => ms($i['updated_at'])];
+        'price' => (int) $i['price'], 'paidAt' => ms($i['paid_at']), 'updatedAt' => ms($i['updated_at']), 'via' => (string) ($i['via'] ?? ''), 'thumb' => $i['thumb'] ?? null];
     if ($withData) $o['data'] = jdec($i['data'], []);
     return $o;
 }
@@ -32,6 +32,11 @@ function page_out(array $p, bool $withData = false): array
     $o = ['id' => (int) $p['id'], 'kind' => $p['kind'], 'kindTitle' => PAGE_KINDS[$p['kind']] ?? $p['kind'], 'slug' => $p['slug'], 'title' => $p['title'],
         'views' => (int) $p['views'], 'expiresAt' => ms($p['expires_at']), 'active' => $p['expires_at'] && strtotime($p['expires_at'] . ' UTC') > time(),
         'url' => base_url() . '/c/' . $p['slug'], 'updatedAt' => ms($p['updated_at'])];
+    // X PRO keeps the digital card online; Business also the QR menu
+    if (!$o['active']) {
+        $ow = row('SELECT * FROM users WHERE id = ?', [(int) $p['user_id']]);
+        if ($ow && pro_active($ow, $p['kind'] === 'menu') && $ow['role'] !== 'admin') { $o['active'] = true; $o['viaPro'] = true; }
+    }
     if ($withData) $o['data'] = jdec($p['data'], []);
     return $o;
 }
@@ -39,7 +44,8 @@ function page_out(array $p, bool $withData = false): array
 // ------------------------------------------------------------------ public
 function studio_seed_docs(): void
 {
-    if ((int) val('SELECT COUNT(*) FROM doc_templates')) return;
+    // v2 adds more templates to existing installs (matched by title, never duplicated)
+    if ((int) val("SELECT COUNT(*) FROM settings WHERE k = 'doc_seed' AND v = '2'")) return;
     $docs = [
         ['قرارداد همکاری پروژه‌ای (فریلنسری)', 'قرارداد', 'برای سفارش طراحی، برنامه‌نویسی یا تولید محتوا بین کارفرما و مجری', <<<'HTML'
 <h2 style="text-align:center">قرارداد همکاری پروژه‌ای</h2>
@@ -85,7 +91,123 @@ HTML],
 <p style="margin-top:40px;text-align:left">با تشکر<br>{{نام و نام خانوادگی}}<br>امضا</p>
 HTML],
     ];
-    foreach ($docs as $i => [$t, $c, $d, $b]) insert('doc_templates', ['title' => $t, 'category' => $c, 'descr' => $d, 'body' => $b, 'price' => null, 'active' => 1, 'sort' => $i, 'created_at' => now()]);
+    $docs = array_merge($docs, studio_docs_v2());
+    foreach ($docs as $i => [$t, $c, $d, $b]) {
+        if ((int) val('SELECT COUNT(*) FROM doc_templates WHERE title = ?', [$t])) continue;
+        insert('doc_templates', ['title' => $t, 'category' => $c, 'descr' => $d, 'body' => $b, 'price' => null, 'active' => 1, 'sort' => $i, 'created_at' => now()]);
+    }
+    q("INSERT INTO settings (k, v) VALUES ('doc_seed', '2') ON DUPLICATE KEY UPDATE v = '2'");
+}
+function studio_docs_v2(): array
+{
+    return [
+        ['قرارداد طراحی وب‌سایت', 'قرارداد', 'طراحی و راه‌اندازی سایت با مراحل تحویل، پشتیبانی و مالکیت کدها', <<<'HTML'
+<h2 style="text-align:center">قرارداد طراحی و پیاده‌سازی وب‌سایت</h2>
+<p>این قرارداد در تاریخ {{تاریخ قرارداد}} بین <b>{{نام کارفرما}}</b> به نشانی {{نشانی کارفرما}} و شماره تماس {{تلفن کارفرما}} («کارفرما») و <b>{{نام مجری}}</b> به کد ملی/شناسه {{شناسه مجری}} («مجری») منعقد می‌شود.</p>
+<h3>ماده ۱ — موضوع</h3><p>طراحی و پیاده‌سازی وب‌سایت {{نوع سایت (شرکتی، فروشگاهی، …)}} با امکانات: {{شرح امکانات سایت}}.</p>
+<h3>ماده ۲ — مدت و مراحل تحویل</h3><p>مدت انجام کار {{مدت انجام کار}} است: طراحی ظاهر، پیاده‌سازی، بارگذاری محتوا و تحویل نهایی. هر مرحله پس از تأیید کارفرما ادامه می‌یابد.</p>
+<h3>ماده ۳ — مبلغ و پرداخت</h3><p>مبلغ کل {{مبلغ کل به تومان}} تومان (به حروف: {{مبلغ به حروف}}) است که {{نحوه پرداخت}} پرداخت می‌شود. هزینه دامنه و هاست {{هزینه دامنه و هاست (بر عهده چه کسی)}}.</p>
+<h3>ماده ۴ — تعهدات کارفرما</h3><p>ارائه به‌موقع محتوا، تصاویر و دسترسی‌های لازم و اعلام نظر حداکثر ظرف {{مهلت اعلام نظر}} روز کاری.</p>
+<h3>ماده ۵ — پشتیبانی و ضمانت</h3><p>مجری تا {{مدت پشتیبانی رایگان}} پس از تحویل، رفع ایرادهای فنی را بدون هزینه انجام می‌دهد.</p>
+<h3>ماده ۶ — مالکیت</h3><p>پس از تسویه کامل، مالکیت سایت، محتوا و دسترسی‌های مدیریتی به کارفرما منتقل می‌شود.</p>
+<h3>ماده ۷ — حل اختلاف</h3><p>اختلافات از طریق مذاکره و در صورت عدم توافق از طریق مراجع قانونی شهر {{شهر}} حل می‌شود.</p>
+<table style="width:100%;margin-top:40px"><tr><td style="text-align:center">امضای کارفرما</td><td style="text-align:center">امضای مجری</td></tr></table>
+HTML],
+        ['قرارداد عدم افشای اطلاعات (NDA)', 'قرارداد', 'حفظ محرمانگی اطلاعات بین دو شخص یا شرکت پیش از همکاری', <<<'HTML'
+<h2 style="text-align:center">قرارداد عدم افشای اطلاعات محرمانه</h2>
+<p>این قرارداد در تاریخ {{تاریخ}} بین <b>{{طرف اول (افشاکننده)}}</b> و <b>{{طرف دوم (دریافت‌کننده)}}</b> با هدف {{هدف همکاری}} منعقد می‌گردد.</p>
+<h3>ماده ۱ — تعریف اطلاعات محرمانه</h3><p>هرگونه اطلاعات فنی، مالی، تجاری، طرح‌ها، فهرست مشتریان، کدها و اسنادی که در جریان همکاری در اختیار طرف دوم قرار می‌گیرد.</p>
+<h3>ماده ۲ — تعهدات</h3><p>طرف دوم متعهد است اطلاعات را فقط برای هدف همکاری استفاده کند، آن را به هیچ شخص ثالثی افشا نکند و از آن به نحو مناسب محافظت نماید.</p>
+<h3>ماده ۳ — مدت</h3><p>این تعهد از تاریخ امضا به مدت {{مدت اعتبار تعهد}} معتبر است و با پایان همکاری از بین نمی‌رود.</p>
+<h3>ماده ۴ — خسارت</h3><p>در صورت نقض تعهد، طرف دوم مسئول جبران خسارت وارده به طرف اول {{مبلغ وجه التزام (اختیاری)}} خواهد بود.</p>
+<table style="width:100%;margin-top:40px"><tr><td style="text-align:center">امضای طرف اول</td><td style="text-align:center">امضای طرف دوم</td></tr></table>
+HTML],
+        ['قرارداد خرید و فروش کالا', 'قرارداد', 'خرید و فروش کالا با مشخصات، مبلغ، تحویل و ضمانت', <<<'HTML'
+<h2 style="text-align:center">قرارداد خرید و فروش کالا</h2>
+<p>این قرارداد در تاریخ {{تاریخ}} بین <b>{{نام فروشنده}}</b> به کد ملی {{کد ملی فروشنده}} («فروشنده») و <b>{{نام خریدار}}</b> به کد ملی {{کد ملی خریدار}} («خریدار») منعقد می‌شود.</p>
+<h3>ماده ۱ — مشخصات کالا</h3><p>{{مشخصات کامل کالا (نوع، مدل، تعداد، شماره سریال)}}</p>
+<h3>ماده ۲ — مبلغ و پرداخت</h3><p>مبلغ کل {{مبلغ کل به تومان}} تومان (به حروف: {{مبلغ به حروف}}) است که به صورت {{نحوه پرداخت}} پرداخت می‌شود.</p>
+<h3>ماده ۳ — تحویل</h3><p>کالا در تاریخ {{تاریخ تحویل}} در محل {{محل تحویل}} تحویل خریدار می‌شود و هزینه حمل بر عهده {{هزینه حمل بر عهده}} است.</p>
+<h3>ماده ۴ — سلامت و ضمانت</h3><p>فروشنده سلامت کالا را تضمین می‌کند و مدت ضمانت {{مدت ضمانت}} است.</p>
+<table style="width:100%;margin-top:40px"><tr><td style="text-align:center">امضای فروشنده</td><td style="text-align:center">امضای خریدار</td></tr></table>
+HTML],
+        ['قرارداد همکاری (استخدام ساده)', 'قرارداد', 'همکاری تمام‌وقت یا پاره‌وقت با حقوق، ساعت کار و مدت', <<<'HTML'
+<h2 style="text-align:center">قرارداد همکاری</h2>
+<p>این قرارداد بین <b>{{نام کارفرما یا شرکت}}</b> و <b>{{نام و نام خانوادگی همکار}}</b> به کد ملی {{کد ملی همکار}} در تاریخ {{تاریخ}} منعقد می‌شود.</p>
+<h3>ماده ۱ — سمت و شرح وظایف</h3><p>همکار در سمت {{سمت}} مشغول به کار می‌شود و وظایف او: {{شرح وظایف}}.</p>
+<h3>ماده ۲ — مدت</h3><p>از تاریخ {{تاریخ شروع}} به مدت {{مدت قرارداد}} و با {{دوره آزمایشی}} دوره آزمایشی.</p>
+<h3>ماده ۳ — ساعت کار و محل</h3><p>{{ساعات کاری}} در {{محل کار (حضوری/دورکاری)}}.</p>
+<h3>ماده ۴ — حقوق و مزایا</h3><p>حقوق ماهانه {{حقوق ماهانه به تومان}} تومان که تا {{روز پرداخت}} هر ماه پرداخت می‌شود؛ بیمه و مزایا مطابق قانون کار.</p>
+<h3>ماده ۵ — محرمانگی</h3><p>همکار متعهد به حفظ اسرار کاری و اطلاعات مشتریان در طول همکاری و پس از آن است.</p>
+<table style="width:100%;margin-top:40px"><tr><td style="text-align:center">امضای کارفرما</td><td style="text-align:center">امضای همکار</td></tr></table>
+HTML],
+        ['فاکتور فروش', 'مالی', 'فاکتور رسمی با ردیف‌ها، جمع کل خودکار و مبلغ به حروف', <<<'HTML'
+<h2 style="text-align:center">فاکتور فروش</h2>
+<p>شماره فاکتور: {{شماره فاکتور}} — تاریخ: {{تاریخ}}</p>
+<p>فروشنده: <b>{{نام فروشنده}}</b> — تلفن: {{تلفن فروشنده}} — نشانی: {{نشانی فروشنده}}<br>خریدار: <b>{{نام خریدار}}</b> — تلفن: {{تلفن خریدار}}</p>
+<table style="width:100%;border-collapse:collapse" border="1" cellpadding="8"><tr><th>ردیف</th><th>شرح کالا / خدمت</th><th>تعداد</th><th>مبلغ (تومان)</th></tr>
+<tr><td>۱</td><td>{{شرح ردیف ۱}}</td><td>{{تعداد ۱}}</td><td>{{مبلغ ۱}}</td></tr>
+<tr><td>۲</td><td>{{شرح ردیف ۲}}</td><td>{{تعداد ۲}}</td><td>{{مبلغ ۲}}</td></tr>
+<tr><td>۳</td><td>{{شرح ردیف ۳}}</td><td>{{تعداد ۳}}</td><td>{{مبلغ ۳}}</td></tr>
+<tr><td colspan="3"><b>جمع کل</b></td><td><b>{{جمع کل}}</b></td></tr></table>
+<p>مبلغ به حروف: {{جمع کل به حروف تومان}}</p>
+<p>توضیحات: {{توضیحات}}</p>
+<table style="width:100%;margin-top:40px"><tr><td style="text-align:center">مهر و امضای فروشنده</td><td style="text-align:center">امضای خریدار</td></tr></table>
+HTML],
+        ['گواهی اشتغال به کار', 'اداری', 'برای سفارت، وام بانکی یا ارائه به سازمان‌ها', <<<'HTML'
+<p style="text-align:left">تاریخ: {{تاریخ}}<br>شماره: {{شماره نامه}}</p>
+<h2 style="text-align:center">گواهی اشتغال به کار</h2>
+<p>بدین‌وسیله گواهی می‌شود <b>{{نام و نام خانوادگی کارمند}}</b> فرزند {{نام پدر}} به کد ملی {{کد ملی}} از تاریخ {{تاریخ شروع همکاری}} تاکنون در سمت {{سمت}} در {{نام شرکت}} مشغول به کار است و حقوق ماهانه ایشان {{حقوق ماهانه (اختیاری)}} می‌باشد.</p>
+<p>این گواهی بنا به درخواست نامبرده جهت ارائه به {{ارائه به (سفارت، بانک، …)}} صادر شده و فاقد هرگونه ارزش دیگری است.</p>
+<p style="margin-top:40px;text-align:left">{{نام و سمت امضاکننده}}<br>مهر و امضا</p>
+HTML],
+        ['معرفی‌نامه', 'اداری', 'معرفی شخص به سازمان، شرکت یا دانشگاه', <<<'HTML'
+<p style="text-align:left">تاریخ: {{تاریخ}}</p>
+<p>به: <b>{{گیرنده}}</b><br>موضوع: معرفی {{نام شخص معرفی‌شونده}}</p>
+<p>با سلام و احترام، بدین‌وسیله <b>{{نام شخص معرفی‌شونده}}</b> به کد ملی {{کد ملی}} که {{سمت یا نسبت با سازمان}} می‌باشد، جهت {{هدف معرفی}} حضورتان معرفی می‌گردد. خواهشمند است دستور فرمایید همکاری لازم به عمل آید.</p>
+<p style="margin-top:40px;text-align:left">با تشکر<br>{{نام و سمت امضاکننده}}</p>
+HTML],
+        ['صورتجلسه', 'اداری', 'ثبت تصمیم‌های جلسه با حاضرین و مسئول پیگیری', <<<'HTML'
+<h2 style="text-align:center">صورتجلسه</h2>
+<p>موضوع جلسه: <b>{{موضوع جلسه}}</b><br>تاریخ و ساعت: {{تاریخ}} — {{ساعت}}<br>محل: {{محل جلسه}}</p>
+<p>حاضرین: {{حاضرین جلسه}}</p>
+<h3>مطالب مطرح‌شده</h3><p>{{شرح مطالب مطرح‌شده}}</p>
+<h3>مصوبات</h3>
+<table style="width:100%;border-collapse:collapse" border="1" cellpadding="8"><tr><th>مصوبه</th><th>مسئول پیگیری</th><th>مهلت</th></tr>
+<tr><td>{{مصوبه ۱}}</td><td>{{مسئول ۱}}</td><td>{{مهلت ۱}}</td></tr>
+<tr><td>{{مصوبه ۲}}</td><td>{{مسئول ۲}}</td><td>{{مهلت ۲}}</td></tr></table>
+<p style="margin-top:30px">امضای حاضرین:</p>
+HTML],
+        ['تعهدنامه', 'عمومی', 'تعهد کتبی برای انجام کار، بازپرداخت یا رعایت شرایط', <<<'HTML'
+<h2 style="text-align:center">تعهدنامه</h2>
+<p>اینجانب <b>{{نام و نام خانوادگی متعهد}}</b> فرزند {{نام پدر}} به کد ملی {{کد ملی}} ساکن {{نشانی}} متعهد می‌شوم {{متن تعهد}} تا تاریخ {{مهلت انجام تعهد}}.</p>
+<p>در صورت عدم انجام تعهد، {{ضمانت اجرا (مثلاً پرداخت مبلغ … تومان)}}.</p>
+<p>این تعهدنامه با رضایت کامل و در کمال صحت عقل تنظیم و امضا شد.</p>
+<p style="margin-top:40px;text-align:left">تاریخ: {{تاریخ}}<br>امضا و اثر انگشت متعهد</p>
+HTML],
+        ['دعوت‌نامه جلسه یا رویداد', 'اداری', 'دعوت رسمی به جلسه، همایش، افتتاحیه یا مراسم', <<<'HTML'
+<h2 style="text-align:center">دعوت‌نامه</h2>
+<p><b>{{نام مدعو}}</b> گرامی</p>
+<p>با سلام و احترام، از حضورتان در <b>{{عنوان جلسه یا رویداد}}</b> که در تاریخ {{تاریخ رویداد}} ساعت {{ساعت}} در {{محل برگزاری}} برگزار می‌شود دعوت می‌کنیم.</p>
+<p>{{توضیحات (برنامه، پوشش، …)}}</p>
+<p>لطفاً حضور خود را تا {{مهلت تأیید حضور}} از طریق {{راه ارتباطی}} اعلام فرمایید.</p>
+<p style="margin-top:40px;text-align:left">با احترام<br>{{نام دعوت‌کننده}}</p>
+HTML],
+        ['نامه پیگیری یا شکایت', 'عمومی', 'نامه رسمی برای پیگیری سفارش، شکایت از خدمات یا مطالبه حق', <<<'HTML'
+<p style="text-align:left">تاریخ: {{تاریخ}}</p>
+<p>به: <b>{{نام شرکت یا سازمان}}</b> — واحد {{واحد (پشتیبانی، حقوقی، …)}}<br>موضوع: {{موضوع}}</p>
+<p>با سلام، احتراماً اینجانب {{نام و نام خانوادگی}} به شماره تماس {{تلفن}} در تاریخ {{تاریخ خرید یا قرارداد}} {{شرح خرید یا قرارداد}} انجام داده‌ام.</p>
+<p>متأسفانه {{شرح مشکل}}. پیگیری‌های قبلی: {{پیگیری‌های انجام‌شده}}.</p>
+<p>لذا خواهشمند است ظرف {{مهلت پاسخ}} نسبت به {{درخواست (بازگشت وجه، تعویض، …)}} اقدام فرمایید؛ در غیر این صورت ناچار به پیگیری از مراجع ذی‌صلاح خواهم بود.</p>
+<p style="margin-top:40px;text-align:left">با تشکر<br>{{نام و نام خانوادگی}}</p>
+HTML],
+        ['درخواست تسویه حساب', 'اداری', 'درخواست تسویه هنگام پایان همکاری', <<<'HTML'
+<p style="text-align:left">تاریخ: {{تاریخ}}</p>
+<p>مدیریت محترم {{نام شرکت}}</p>
+<p>با سلام، احتراماً اینجانب <b>{{نام و نام خانوادگی}}</b> با سمت {{سمت}} که همکاری‌ام از تاریخ {{تاریخ پایان همکاری}} پایان یافته است، خواهشمند است دستور فرمایید مطالبات اینجانب شامل {{مطالبات (حقوق، سنوات، مرخصی، …)}} محاسبه و به شماره حساب/شبا {{شماره شبا}} واریز گردد.</p>
+<p style="margin-top:40px;text-align:left">با تشکر<br>{{نام و نام خانوادگی}}<br>امضا</p>
+HTML],
+    ];
 }
 function r_studio_info(): void
 {
@@ -95,7 +217,7 @@ function r_studio_info(): void
         return ['id' => (int) $d['id'], 'title' => $d['title'], 'category' => $d['category'], 'desc' => $d['descr'], 'body' => $d['body'], 'price' => $d['price'] !== null ? (int) $d['price'] : (int) $s['doc']];
     }, rows('SELECT * FROM doc_templates WHERE active = 1 ORDER BY sort, id'));
     out(['enabled' => !empty($s['enabled']), 'prices' => array_intersect_key($s, array_flip(['resume', 'card', 'post', 'doc', 'slides', 'pageCardMonth', 'pageCardYear', 'pageMenuMonth', 'pageMenuYear'])),
-        'trialDays' => (int) $s['trialDays'], 'docs' => $docs]);
+        'trialDays' => (int) $s['trialDays'], 'docs' => $docs, 'formats' => STUDIO_FORMATS]);
 }
 
 // ------------------------------------------------------------------ user: designs
@@ -111,12 +233,16 @@ function a_studio_save(): void
     if (strlen($json) > 3 * 1024 * 1024) fail('حجم طرح زیاد است؛ تصاویر کوچک‌تری بگذارید.', 422);
     $title = str_in('title', 190) ?: STUDIO_KINDS[$kind];
     $id = int_in('id');
+    studio_render_boot();
+    $thumb = studio_thumb($kind, bx_clean($data));
     if ($id) {
         $it = row('SELECT * FROM studio_items WHERE id = ? AND user_id = ?', [$id, $u['id']]);
         if (!$it) fail('طرح پیدا نشد.', 404);
-        update('studio_items', ['title' => $title, 'data' => $json, 'updated_at' => now()], 'id = ?', [$id]);
+        // a bought design is a finished file: changing it needs X PRO (otherwise save a copy)
+        if ($it['paid'] && $it['data'] !== $json && !pro_active($u)) fail('ویرایش طرحی که خریداری شده فقط با اشتراک ' . (setting('pro', 'name') ?: 'X PRO') . ' ممکن است. می‌توانید از همین طرح یک نسخه جدید بسازید.', 402, 'pro_edit');
+        update('studio_items', ['title' => $title, 'data' => $json, 'thumb' => $thumb, 'updated_at' => now()], 'id = ?', [$id]);
     } else {
-        $id = insert('studio_items', ['user_id' => $u['id'], 'kind' => $kind, 'title' => $title, 'data' => $json, 'paid' => 0, 'price' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        $id = insert('studio_items', ['user_id' => $u['id'], 'kind' => $kind, 'title' => $title, 'data' => $json, 'thumb' => $thumb, 'paid' => 0, 'price' => 0, 'created_at' => now(), 'updated_at' => now()]);
     }
     $it = row('SELECT * FROM studio_items WHERE id = ?', [$id]);
     out(['item' => studio_item_out($it), 'price' => $it['paid'] ? 0 : studio_price($kind, $it)]);
@@ -125,7 +251,8 @@ function a_studio_list(): void
 {
     $u = require_user();
     out(['items' => array_map('studio_item_out', rows('SELECT * FROM studio_items WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200', [$u['id']])),
-        'pages' => array_map('page_out', rows('SELECT * FROM pages WHERE user_id = ? ORDER BY id DESC', [$u['id']]))]);
+        'pages' => array_map('page_out', rows('SELECT * FROM pages WHERE user_id = ? ORDER BY id DESC', [$u['id']])), 'formats' => STUDIO_FORMATS,
+        'pro' => pro_info($u) + (pro_active($u) ? ['studioLeft' => pro_studio_left($u)] : [])]);
 }
 function a_studio_get(): void
 {
@@ -133,6 +260,16 @@ function a_studio_get(): void
     $it = row('SELECT * FROM studio_items WHERE id = ?', [int_in('id')]);
     if (!$it || ((int) $it['user_id'] !== (int) $u['id'] && $u['role'] !== 'admin')) fail('طرح پیدا نشد.', 404);
     out(['item' => studio_item_out($it, true), 'price' => $it['paid'] ? 0 : studio_price($it['kind'], $it)]);
+}
+// New unpaid draft from an existing design (how non-members change a bought design)
+function a_studio_copy(): void
+{
+    $u = require_user();
+    $it = row('SELECT * FROM studio_items WHERE id = ? AND user_id = ?', [int_in('id'), $u['id']]);
+    if (!$it) fail('طرح پیدا نشد.', 404);
+    $id = insert('studio_items', ['user_id' => $u['id'], 'kind' => $it['kind'], 'title' => mb_substr($it['title'] . ' (نسخه جدید)', 0, 190), 'data' => $it['data'], 'thumb' => $it['thumb'],
+        'paid' => 0, 'price' => 0, 'created_at' => now(), 'updated_at' => now()]);
+    out(['id' => $id, 'kind' => $it['kind']]);
 }
 function a_studio_delete(): void
 {
@@ -328,6 +465,9 @@ function r_studio_seo(): void
 {
     rate_limit('seo-audit', 8, 600);
     ip_limit('seo-audit', 15, 3600);
+    // weekly allowance is checked now and counted only after a successful audit
+    $q = tool_quota('seo');
+    if ($q['limit'] > 0 && $q['used'] >= $q['limit']) tool_use('seo');
     $url = trim(str_in('url', 300));
     if (!preg_match('#^https?://#i', $url)) $url = 'https://' . $url;
     // Only public addresses: each hop (incl. redirects) is resolved, checked and pinned
@@ -396,6 +536,63 @@ function r_studio_seo(): void
     ];
     $pass = count(array_filter($checks, function ($c) { return $c[2]; }));
     $score = (int) round($pass / count($checks) * 100);
-    out(['url' => $final, 'score' => $score, 'title' => $title, 'desc' => $desc, 'time' => round($r['time'], 2),
+    $me = me();
+    usage_add('tool:seo', $me ? (int) $me['id'] : null);
+    out(['quota' => tool_quota('seo'), 'url' => $final, 'score' => $score, 'title' => $title, 'desc' => $desc, 'time' => round($r['time'], 2),
         'checks' => array_map(function ($c) { return ['id' => $c[0], 'label' => $c[1], 'ok' => (bool) $c[2], 'tip' => $c[3]]; }, $checks)]);
+}
+
+// ------------------------------------------------------------------ brand names (weekly allowance; unlimited for X PRO)
+const NAME_BANK = [
+    'general' => ['fa' => ['نو', 'آوا', 'ماه', 'مهر', 'روشن', 'پویا', 'آرا', 'سپهر', 'رخ', 'تاک', 'نیک', 'سان', 'آسا', 'دیبا', 'رادین', 'کیان'], 'en' => ['Nova', 'Zen', 'Arya', 'Mehr', 'Pars', 'Sana', 'Kia', 'Rad', 'Vira', 'Tara', 'Sora', 'Lumi']],
+    'food' => ['fa' => ['دمنوش', 'خوشه', 'سفره', 'نان', 'شیرین', 'قهوه', 'طعم', 'باغ', 'دانه', 'عطر', 'ادویه', 'تنور', 'کاسه', 'شکر'], 'en' => ['Brew', 'Bite', 'Crumb', 'Bean', 'Taste', 'Oven', 'Spice', 'Feast', 'Sip', 'Grain']],
+    'beauty' => ['fa' => ['گلبرگ', 'ناز', 'رز', 'آیینه', 'مخمل', 'شبنم', 'بلور', 'پرنیان', 'ترمه', 'نگار', 'یاس', 'مهتاب'], 'en' => ['Glow', 'Bloom', 'Silk', 'Rose', 'Muse', 'Velvet', 'Luna', 'Aura', 'Belle', 'Pure']],
+    'tech' => ['fa' => ['رایان', 'پردازش', 'کد', 'فن', 'داده', 'شبکه', 'هوش', 'سامانه', 'ابر', 'پیکسل', 'نوآور', 'اندیش'], 'en' => ['Byte', 'Logic', 'Code', 'Pixel', 'Data', 'Nexa', 'Cloud', 'Sync', 'Volt', 'Grid', 'Bit', 'Core']],
+    'fashion' => ['fa' => ['پوش', 'جامه', 'دوخت', 'نخ', 'پارچه', 'مد', 'ترنج', 'سبک', 'پیراهن', 'شال', 'حریر', 'اطلس'], 'en' => ['Wear', 'Thread', 'Style', 'Chic', 'Mode', 'Loom', 'Stitch', 'Tailor', 'Vogue', 'Weave']],
+    'edu' => ['fa' => ['دانش', 'آموز', 'فرزانه', 'اندیشه', 'کتاب', 'مکتب', 'پژوه', 'خرد', 'دبستان', 'روشنا', 'آموزه', 'ایده'], 'en' => ['Learn', 'Mind', 'Sage', 'Scholar', 'Quest', 'Skill', 'Brain', 'Bright', 'Path', 'Spark']],
+    'health' => ['fa' => ['سلامت', 'آرامش', 'تندرست', 'شفا', 'زیست', 'مهرورز', 'نفس', 'توان', 'جان', 'بهی', 'سبز', 'رویش'], 'en' => ['Vita', 'Care', 'Heal', 'Pulse', 'Well', 'Fit', 'Life', 'Zen', 'Cure', 'Vital']],
+    'home' => ['fa' => ['خانه', 'سرا', 'آشیانه', 'کاشانه', 'منزل', 'دیوار', 'پنجره', 'چوب', 'سنگ', 'ستون', 'دکور', 'فرش'], 'en' => ['Nest', 'Home', 'Haven', 'Casa', 'Loft', 'Deco', 'Stone', 'Wood', 'Craft', 'Abode']],
+];
+function r_studio_names(): void
+{
+    rate_limit('names', 30, 600);
+    tool_use('names');
+    $ind = str_in('industry', 20);
+    $b = NAME_BANK[$ind] ?? NAME_BANK['general']; $g = NAME_BANK['general'];
+    $style = in_array(str_in('style', 4), ['fa', 'en', 'mix'], true) ? str_in('style', 4) : 'mix';
+    $keys = array_slice(array_filter(preg_split('/[،,\s]+/u', str_in('keys', 200))), 0, 8);
+    $fa = array_values(array_unique(array_merge(array_filter($keys, fn ($k) => preg_match('/[\x{0600}-\x{06FF}]/u', $k)), $b['fa'], array_slice($g['fa'], 0, 6))));
+    $en = array_values(array_unique(array_merge(array_map(fn ($k) => ucfirst(strtolower($k)), array_filter($keys, fn ($k) => preg_match('/^[a-z]/i', $k))), $b['en'], array_slice($g['en'], 0, 5))));
+    $faSuf = ['‌ستان', '‌زار', 'کده', 'یار', 'سرا', 'انه', '‌نو', '‌پلاس', '‌آنلاین', 'ینو', 'ک', '‌شاپ'];
+    $faPre = ['نو', 'هم', 'پیش', 'آی', 'دی', 'ای'];
+    $enSuf = ['ify', 'ly', 'io', 'hub', 'lab', 'nest', 'go', 'co', 'ora', 'ix', 'a', 'o', 'zy', 'verse'];
+    $pick = fn (array $a) => $a[array_rand($a)];
+    $out = [];
+    for ($i = 0; count($out) < 60 && $i < 700; $i++) {
+        $r = mt_rand() / mt_getrandmax();
+        if ($style !== 'en') {
+            if ($r < 0.25) $out[$pick($fa) . $pick($faSuf)] = 1;
+            elseif ($r < 0.45) $out[$pick($faPre) . $pick($fa)] = 1;
+            elseif ($r < 0.65) $out[$pick($fa) . ' ' . $pick($b['fa'])] = 1;
+            elseif ($style === 'fa') $out[$pick($fa) . $pick(['‌ها', 'ی', 'ستان', 'انه'])] = 1;
+        }
+        if ($style !== 'fa' && $r >= 0.45) {
+            $w = $pick($en);
+            if ($r < 0.7) $out[$w . $pick($enSuf)] = 1;
+            elseif ($r < 0.85) $out[$w . $pick($en)] = 1;
+            else $out[substr($w, 0, max(3, (int) ceil(strlen($w) * 0.7))) . $pick(['a', 'o', 'i', 'x', 'y'])] = 1;
+        }
+    }
+    // score: short, easy to say, .ir-friendly names first
+    $names = array_filter(array_keys($out), fn ($n) => mb_strlen($n) >= 3 && mb_strlen($n) <= 18);
+    // short, pronounceable, one-word names score higher (+ a little variety)
+    $score = function ($n) {
+        $l = mb_strlen($n); $s = 84 - abs($l - 6) * 5;
+        if (preg_match('/^[a-z]+$/i', $n)) { if (preg_match('/[aeiou]{3}|[^aeiou]{4}/i', $n)) $s -= 22; if (preg_match('/[aeiou][^aeiou][aeiou]/i', $n)) $s += 6; }
+        if (strpos($n, ' ') !== false) $s -= 10;
+        return max(20, min(98, $s + crc32($n) % 11));
+    };
+    $list = array_map(fn ($n) => ['name' => $n, 'score' => $score($n)], $names);
+    usort($list, fn ($a, $b) => $b['score'] <=> $a['score']);
+    out(['names' => array_slice($list, 0, 48), 'quota' => tool_quota('names')]);
 }

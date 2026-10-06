@@ -1067,6 +1067,17 @@ function a_settings_save(): void
         foreach (['brand', 'brand2'] as $k) if (!preg_match('/^#[0-9a-fA-F]{6}$/', $current[$k])) $current[$k] = $defaults['theme'][$k];
         if (!in_array($current['defaultTheme'], ['dark', 'light'], true)) $current['defaultTheme'] = 'dark';
     }
+    if ($group === 'pro') {
+        $current['plans'] = array_values(array_filter(array_map(function ($x) {
+            if (!is_array($x) || trim((string) ($x['title'] ?? '')) === '') return null;
+            return ['id' => substr(preg_replace('/[^a-z0-9]/i', '', (string) ($x['id'] ?? '')), 0, 12) ?: 'p' . substr(md5(json_encode($x)), 0, 5), 'title' => mb_substr(trim((string) $x['title']), 0, 60),
+                'months' => max(1, min(36, (int) en_digits((string) ($x['months'] ?? 1)))), 'price' => max(0, (int) en_digits((string) ($x['price'] ?? 0))), 'old' => max(0, (int) en_digits((string) ($x['old'] ?? 0))),
+                'business' => !empty($x['business']), 'note' => mb_substr(trim((string) ($x['note'] ?? '')), 0, 40)];
+        }, (array) $current['plans'])));
+        foreach (['freeQuota', 'proQuota'] as $q) foreach ($defaults['pro'][$q] as $k => $d) $current[$q][$k] = max(0, (int) en_digits((string) ($current[$q][$k] ?? $d)));
+        foreach (['studioFiles', 'studioFilesBiz'] as $k) $current[$k] = max(0, min(999, (int) $current[$k]));
+        $current['discount'] = max(0, min(50, (int) $current['discount']));
+    }
     if ($group === 'delivery') {
         $current['weekdays'] = array_values(array_unique(array_filter(array_map('intval', (array) $current['weekdays']), function ($d) { return $d >= 0 && $d <= 6; })));
         $current['slots'] = array_values(array_filter(array_map(function ($x) {

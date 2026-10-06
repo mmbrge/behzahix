@@ -447,13 +447,21 @@ function cart_products(int $uid, array $ids): array
 }
 
 // Price of a product after an optional coupon (global, or the product seller's own).
-function item_price(array $p, ?array $coupon): int
+function item_price(array $p, ?array $coupon, int $memberPct = 0): int
 {
     $price = final_price($p);
     if ($coupon && ($coupon['owner_id'] === null || (int) $coupon['owner_id'] === (int) $p['seller_id'])) {
         $price = (int) (round($price * (100 - (int) $coupon['percent']) / 100 / 1000) * 1000);
     }
+    // X PRO members: extra percentage off every product
+    if ($memberPct > 0) $price = (int) (round($price * (100 - $memberPct) / 100 / 1000) * 1000);
     return max(0, $price);
+}
+function member_pct(int $uid): int
+{
+    if (!$uid || empty(setting('pro', 'enabled'))) return 0;
+    $u = row('SELECT pro_until, role FROM users WHERE id = ?', [$uid]);
+    return $u && $u['role'] !== 'admin' && $u['pro_until'] && strtotime($u['pro_until'] . ' UTC') > time() ? max(0, min(50, (int) setting('pro', 'discount'))) : 0;
 }
 function shop_coupon(string $code): ?array
 {
@@ -503,11 +511,12 @@ function shop_complete(int $uid, array $ids, string $couponCode = ''): array
 {
     $items = cart_products($uid, $ids);
     $coupon = shop_coupon($couponCode);
-    $total = array_sum(array_map(function ($p) use ($coupon) { return item_price($p, $coupon); }, $items));
+    $pct = member_pct($uid);
+    $total = array_sum(array_map(function ($p) use ($coupon, $pct) { return item_price($p, $coupon, $pct); }, $items));
     $wallet = (int) val('SELECT wallet FROM users WHERE id = ?', [$uid]);
     if ($total > $wallet) fail('موجودی کیف پول کافی نیست.', 422);
     foreach ($items as $p) {
-        $price = item_price($p, $coupon);
+        $price = item_price($p, $coupon, $pct);
         wallet_add($uid, -$price);
         insert('purchases', ['user_id' => $uid, 'product_id' => $p['id'], 'price' => $price, 'created_at' => now()]);
         tx($uid, 'purchase', -$price, 'خرید ' . $p['title']);
@@ -536,9 +545,10 @@ function r_shop_quote(): void
     $u = me();
     $items = $u ? cart_products((int) $u['id'], arr_in('items')) : cart_products(0, arr_in('items'));
     $coupon = shop_coupon(str_in('coupon', 32));
+    $pct = $u ? member_pct((int) $u['id']) : 0;
     $before = array_sum(array_map('final_price', $items));
-    $after = array_sum(array_map(function ($p) use ($coupon) { return item_price($p, $coupon); }, $items));
-    out(['total' => $after, 'discount' => $before - $after, 'coupon' => $coupon && $after < $before ? (int) $coupon['percent'] : 0]);
+    $after = array_sum(array_map(function ($p) use ($coupon, $pct) { return item_price($p, $coupon, $pct); }, $items));
+    out(['total' => $after, 'discount' => $before - $after, 'coupon' => $coupon && $after < $before ? (int) $coupon['percent'] : 0, 'member' => $pct]);
 }
 
 function r_shop_checkout(): void
@@ -549,7 +559,8 @@ function r_shop_checkout(): void
     $items = cart_products((int) $u['id'], $ids);
     if (!$items) fail('سبد خرید خالی است یا قبلاً این فایل‌ها را خریده‌اید.', 422);
     $coupon = shop_coupon($code);
-    $total = array_sum(array_map(function ($p) use ($coupon) { return item_price($p, $coupon); }, $items));
+    $pct = member_pct((int) $u['id']);
+    $total = array_sum(array_map(function ($p) use ($coupon, $pct) { return item_price($p, $coupon, $pct); }, $items));
     $wallet = (int) $u['wallet'];
     if ($wallet >= $total) {
         db()->beginTransaction();

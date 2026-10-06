@@ -86,8 +86,25 @@ function default_settings(): array
         // Studio (studio.html): self-service builders, paid per finished file; hosted pages paid per period
         'studio' => [
             'enabled' => true, 'trialDays' => 7,
-            'resume' => 290000, 'card' => 190000, 'post' => 90000, 'doc' => 150000, 'slides' => 390000,
-            'pageCardMonth' => 99000, 'pageCardYear' => 790000, 'pageMenuMonth' => 149000, 'pageMenuYear' => 1190000,
+            // ~5–10% under comparable Iranian services (cvbuilder, visitec, seli, menew…), Oct 2026
+            'resume' => 45000, 'card' => 89000, 'post' => 45000, 'doc' => 49000, 'slides' => 129000,
+            'pageCardMonth' => 29000, 'pageCardYear' => 265000, 'pageMenuMonth' => 169000, 'pageMenuYear' => 1690000,
+        ],
+        // «X PRO» membership
+        'pro' => [
+            'enabled' => true, 'name' => 'X PRO',
+            'plans' => [
+                ['id' => 'm1', 'title' => 'X PRO یک‌ماهه', 'months' => 1, 'price' => 89000, 'business' => false, 'old' => 0, 'note' => ''],
+                ['id' => 'm3', 'title' => 'X PRO سه‌ماهه', 'months' => 3, 'price' => 249000, 'business' => false, 'old' => 267000, 'note' => 'محبوب‌ترین'],
+                ['id' => 'y1', 'title' => 'X PRO سالانه', 'months' => 12, 'price' => 849000, 'business' => false, 'old' => 1068000, 'note' => '۲۰٪ صرفه‌جویی'],
+                ['id' => 'b1', 'title' => 'X PRO Business ماهانه', 'months' => 1, 'price' => 169000, 'business' => true, 'old' => 0, 'note' => 'همراه منوی QR'],
+                ['id' => 'b12', 'title' => 'X PRO Business سالانه', 'months' => 12, 'price' => 1590000, 'business' => true, 'old' => 2028000, 'note' => ''],
+            ],
+            // final studio files per 30 days, discount on shop products for members (%)
+            'studioFiles' => 15, 'studioFilesBiz' => 40, 'discount' => 7,
+            // weekly uses of premium tools: free users / members (0 = unlimited)
+            'freeQuota' => ['seo' => 3, 'short' => 5, 'names' => 5, 'favicon' => 2],
+            'proQuota' => ['seo' => 60, 'short' => 200, 'names' => 0, 'favicon' => 0],
         ],
         // In-person delivery: weekdays (0 = Sunday … 6 = Saturday), time slots with capacity, closed dates
         'delivery' => [
@@ -142,6 +159,7 @@ function public_settings(): array
         'uploads' => ['maxMB' => (int) $s['uploads']['maxMB'], 'ext' => $s['uploads']['ext']],
         'shop' => $s['shop'],
         'studio' => $s['studio'],
+        'pro' => ['enabled' => (bool) $s['pro']['enabled'], 'name' => (string) $s['pro']['name'], 'discount' => (int) $s['pro']['discount']],
         'delivery' => ['place' => (string) $s['delivery']['place'], 'note' => (string) $s['delivery']['note'], 'changeHours' => (int) $s['delivery']['changeHours'], 'afterWork' => (bool) $s['delivery']['afterWork'], 'enabled' => (bool) $s['delivery']['enabled']],
         'chat' => ['enabled' => (bool) $s['chat']['enabled'], 'botName' => (string) $s['chat']['botName'], 'greeting' => (string) $s['chat']['greeting']],
         'tools' => ['enabled' => (bool) $s['tools']['enabled'], 'disabled' => array_values((array) $s['tools']['disabled']), 'shortRequireLogin' => (bool) $s['tools']['shortRequireLogin']],

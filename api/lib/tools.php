@@ -137,6 +137,7 @@ function r_short_create(): void
             for ($i = 0; $i < 6; $i++) $code .= $abc[random_int(0, strlen($abc) - 1)];
         } while (val('SELECT id FROM short_links WHERE code = ?', [$code]));
     }
+    tool_use('short');
     $id = insert('short_links', ['code' => $code, 'url' => $url, 'user_id' => $u['id'] ?? null, 'visitor' => visitor_id(), 'created_at' => now()]);
     $_SESSION['my_links'] = array_slice(array_merge($_SESSION['my_links'] ?? [], [$id]), -50);
     log_tool('short', ['host' => mb_substr($host, 0, 80), 'alias' => $alias !== '']);

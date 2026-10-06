@@ -434,6 +434,7 @@
       { id: "orders", label: "سفارش‌های من", icon: "list", render: customerOrders, count: () => S.orders.filter((o) => o.status === "awaiting" || (o.status === "review" && !o.paid)).length },
       { id: "downloads", label: "دانلودها", icon: "download", render: customerDownloads },
       { id: "studio", label: "ساخته‌های من", icon: "sparkles", render: (p) => BXD.routes.studio(p) },
+      { id: "pro", label: (BX.settings.pro?.name || "X PRO"), icon: "crown", render: (p) => BXD.routes.pro(p) },
       { id: "wallet", label: "کیف پول", icon: "wallet", render: customerWallet },
       { id: "favorites", label: "علاقه‌مندی‌ها", icon: "heart", render: customerFavorites },
       { id: "tickets", label: "پشتیبانی", icon: "ticket", render: () => ticketsView() },
@@ -526,6 +527,7 @@
       { id: "jobs", label: "پروژه‌های باز", icon: "briefcase", render: designerJobs, count: () => openJobs().filter((o) => !(o.applicants || []).includes(me.id)).length },
       { id: "portfolio", label: "نمونه‌کارهای من", icon: "image", render: designerPortfolio },
       { id: "earnings", label: "درآمد و تسویه", icon: "wallet", render: payoutView },
+      { id: "pro", label: (BX.settings.pro?.name || "X PRO"), icon: "crown", render: (p) => BXD.routes.pro(p) },
       { id: "tickets", label: "پشتیبانی", icon: "ticket", render: () => ticketsView() },
       { id: "notifications", label: "اعلان‌ها", icon: "bell", render: notificationsView },
       { id: "profile", label: "پروفایل حرفه‌ای", icon: "settings", render: profileView },
@@ -600,6 +602,8 @@
       { id: "sales", label: "فروش‌ها", icon: "chart", render: () => { const sales = S.transactions.filter((t) => t.type === "sale"); return `<div class="dash-grid">${box("نمودار فروش", "chart", barChart(monthly(sales, (t) => t.amount)))}${box("فروش‌های اخیر", "list", txTable(sales))}</div>`; } },
       { id: "coupons", label: "کدهای تخفیف", icon: "percent", render: () => couponsView(true) },
       { id: "earnings", label: "درآمد و تسویه", icon: "wallet", render: payoutView },
+      { id: "pro", label: (BX.settings.pro?.name || "X PRO"), icon: "crown", render: (p) => BXD.routes.pro(p) },
+
       { id: "tickets", label: "پشتیبانی", icon: "ticket", render: () => ticketsView() },
       { id: "notifications", label: "اعلان‌ها", icon: "bell", render: notificationsView },
       { id: "profile", label: "پروفایل فروشگاه", icon: "settings", render: profileView },
@@ -671,6 +675,7 @@
       { id: "tickets", label: "تیکت‌ها", icon: "ticket", render: () => ticketsView(true), count: () => S.tickets.filter((t) => t.status === "open").length },
       { id: "coupons", label: "کدهای تخفیف", icon: "percent", render: () => couponsView(false) },
       { id: "studio", label: "استودیو", icon: "sparkles", render: (p) => BXD.routes.studio(p) },
+      { id: "pro", label: (BX.settings.pro?.name || "X PRO"), icon: "crown", render: (p) => BXD.routes.pro(p) },
       { id: "blog", label: "وبلاگ", icon: "book", render: (p) => BXD.routes.blog(p) },
       { id: "tools", label: "ابزارها و لینک‌ها", icon: "wrench", render: (p) => BXD.routes.tools(p) },
       { id: "notifications", label: "اعلان‌ها", icon: "bell", render: notificationsView },
@@ -761,7 +766,7 @@
       const unread = S.notifications.filter((n) => !n.read).length;
       app.innerHTML = `
         <aside class="dash-side" id="dash-side" aria-label="منوی پنل">
-          <div class="side-brand"><a href="index.html" class="logo logo--md" aria-label="صفحه اصلی"><span class="logo-a">BEHI</span><span class="logo-x">X</span></a><button class="icon-btn icon-btn-sm side-close" data-act="side-close" aria-label="بستن منو">${icon("cross")}</button></div>
+          <div class="side-brand">${BX.logoHtml("a", 'aria-label="صفحه اصلی"')}<button class="icon-btn icon-btn-sm side-close" data-act="side-close" aria-label="بستن منو">${icon("cross")}</button></div>
           <div class="side-user">${avatar(me)}<div><b>${esc(me.name)}</b><span class="badge badge--brand">${ROLE_LABEL[me.role]}</span></div></div>
           <nav class="side-nav">
             <p class="side-nav-title">منو</p>

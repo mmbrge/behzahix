@@ -115,7 +115,7 @@ function r_auth_2fa(): void
 function integrity_files(): array
 {
     $root = dirname(__DIR__, 2);
-    $list = array_merge(glob($root . '/api/lib/*.php') ?: [], [$root . '/api/index.php', $root . '/seo.php', $root . '/p.php']);
+    $list = array_merge(glob($root . '/api/lib/*.php') ?: [], glob($root . '/api/lib/render/*.php') ?: [], [$root . '/api/index.php', $root . '/seo.php', $root . '/p.php']);
     return array_values(array_filter($list, 'is_file'));
 }
 function integrity_check(): array

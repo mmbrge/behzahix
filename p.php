@@ -22,6 +22,13 @@ if ($preview) {
 $base = seo_base();
 $site = installed() ? seo_site() : 'بهیکس';
 $active = $p && $p['expires_at'] && strtotime($p['expires_at'] . ' UTC') > time();
+// X PRO includes the digital card page; X PRO Business also the QR menu
+if ($p && !$active && !empty($p['user_id'])) {
+    try {
+        $o = row('SELECT pro_until, pro_biz FROM users WHERE id = ?', [(int) $p['user_id']]);
+        $active = $o && $o['pro_until'] && strtotime($o['pro_until'] . ' UTC') > time() && ($p['kind'] === 'card' || $o['pro_biz']);
+    } catch (Throwable $e) { /* keep inactive */ }
+}
 $d = $p ? (jdec($p['data'], []) ?: []) : [];
 $img = function ($id) use ($base) { return $id ? $base . '/api/index.php?r=file&id=' . rawurlencode((string) $id) : ''; };
 $color = preg_match('/^#[0-9a-f]{6}$/i', (string) ($d['color'] ?? '')) ? $d['color'] : '#ff7a1a';

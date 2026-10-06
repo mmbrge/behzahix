@@ -35,6 +35,10 @@
   // ---------------------------------------------------------------- helpers
   const fa = (n) => faDigits(n);
   const num = (n) => BX.num(n);
+  // Premium tools: a few free uses each week, X PRO members get many more
+  const proName = () => BX.settings.pro?.name || "X PRO";
+  const quotaWall = (el, msg) => { el.innerHTML = `<div class="card tpane center pro-wall">${icon("star")}<h3 class="mt-2">${esc(msg)}</h3><p class="muted mt-1 lh">با اشتراک ${esc(proName())} ابزارهای ویژه تقریباً نامحدود، فایل‌های استودیو، ویرایش نامحدود طرح‌ها و نشان PRO کنار نام شما.</p><a class="btn btn-primary mt-2" href="dashboard.html#pro">${icon("star")} مشاهده اشتراک‌ها</a></div>`; };
+  const quotaLine = async (tool, el) => { try { const q = await BX.api("tools.quota", { tool }); if (el) el.textContent = q.limit > 0 ? `${fa(q.left)} از ${fa(q.limit)} استفاده رایگان این هفته باقی مانده${q.pro ? "" : ` — با ${proName()} بیشتر`}` : (q.pro ? `استفاده نامحدود با ${proName()}` : ""); } catch (e) { /* offline */ } };
   const fmtBytes = (b) => (b >= 1048576 ? `${fa((b / 1048576).toFixed(2))} مگابایت` : `${fa(Math.max(1, Math.round(b / 1024)))} کیلوبایت`);
   const baseName = (name) => name.replace(/\.[^.]+$/, "");
   const scripts = {};
@@ -386,7 +390,7 @@
         <details class="mt-2"><summary class="small muted">نام دلخواه برای لینک (اختیاری)</summary>
           <div class="alias mt-1" dir="ltr"><span>${esc(host)}</span><input class="input" name="alias" form="" data-alias placeholder="my-link" maxlength="30"></div>
         </details>
-        <div data-result></div>
+        <p class="muted small" data-quota></p><div data-result></div>
       </div>
       <div class="card tpane mt-3"><div class="row-between"><h3 class="h-sm">${icon("list")} لینک‌های من</h3>${BX.me ? "" : '<a class="small" href="auth.html?next=tools.html%23short">ورود برای نگهداری دائمی لینک‌ها</a>'}</div><div data-mine class="mt-2"></div></div>`;
     const mine = body.querySelector("[data-mine]");
@@ -399,6 +403,7 @@
           <button type="button" class="icon-btn icon-btn-sm" data-stats="${esc(l.code)}" aria-label="آمار">${icon("chart")}</button></li>`).join("")}</ul>`
         : `<p class="muted small">هنوز لینکی نساخته‌اید.</p>`;
     };
+    quotaLine("short", body.querySelector("[data-quota]"));
     body.querySelector("[data-form]").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector("button");
@@ -415,7 +420,8 @@
         copy(link.short, "لینک کوتاه ساخته و کپی شد.");
         e.target.reset();
         loadMine();
-      } catch (err) { toast(err.message, "bad"); }
+        quotaLine("short", body.querySelector("[data-quota]"));
+      } catch (err) { if (err.code === "quota") quotaWall(body.querySelector("[data-result]"), err.message); else toast(err.message, "bad"); }
       btn.disabled = false;
     });
     body.addEventListener("click", (e) => {
@@ -777,7 +783,14 @@
       body.querySelector("[data-ico]").disabled = false;
       outs.names = names;
     }
-    bindDrop(body, async ([f]) => { img = await loadImage(f); await run(); track("favicon", { width: img.width, height: img.height }); });
+    body.querySelector("[data-code]").insertAdjacentHTML("beforebegin", `<p class="muted small mt-1" data-quota></p>`);
+    quotaLine("favicon", body.querySelector("[data-quota]"));
+    bindDrop(body, async ([f]) => {
+      try { await BX.api("tools.use", { tool: "favicon" }); }
+      catch (err) { if (err.code === "quota") return quotaWall(body.querySelector("[data-out]"), err.message); }
+      img = await loadImage(f); await run(); track("favicon", { width: img.width, height: img.height });
+      quotaLine("favicon", body.querySelector("[data-quota]"));
+    });
     const seg = (sel, cb) => body.querySelector(sel).addEventListener("click", (e) => {
       const b = e.target.closest("[data-v]"); if (!b) return;
       b.parentElement.querySelectorAll("[data-v]").forEach((x) => x.classList.toggle("is-on", x === b)); cb(b.dataset.v); run();

@@ -15,6 +15,8 @@
     "arrow-right": '<path d="M5 12h14M13 6l6 6-6 6"/>',
     "chevron-down": '<path d="m6 9 6 6 6-6"/>',
     "chevron-up": '<path d="m18 15-6-6-6 6"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    crown: '<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7z"/>',
     bale: '<path d="M12 3a9 9 0 0 0-8.4 12.2L3 21l5.8-.6A9 9 0 1 0 12 3z"/><path d="M9.5 8v8h3.2a2.1 2.1 0 0 0 0-4.2H9.5m0 0h2.6a1.9 1.9 0 0 0 0-3.8H9.5"/>',
     qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4h-4z"/>',
     hash: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
@@ -153,8 +155,13 @@
     const a = hue ?? h;
     return `radial-gradient(circle at ${20 + (h % 60)}% ${30 + (h % 40)}%, hsl(${a} 90% 60% / .9), transparent 55%), radial-gradient(circle at 80% 90%, hsl(${(a + 40) % 360} 85% 50% / .8), transparent 50%), linear-gradient(135deg, hsl(${(a + 200) % 360} 45% 18%), #0b0d14)`;
   }
+  // X PRO members get a gold ring and a «PRO» tag on their avatar everywhere
   const avatar = (u, size = "") =>
-    `<span class="avatar ${size}" style="--h:${u?.hue ?? 25}">${esc((u?.name || "?").trim().charAt(0))}</span>`;
+    `<span class="avatar ${size}${u?.pro ? " is-pro" : ""}" style="--h:${u?.hue ?? 25}"${u?.pro ? ` title="عضو ${esc(BX.settings?.pro?.name || "X PRO")}"` : ""}>${esc((u?.name || "?").trim().charAt(0))}${u?.pro ? '<i class="pro-tag">PRO</i>' : ""}</span>`;
+  const logoHtml = (tag = "a", extra = "") => {
+    const pro = BX.auth?.current?.()?.pro;
+    return `<${tag} ${tag === "a" ? 'href="index.html"' : ""} class="logo logo--md${pro ? " is-pro" : ""}" ${extra}><span class="logo-a">BEHI</span><span class="logo-x">X</span>${pro ? '<span class="logo-pro" aria-label="عضو PRO">PRO</span>' : ""}</${tag}>`;
+  };
 
   // ---------------------------------------------------------------- Header / footer
   const NAV = [
@@ -199,7 +206,7 @@
     el.className = "site-header";
     el.innerHTML = `
       <div class="header-bar">
-        <a href="index.html" class="logo logo--md" aria-label="BEHIX صفحه اصلی"><span class="logo-a">BEHI</span><span class="logo-x">X</span></a>
+        ${logoHtml("a", 'aria-label="BEHIX صفحه اصلی"')}
         <nav class="nav" aria-label="منوی اصلی">
           ${NAV.map((n) => n.mega
             ? `<div class="nav-item has-mega"><a href="${n.href}" class="${page === n.id ? "is-active" : ""}" aria-haspopup="true">${n.label}${icon("chevron-down", "chev")}</a>${megaMenu()}</div>`
@@ -325,7 +332,7 @@
       <div class="msheet-deco" aria-hidden="true"><span>X</span></div>
       <div class="msheet-inner">
         <div class="msheet-top ms-anim" style="--i:${i++}">
-          <a href="index.html" class="logo logo--md"><span class="logo-a">BEHI</span><span class="logo-x">X</span></a>
+          ${logoHtml("a")}
           <code class="msheet-path" dir="ltr">~/behix/<b>menu</b></code>
           <button type="button" class="icon-btn msheet-close" aria-label="بستن منو">${icon("cross")}</button>
         </div>
@@ -842,7 +849,7 @@
   }
 
   // ---------------------------------------------------------------- Boot
-  Object.assign(BX, { ICONS, icon, faDigits, enDigits, num, toman, date, ago, esc, qs, art, avatar, toast, modal, initReveal });
+  Object.assign(BX, { ICONS, icon, faDigits, enDigits, num, toman, date, ago, esc, qs, art, avatar, logoHtml, toast, modal, initReveal });
 
   // Pages that keep working during maintenance (so the admin can sign in)
   const ALWAYS_OPEN = ["auth", "dashboard"];

@@ -1,7 +1,9 @@
 /* ==========================================================================
-   BEHIX — Studio: self-service builders that run entirely in the browser.
-   This file: router, hub, form engine, save/buy flow, resume, documents,
-   brand-name generator and the SEO audit. Other builders register through
+   BEHIX — Studio: self-service builders. The forms run here; every preview
+   image and final file is drawn on the server (watermarked, low-resolution
+   previews; the clean file only after purchase or an X PRO allowance).
+   This file: router, hub, form engine, save/buy/download flow, resume,
+   documents, brand names and the SEO audit. Other builders register through
    window.STUDIO.register (studio-canvas.js, studio-slides.js, studio-pages.js).
    ========================================================================== */
 
@@ -47,11 +49,6 @@
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
       return /png|gif|webp/.test(file.type) ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.86);
-    },
-    // Repeating «پیش‌نمایش» layer over HTML previews
-    watermarkHtml() {
-      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='260' height='160'><text x='20' y='90' transform='rotate(-24 130 80)' font-family='Tahoma' font-size='22' font-weight='700' fill='rgba(255,122,26,.22)'>پیش‌نمایش ${BX.settings.general?.siteName || "BEHIX"}</text></svg>`;
-      return `<div class="st-wm" style="background-image:url(&quot;data:image/svg+xml,${encodeURIComponent(svg)}&quot;)"></div>`;
     },
     lines: (s) => String(s || "").split("\n").map((x) => x.trim()).filter(Boolean),
   });
@@ -138,10 +135,12 @@
     },
   };
 
-  // ---------------------------------------------------------------- save / buy
+  // ---------------------------------------------------------------- save / buy / download
   const draftKey = (kind) => `behix:studio:${kind}`;
   STUDIO.saveDraft = (kind, data) => { try { localStorage.setItem(draftKey(kind), JSON.stringify(data)); } catch (e) { /* storage full */ } };
   STUDIO.loadDraft = (kind) => { try { return JSON.parse(localStorage.getItem(draftKey(kind)) || "null"); } catch (e) { return null; } };
+  const proName = () => BX.settings.pro?.name || "X PRO";
+  const isPro = () => !!BX.me && (BX.me.pro || BX.me.role === "admin");
   function needLogin(kind) {
     BX.modal({
       title: "ورود برای ذخیره و دریافت فایل",
@@ -149,70 +148,165 @@
       actions: [{ label: "بعداً" }, { label: "ورود / ثبت‌نام", primary: true, onClick: () => { location.href = `auth.html?next=${encodeURIComponent(`studio.html#${kind}`)}`; } }],
     });
   }
+  // Final files come only from the server, after the purchase check
+  STUDIO.fetchFile = async function (route, body) {
+    const res = await fetch(`api/index.php?r=${route}`, { method: "POST", credentials: "same-origin", headers: { "X-CSRF": BX.csrf(), "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const type = res.headers.get("Content-Type") || "";
+    if (!res.ok || type.includes("application/json")) {
+      let j = null; try { j = await res.json(); } catch (e) { /* not json */ }
+      const err = new Error(j?.message || "دریافت فایل ناموفق بود؛ دوباره تلاش کنید.");
+      err.code = j?.error; throw err;
+    }
+    const cd = res.headers.get("Content-Disposition") || "";
+    const m = cd.match(/filename\*=UTF-8''([^;]+)/i) || cd.match(/filename="([^"]+)"/i);
+    H.download(await res.blob(), m ? decodeURIComponent(m[1]) : "behix-file");
+  };
+  // Live preview: the server returns low-resolution watermarked images only
+  STUDIO.preview = function (el, kind, layout) {
+    let seq = 0, ctl = null;
+    const wrap = { card: "st-prev st-prev--card", post: "st-prev st-prev--post", slides: "st-prev st-prev--slides", pages: "st-prev st-prev--pages" }[layout] || "st-prev";
+    el.innerHTML = `<div class="${wrap}"><div class="st-prev-imgs" data-imgs><div class="st-prev-ph skeleton"></div></div><div class="st-prev-busy" data-busy hidden>${BX.icon("loader")}</div></div>
+      <p class="muted small center mt-1" data-note>${BX.icon("shield")} پیش‌نمایش کم‌کیفیت و واترمارک‌دار؛ فایل نهایی روی سرور و بعد از خرید ساخته می‌شود.</p>`;
+    const imgs = el.querySelector("[data-imgs]"), busy = el.querySelector("[data-busy]");
+    return async (data) => {
+      const my = ++seq;
+      ctl?.abort(); ctl = new AbortController();
+      busy.hidden = false;
+      try {
+        const res = await fetch("api/index.php?r=studio.preview", { method: "POST", credentials: "same-origin", signal: ctl.signal, headers: { "X-CSRF": BX.csrf(), "Content-Type": "application/json" }, body: JSON.stringify({ kind, data }) });
+        const j = await res.json();
+        if (my !== seq) return;
+        if (!res.ok || j.error) throw new Error(j.message || "پیش‌نمایش ساخته نشد.");
+        const labels = layout === "card" ? ["رو", "پشت"] : null;
+        imgs.innerHTML = j.pages.map((src, i) => `<figure>${labels ? `<figcaption>${labels[i] || ""}</figcaption>` : layout === "slides" ? `<figcaption>${H.fa(i + 1)}</figcaption>` : ""}<img src="${src}" alt="پیش‌نمایش" draggable="false"></figure>`).join("")
+          + (j.total > j.pages.length ? `<p class="muted small center">${H.fa(j.total - j.pages.length)} صفحه دیگر در فایل نهایی</p>` : "");
+      } catch (e) {
+        if (e.name !== "AbortError" && my === seq) imgs.innerHTML = `<div class="card empty">${BX.icon("info")}<p>${H.esc(e.message)}</p></div>`;
+      } finally { if (my === seq) busy.hidden = true; }
+    };
+  };
   // Shared editor shell for file builders (resume, doc, card, post, slides)
   STUDIO.editor = function (view, cfg) {
     const { kind, schema } = cfg;
     let item = cfg.item || null; // {id, paid, title}
     let price = cfg.price ?? (S.info?.prices?.[kind] || 0);
     const data = cfg.data;
+    const savedJson = JSON.stringify(data);
     view.innerHTML = `
       <div class="st-top card">
         <a class="icon-btn" href="#" aria-label="بازگشت به استودیو">${BX.icon("arrow-right")}</a>
         <span class="st-top-ic">${BX.icon(cfg.icon || "sparkles")}</span>
-        <div class="grow"><b>${H.esc(cfg.title)}</b><small class="muted d-block" data-st-status>${item?.paid ? "خریداری شده — دانلود نامحدود" : `پیش‌نمایش رایگان · فایل نهایی ${H.money(price)}`}</small></div>
+        <div class="grow"><b>${H.esc(cfg.title)}</b><small class="muted d-block" data-st-status></small></div>
         <button type="button" class="btn btn-ghost btn-sm" data-st="save">${BX.icon("check")}<span class="hide-sm"> ذخیره</span></button>
-        <button type="button" class="btn btn-primary btn-sm" data-st="get">${BX.icon("download")} ${item?.paid ? "دانلود" : `دریافت<span class="hide-sm"> فایل نهایی</span>`}</button>
+        <button type="button" class="btn btn-primary btn-sm" data-st="get"></button>
       </div>
+      <div class="st-lock card" data-lock hidden></div>
       <div class="st-edit ${cfg.wide ? "is-wide" : ""}">
-        <div class="st-form card" data-st-form>${STUDIO.form.render(schema, data)}</div>
+        <div class="st-form card" data-st-form>${cfg.smart ? `<div class="st-smart" data-smart></div>` : ""}<div data-fields>${STUDIO.form.render(schema, data)}</div></div>
         <div class="st-preview" data-st-preview></div>
       </div>`;
-    const formEl = view.querySelector("[data-st-form]");
-    const prev = view.querySelector("[data-st-preview]");
-    const paint = () => cfg.preview(prev, data, !!item?.paid);
-    const paintSoon = H.debounce(paint, 140);
+    const formEl = view.querySelector("[data-fields]");
+    const paint = STUDIO.preview(view.querySelector("[data-st-preview]"), kind, cfg.layout || "pages");
+    const paintSoon = H.debounce(() => paint(data), kind === "slides" ? 800 : 450);
     const autosave = H.debounce(() => STUDIO.saveDraft(kind, data), 600);
-    STUDIO.form.bind(formEl, schema, data, (d, structural) => { structural ? paint() : paintSoon(); autosave(); });
-    paint();
-    const status = (txt) => { view.querySelector("[data-st-status]").textContent = txt; };
+    const status = () => {
+      view.querySelector("[data-st-status]").textContent = item?.paid ? (item.via === "pro" ? `دریافت‌شده با ${proName()} — دانلود نامحدود` : "خریداری شده — دانلود نامحدود") : `پیش‌نمایش رایگان · فایل نهایی ${H.money(price)}${isPro() ? ` یا رایگان با ${proName()}` : ""}`;
+      view.querySelector('[data-st="get"]').innerHTML = item?.paid ? `${BX.icon("download")} دانلود` : `${BX.icon("download")} دریافت<span class="hide-sm"> فایل نهایی</span>`;
+    };
+    // a bought design is locked for non-members (they can save a new copy)
+    const lock = () => {
+      const box = view.querySelector("[data-lock]");
+      const locked = item?.paid && !isPro() && JSON.stringify(data) !== savedJson;
+      box.hidden = !locked;
+      if (locked) box.innerHTML = `${BX.icon("lock")}<div class="grow"><b>این طرح خریداری شده است</b><p class="muted small">تغییرات روی فایل خریداری‌شده ذخیره نمی‌شود. با اشتراک ${proName()} طرح‌هایتان را هر وقت خواستید ویرایش کنید، یا از همین طرح یک نسخه جدید بسازید.</p></div>
+        <button class="btn btn-ghost btn-sm" data-st="copy">نسخه جدید</button><a class="btn btn-primary btn-sm" href="dashboard.html#pro">${BX.icon("star")} ${proName()}</a>`;
+    };
+    const onChange = (d, structural) => { structural ? paint(data) : paintSoon(); autosave(); lock(); };
+    STUDIO.form.bind(formEl, schema, data, onChange);
+    cfg.smart?.(view.querySelector("[data-smart]"), data, () => { formEl.innerHTML = STUDIO.form.render(schema, data); onChange(data, true); });
+    status();
+    paint(data);
     async function save(quiet) {
       if (!BX.me) { STUDIO.saveDraft(kind, data); needLogin(cfg.route || kind); return null; }
       const r = await BX.api("a.studio.save", { id: item?.id || 0, kind, title: (cfg.titleOf ? cfg.titleOf(data) : "") || cfg.title, data });
       item = r.item; price = r.price;
       if (location.hash.split("/")[1] !== String(item.id)) history.replaceState(null, "", `#${cfg.route || kind}/${item.id}`);
       if (!quiet) BX.toast("طرح ذخیره شد؛ از پنل «ساخته‌های من» هم در دسترس است.", "ok");
-      status(item.paid ? "خریداری شده — دانلود نامحدود" : `ذخیره شد · فایل نهایی ${H.money(price)}`);
+      status();
       return item;
+    }
+    async function copy() {
+      try {
+        const it = await save(true).catch((e) => { if (e.code !== "pro_edit") throw e; return null; });
+        const r = await BX.api("a.studio.copy", { id: item.id });
+        item = { id: r.id, paid: false };
+        await save(true);
+        BX.toast("نسخه جدید ساخته شد؛ تغییرات شما روی این نسخه ذخیره می‌شود.", "ok");
+        lock();
+        return it;
+      } catch (e) { BX.toast(e.message, "bad"); }
+    }
+    function formats() {
+      const f = S.info?.formats?.[kind] || {};
+      const keys = Object.keys(f);
+      if (keys.length === 1) return download(keys[0]);
+      BX.modal({
+        title: "دریافت فایل نهایی",
+        body: `<div class="st-fmts">${keys.map((k, i) => `<button type="button" class="st-fmt ${i ? "" : "is-main"}" data-fmt="${k}"><b>${k.toUpperCase()}</b><span>${H.esc(f[k])}</span></button>`).join("")}</div>`,
+        actions: [{ label: "بستن" }],
+        onOpen: (m) => m.addEventListener("click", (e) => { const b = e.target.closest("[data-fmt]"); if (b) download(b.dataset.fmt, b); }),
+      });
+    }
+    async function download(fmt, btn) {
+      btn?.classList.add("is-busy");
+      BX.toast("فایل روی سرور ساخته می‌شود…", "info");
+      try { await STUDIO.fetchFile("a.studio.export", { id: item.id, format: fmt }); BX.toast("فایل دانلود شد.", "ok"); }
+      catch (e) { BX.toast(e.message, "bad"); }
+      finally { btn?.classList.remove("is-busy"); }
     }
     async function get() {
       try {
+        if (item?.paid && !isPro() && JSON.stringify(data) !== savedJson) {
+          return BX.modal({ title: "طرح تغییر کرده است", body: `<p class="lh">فایل خریداری‌شده همان نسخه ذخیره‌شده است. برای دریافت نسخه تغییرکرده یک نسخه جدید بسازید یا با ${proName()} طرح را ویرایش کنید.</p>`,
+            actions: [{ label: "دانلود نسخه خریداری‌شده", onClick: () => { formats(); } }, { label: "ساخت نسخه جدید", primary: true, onClick: () => { copy(); } }] });
+        }
         const it = await save(true);
         if (!it) return;
-        if (it.paid) { await cfg.exportFile(data); return; }
+        if (it.paid) return formats();
         const wallet = BX.me?.wallet || 0;
+        if (isPro()) {
+          return BX.modal({
+            title: `دریافت با اشتراک ${proName()}`,
+            body: `<div class="st-buy"><p class="lh">این فایل از سهمیه ماهانه اشتراک شما کم می‌شود و همیشه از «ساخته‌های من» قابل دانلود و ویرایش است.</p></div>`,
+            actions: [{ label: "انصراف" }, { label: "دریافت فایل", primary: true, onClick: () => { item.paid = true; item.via = "pro"; status(); formats(); } }],
+          });
+        }
         BX.modal({
           title: "دریافت فایل نهایی",
-          body: `<div class="st-buy"><p class="lh">فایل بدون واترمارک و با کیفیت چاپ ${cfg.deliverText || ""} آماده می‌شود و همیشه از پنل «ساخته‌های من» قابل دانلود و ویرایش است.</p>
+          body: `<div class="st-buy"><p class="lh">فایل بدون واترمارک و با کیفیت چاپ ${cfg.deliverText || ""} روی سرور ساخته می‌شود و همیشه از پنل «ساخته‌های من» قابل دانلود است.</p>
             <div class="st-buy-price"><span>مبلغ</span><b>${H.money(price)}</b></div>
-            ${price && wallet ? `<p class="muted small">موجودی کیف پول: ${BX.toman(wallet)}${wallet >= price ? " — از کیف پول کسر می‌شود." : " — مابقی از درگاه پرداخت می‌شود."}</p>` : ""}</div>`,
+            ${price && wallet ? `<p class="muted small">موجودی کیف پول: ${BX.toman(wallet)}${wallet >= price ? " — از کیف پول کسر می‌شود." : " — مابقی از درگاه پرداخت می‌شود."}</p>` : ""}
+            <a class="st-upsell" href="dashboard.html#pro">${BX.icon("star")}<span><b>${proName()}</b> — ماهی ${H.money(S.pro?.plans?.[0]?.price || 0)}: ${H.fa(S.pro?.studioFiles || 15)} فایل در ماه + ویرایش نامحدود طرح‌ها + کارت ویزیت دیجیتال</span></a></div>`,
           actions: [{ label: "انصراف" }, { label: price ? "پرداخت و دریافت" : "دریافت رایگان", primary: true, onClick: () => {
-            BX.api("a.studio.buy", { id: it.id }).then(async (r) => {
+            BX.api("a.studio.buy", { id: it.id }).then((r) => {
               if (r.redirect) { STUDIO.saveDraft(kind, data); location.href = r.redirect; return; }
               item.paid = true;
               if (r.paidFromWallet && BX.me) BX.me.wallet = Math.max(0, (BX.me.wallet || 0) - r.paidFromWallet);
-              status("خریداری شده — دانلود نامحدود");
-              view.querySelector('[data-st="get"]').innerHTML = `${BX.icon("download")} دانلود`;
-              paint();
-              BX.toast("پرداخت شد؛ فایل در حال آماده‌سازی است…", "ok");
-              await cfg.exportFile(data);
+              status();
+              BX.toast("پرداخت شد؛ قالب فایل را انتخاب کنید.", "ok");
+              formats();
             }).catch((e) => BX.toast(e.message, "bad"));
           } }],
         });
-      } catch (e) { BX.toast(e.message, "bad"); }
+      } catch (e) {
+        if (e.code === "pro_edit") return lock();
+        BX.toast(e.message, "bad");
+      }
     }
-    view.querySelector('[data-st="save"]').onclick = () => save(false).catch((e) => BX.toast(e.message, "bad"));
+    view.querySelector('[data-st="save"]').onclick = () => save(false).catch((e) => { if (e.code === "pro_edit") { lock(); BX.toast(e.message, "info"); } else BX.toast(e.message, "bad"); });
     view.querySelector('[data-st="get"]').onclick = get;
-    return { paint, data, save };
+    view.addEventListener("click", (e) => { if (e.target.closest('[data-st="copy"]')) copy(); });
+    return { paint: () => paint(data), data, save };
   };
 
   // Loads a saved item (#kind/ID) or the local draft, then opens the editor
@@ -225,18 +319,21 @@
     if (!data) data = STUDIO.loadDraft(kind) || defaults();
     start(data, item);
   };
+  // Smart-suggestion chips: [[label, fn], …]
+  STUDIO.chips = (title, list) => `<div class="st-chips"><span>${BX.icon("sparkles")} ${title}</span>${list.map(([l], i) => `<button type="button" class="st-chip" data-chip="${i}">${H.esc(l)}</button>`).join("")}</div>`;
+  STUDIO.bindChips = (el, list, after) => el.addEventListener("click", (e) => { const b = e.target.closest("[data-chip]"); if (!b || !el.contains(b)) return; list[Number(b.dataset.chip)][1](); after(); b.classList.add("is-used"); });
 
   // ---------------------------------------------------------------- hub
   const CARDS = [
-    ["resume", "رزومه‌ساز حرفه‌ای", "file", "۴ قالب فارسی و دوزبانه با عکس؛ خروجی PDF آماده ارسال برای کارفرما", "resume", 210],
-    ["card", "کارت ویزیت چاپی", "layout", "۶ قالب مدرن پشت و رو، با لوگو و QR؛ خروجی PNG و PDF با ابعاد چاپ ۹×۵", "card", 25],
-    ["post", "پست، استوری و پوستر", "image", "تخفیف، مناسبت، معرفی محصول و اطلاعیه برای اینستاگرام، استوری و A4", "post", 330],
-    ["doc", "قرارداد و نامه رسمی", "book", "قرارداد فریلنسری، رسید وجه، نامه اداری، پیش‌فاکتور و درخواست — فقط جاهای خالی را پر کنید", "doc", 160],
-    ["slides", "پاورپوینت‌ساز", "presentation", "اسلایدها را بنویسید، قالب را انتخاب کنید و فایل .pptx قابل ویرایش بگیرید", "slides", 280],
+    ["resume", "رزومه‌ساز حرفه‌ای", "file", "۸ قالب حرفه‌ای با عکس + دستیار نوشتن رزومه؛ خروجی PDF وکتور آماده ارسال", "resume", 210],
+    ["card", "کارت ویزیت چاپی", "layout", "۱۲ قالب لوکس پشت و رو با لوگو و QR؛ PDF چاپی ۹×۵ و PNG با کیفیت ۳۰۰dpi", "card", 25],
+    ["post", "پست، استوری و پوستر", "image", "۱۲ قالب + مناسبت‌های آماده (نوروز، یلدا، …) و کپشن و هشتگ پیشنهادی", "post", 330],
+    ["doc", "قرارداد و نامه رسمی", "book", "قرارداد، رسید، نامه اداری، فاکتور و … — تاریخ و مبلغ به حروف خودکار؛ خروجی PDF و Word", "doc", 160],
+    ["slides", "پاورپوینت‌ساز", "presentation", "۸ پوسته + ساخت خودکار ساختار ارائه؛ فایل .pptx راست‌به‌چپ و قابل ویرایش", "slides", 280],
     ["page-card", "کارت ویزیت دیجیتال", "user", "صفحه شخصی با لینک‌ها، دکمه تماس و ذخیره مخاطب + QR؛ اشتراک ماهانه یا سالانه", "pageCard", 40],
     ["page-menu", "منوی QR کافه و رستوران", "list", "منوی آنلاین با دسته‌بندی، قیمت و عکس؛ تغییر قیمت در هر لحظه + کارت QR میز", "pageMenu", 15],
-    ["names", "ایده نام برند", "sparkles", "ده‌ها نام فارسی و انگلیسی برای کسب‌وکارتان با پیش‌نمایش لوگوتایپ — رایگان", "free", 190],
-    ["seo", "بررسی سئوی سایت", "search", "۱۸ مورد مهم سئو و سرعت سایت را در چند ثانیه بررسی کنید — رایگان", "free", 140],
+    ["names", "ایده نام برند", "sparkles", "ده‌ها نام فارسی و انگلیسی با امتیاز خوش‌آوایی — چند بار در هفته رایگان", "free", 190],
+    ["seo", "بررسی سئوی سایت", "search", "۱۸ مورد مهم سئو و سرعت سایت در چند ثانیه — چند بار در هفته رایگان", "free", 140],
   ];
   function hub(view) {
     const p = S.info?.prices || {};
@@ -273,13 +370,15 @@
   }
   BX.ready.then(async () => {
     try { S.info = await BX.api("studio.info"); } catch (e) { S.info = { prices: {}, docs: [] }; }
+    BX.api("pro.info").then((r) => { S.pro = r; }).catch(() => {});
     if (S.info.enabled === false && BX.me?.role !== "admin") { view().innerHTML = `<div class="card empty">${BX.icon("info")}<p>استودیو فعلاً غیرفعال است.</p></div>`; return; }
     window.addEventListener("hashchange", route);
     route();
   });
 
   // ================================================================ RESUME
-  const RESUME_TPL = [["classic", "کلاسیک", "#1e293b"], ["modern", "مدرن دوستونه", "#2563eb"], ["minimal", "مینیمال", "#94a3b8"], ["creative", "خلاق", "#ff7a1a"]];
+  const RESUME_TPL = [["modern", "مدرن دوستونه", "#2563eb"], ["executive", "مدیریتی تیره", "#4c1d95"], ["creative", "خلاق", "#ff7a1a"], ["timeline", "خط زمانی", "#0891b2"],
+    ["classic", "کلاسیک", "#1e293b"], ["minimal", "مینیمال", "#0f766e"], ["elegant", "کلاسیک شیک", "#b45309"], ["bold", "جسور", "#e11d48"]];
   const LEVEL = [["5", "عالی"], ["4", "خیلی خوب"], ["3", "خوب"], ["2", "متوسط"], ["1", "آشنایی"]];
   const resumeSchema = [
     { title: "قالب و رنگ", icon: "palette", fields: [{ k: "tpl", type: "tpl", label: "قالب", options: RESUME_TPL }, { k: "color", type: "color", label: "رنگ اصلی" }, { k: "photo", type: "image", label: "عکس پرسنلی (اختیاری)", max: 500 }] },
@@ -308,74 +407,88 @@
     jobs: [{ role: "", company: "", from: "", to: "اکنون", desc: "" }], edu: [{ degree: "", school: "", from: "", to: "" }],
     skills: [{ name: "", level: "4" }], langs: [{ name: "انگلیسی", level: "3" }], courses: [], interests: "",
   });
-  function resumeHtml(d) {
-    const e = H.esc, c = d.color || "#2563eb", t = d.tpl || "modern";
-    const dots = (n) => `<span class="rz-dots">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= Number(n) ? "on" : ""}"></i>`).join("")}</span>`;
-    const list = (arr, fn) => (arr || []).filter((x) => Object.values(x).some((v) => String(v || "").trim())).map(fn).join("");
-    const contact = [d.phone && `📞 <span dir="ltr">${e(BX.faDigits(d.phone))}</span>`, d.email && `✉️ <span dir="ltr">${e(d.email)}</span>`, d.city && `📍 ${e(d.city)}`, d.link && `🔗 <span dir="ltr">${e(d.link)}</span>`, d.birth && `🎂 ${e(BX.faDigits(d.birth))}`, d.military && `🎖️ ${e(d.military)}`].filter(Boolean);
-    const jobs = list(d.jobs, (j) => `<div class="rz-item"><div class="rz-row"><b>${e(j.role)}</b><span>${e(BX.faDigits([j.from, j.to].filter(Boolean).join(" — ")))}</span></div><div class="rz-sub">${e(j.company)}</div>${H.lines(j.desc).length ? `<ul>${H.lines(j.desc).map((l) => `<li>${e(l)}</li>`).join("")}</ul>` : ""}</div>`);
-    const edu = list(d.edu, (x) => `<div class="rz-item"><div class="rz-row"><b>${e(x.degree)}</b><span>${e(BX.faDigits([x.from, x.to].filter(Boolean).join(" — ")))}</span></div><div class="rz-sub">${e(x.school)}</div></div>`);
-    const skills = list(d.skills, (s) => `<div class="rz-skill"><span>${e(s.name)}</span>${dots(s.level)}</div>`);
-    const langs = list(d.langs, (s) => `<div class="rz-skill"><span>${e(s.name)}</span>${dots(s.level)}</div>`);
-    const courses = list(d.courses, (x) => `<div class="rz-item"><b>${e(x.title)}</b><div class="rz-sub">${e(BX.faDigits(x.org || ""))}</div></div>`);
-    const sec = (title, body) => (body ? `<section class="rz-sec"><h3>${title}</h3>${body}</section>` : "");
-    const photo = d.photo ? `<img class="rz-photo" src="${d.photo}" alt="">` : "";
-    const head = `<header class="rz-head">${photo}<div><h1>${e(d.name || "نام و نام خانوادگی")}</h1><h2>${e(d.role || "عنوان شغلی")}</h2></div></header>`;
-    const side = `${contact.length ? `<section class="rz-sec"><h3>اطلاعات تماس</h3><div class="rz-contact">${contact.map((x) => `<div>${x}</div>`).join("")}</div></section>` : ""}${sec("مهارت‌ها", skills)}${sec("زبان‌ها", langs)}${d.interests ? sec("علایق", `<p>${e(d.interests)}</p>`) : ""}`;
-    const main = `${d.summary ? sec("درباره من", `<p>${e(d.summary).replace(/\n/g, "<br>")}</p>`) : ""}${sec("سوابق کاری", jobs)}${sec("تحصیلات", edu)}${sec("دوره‌ها و گواهی‌ها", courses)}`;
-    const body = t === "modern" || t === "creative" ? `${head}<div class="rz-cols"><aside class="rz-side">${side}</aside><main class="rz-main">${main}</main></div>` : `${head}<div class="rz-one">${contact.length ? `<div class="rz-contact rz-inline">${contact.map((x) => `<span>${x}</span>`).join("")}</div>` : ""}${main}<div class="rz-cols2">${sec("مهارت‌ها", skills)}${sec("زبان‌ها", langs)}</div>${d.interests ? sec("علایق", `<p>${e(d.interests)}</p>`) : ""}</div>`;
-    return `<div class="rz rz--${t}" style="--c:${c}">${body}</div>`;
+  // Phrase bank by field: summary, achievement lines and skills (no AI service needed)
+  const CAREERS = {
+    design: { t: "طراحی و گرافیک", sum: ["طراح گرافیک با {n} سال تجربه در هویت بصری، تبلیغات و شبکه‌های اجتماعی؛ دقیق، خلاق و مسلط به اصول تایپوگرافی و رنگ.", "طراح محصول دیجیتال با تمرکز بر تجربه کاربری، تحقیق کاربر و ساخت سیستم طراحی برای محصولات در حال رشد."],
+      jobs: ["طراحی هویت بصری کامل برای ۱۰+ برند", "طراحی محتوای ماهانه اینستاگرام و افزایش تعامل صفحه", "همکاری نزدیک با تیم بازاریابی برای کمپین‌های فصلی", "آماده‌سازی فایل‌های چاپی و نظارت بر چاپ", "ساخت کتابچه راهنمای برند (Brand Guideline)"],
+      skills: ["Adobe Photoshop", "Adobe Illustrator", "Figma", "تایپوگرافی", "هویت بصری", "طراحی تجربه کاربری", "موشن گرافیک"] },
+    dev: { t: "برنامه‌نویسی و IT", sum: ["برنامه‌نویس با {n} سال تجربه در توسعه وب؛ علاقه‌مند به کد تمیز، تست‌پذیر و کار تیمی.", "توسعه‌دهنده فول‌استک با تجربه پیاده‌سازی سامانه‌های فروشگاهی و پنل‌های مدیریتی پرترافیک."],
+      jobs: ["توسعه و نگهداری سامانه با بیش از ۵۰ هزار کاربر", "بهبود سرعت بارگذاری صفحات تا ۴۰٪", "پیاده‌سازی درگاه پرداخت و پنل مدیریت", "نوشتن تست خودکار و راه‌اندازی CI/CD", "مستندسازی API و آموزش اعضای جدید تیم"],
+      skills: ["JavaScript", "PHP", "Python", "React", "MySQL", "Git", "Docker", "REST API"] },
+    marketing: { t: "بازاریابی و فروش", sum: ["کارشناس بازاریابی دیجیتال با {n} سال تجربه در تولید محتوا، تبلیغات آنلاین و تحلیل داده؛ نتیجه‌محور و خلاق.", "کارشناس فروش با سابقه موفق در جذب مشتری جدید، مذاکره و تحقق اهداف فروش ماهانه."],
+      jobs: ["افزایش ۳ برابری فالوور و تعامل صفحه اینستاگرام", "مدیریت کمپین‌های تبلیغاتی با بازگشت سرمایه مثبت", "تحقق ۱۲۰٪ هدف فروش فصلی", "راه‌اندازی ایمیل مارکتینگ و باشگاه مشتریان", "تحلیل رقبا و تهیه گزارش ماهانه بازار"],
+      skills: ["سئو", "تولید محتوا", "تبلیغات گوگل", "اینستاگرام مارکتینگ", "Google Analytics", "مذاکره", "CRM"] },
+    office: { t: "اداری، مالی و حسابداری", sum: ["کارشناس اداری و مالی با {n} سال تجربه، مسلط به نرم‌افزارهای حسابداری و مجموعه آفیس؛ منظم و دقیق.", "حسابدار با تجربه ثبت اسناد، تهیه صورت‌های مالی و امور مالیاتی و بیمه."],
+      jobs: ["ثبت و کنترل اسناد مالی روزانه", "تهیه گزارش‌های ماهانه مدیریتی در اکسل", "پیگیری امور بیمه و مالیات", "مدیریت مکاتبات و بایگانی اسناد", "کاهش خطای ثبت با طراحی فرم‌های استاندارد"],
+      skills: ["Excel پیشرفته", "Word", "PowerPoint", "نرم‌افزار سپیدار", "حسابداری", "گزارش‌نویسی", "تایپ سریع"] },
+    teach: { t: "آموزش", sum: ["مدرس با {n} سال تجربه تدریس حضوری و آنلاین؛ صبور، خلاق و علاقه‌مند به روش‌های نوین آموزشی.", "معلم با سابقه موفق در بهبود نتایج تحصیلی و ایجاد کلاس‌های تعاملی."],
+      jobs: ["تدریس به بیش از ۳۰۰ دانش‌آموز", "طراحی محتوای آموزشی و آزمون‌های دوره‌ای", "برگزاری کلاس‌های آنلاین تعاملی", "افزایش میانگین نمرات کلاس", "مشاوره تحصیلی به دانش‌آموزان و والدین"],
+      skills: ["طراحی آموزشی", "مدیریت کلاس", "آموزش آنلاین", "ارتباط مؤثر", "PowerPoint", "ارزشیابی"] },
+    health: { t: "سلامت و درمان", sum: ["پرستار با {n} سال تجربه در بخش‌های ویژه، متعهد به ایمنی بیمار و کار تیمی.", "کارشناس سلامت با تجربه در آموزش بیمار و پیگیری درمان."],
+      jobs: ["مراقبت از بیماران بخش ویژه", "آموزش بیمار و خانواده هنگام ترخیص", "ثبت دقیق پرونده و داروها", "همکاری در تیم احیا", "آموزش نیروهای جدید بخش"],
+      skills: ["مراقبت ویژه", "احیای قلبی ریوی", "ثبت پرونده", "آموزش بیمار", "کار تیمی", "مدیریت استرس"] },
+    eng: { t: "فنی و مهندسی", sum: ["مهندس با {n} سال تجربه در طراحی، اجرا و کنترل پروژه؛ مسلط به نرم‌افزارهای تخصصی و استانداردهای ایمنی.", "کارشناس فنی با تجربه نگهداری و تعمیرات و بهبود فرآیندهای تولید."],
+      jobs: ["مدیریت اجرای پروژه در زمان و بودجه مصوب", "کاهش ۱۵٪ هزینه‌های تولید", "تهیه نقشه‌های اجرایی و مستندات فنی", "نظارت بر کیفیت و ایمنی کارگاه", "هماهنگی با پیمانکاران و تأمین‌کنندگان"],
+      skills: ["AutoCAD", "SolidWorks", "MSP", "کنترل پروژه", "ایمنی کار", "Excel"] },
+    service: { t: "خدمات و پشتیبانی مشتری", sum: ["کارشناس پشتیبانی با {n} سال تجربه، خوش‌برخورد و مسلط به حل مسئله و پیگیری درخواست‌ها.", "مسئول خدمات مشتری با تمرکز بر رضایت و وفاداری مشتریان."],
+      jobs: ["پاسخ‌گویی روزانه به بیش از ۸۰ تماس و پیام", "کاهش زمان پاسخ‌گویی به نصف", "ثبت و پیگیری درخواست‌ها در CRM", "افزایش رضایت مشتری در نظرسنجی‌ها", "تهیه پاسخ‌های آماده برای سؤالات پرتکرار"],
+      skills: ["ارتباط مؤثر", "حل مسئله", "CRM", "مدیریت زمان", "تایپ سریع", "کار با تیکت"] },
+  };
+  function resumeSmart(el, d, refresh) {
+    const draw = () => {
+      const c = CAREERS[el.dataset.car || "design"];
+      const years = Math.max(1, (d.jobs || []).length * 2);
+      const sums = c.sum.map((x) => [`درباره من: ${x.slice(0, 26)}…`, () => { d.summary = x.replace("{n}", H.fa(years)); }]);
+      const lines = c.jobs.map((x) => [x, () => { const j = (d.jobs ||= [{ role: "", company: "", from: "", to: "", desc: "" }])[0]; j.desc = [j.desc, x].filter(Boolean).join("\n"); }]);
+      const skills = c.skills.map((x) => [x, () => { d.skills = (d.skills || []).filter((s) => s.name); if (!d.skills.some((s) => s.name === x)) d.skills.push({ name: x, level: "4" }); }]);
+      el.innerHTML = `<div class="st-smart-head">${BX.icon("sparkles")}<b>دستیار رزومه</b><select class="select select-sm" data-car>${Object.entries(CAREERS).map(([k, v]) => `<option value="${k}" ${k === (el.dataset.car || "design") ? "selected" : ""}>${v.t}</option>`).join("")}</select></div>
+        ${STUDIO.chips("متن آماده درباره من", sums)}${STUDIO.chips("دستاورد برای سابقه اول", lines)}${STUDIO.chips("مهارت پیشنهادی", skills)}`;
+      el.querySelectorAll(".st-chips").forEach((box, i) => STUDIO.bindChips(box, [sums, lines, skills][i], refresh));
+      el.querySelector("[data-car]").onchange = (e) => { el.dataset.car = e.target.value; draw(); };
+    };
+    draw();
   }
-  const RESUME_CSS = `
-    .rz{width:210mm;min-height:297mm;background:#fff;color:#1f2430;font-family:Vazirmatn,Tahoma,sans-serif;font-size:10.5pt;line-height:1.85;direction:rtl;position:relative;overflow:hidden}
-    .rz h1{font-size:22pt;font-weight:900;line-height:1.4;margin:0}.rz h2{font-size:12pt;font-weight:600;color:var(--c);margin:0}
-    .rz h3{font-size:11.5pt;font-weight:900;color:var(--c);margin:0 0 6px;padding-bottom:4px;border-bottom:2px solid color-mix(in srgb,var(--c) 25%,transparent)}
-    .rz p{margin:0}.rz ul{margin:4px 18px 0 0;padding:0}.rz li{margin:0}
-    .rz-sec{margin-bottom:14px}.rz-item{margin-bottom:9px}.rz-row{display:flex;justify-content:space-between;gap:8px}.rz-row span{color:#6b7080;font-size:9pt;white-space:nowrap}.rz-sub{color:#555b6b;font-size:9.5pt}
-    .rz-skill{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;font-size:9.5pt}
-    .rz-dots{display:inline-flex;gap:3px;direction:ltr}.rz-dots i{width:8px;height:8px;border-radius:50%;background:#e2e5ec}.rz-dots i.on{background:var(--c)}
-    .rz-contact div{margin-bottom:3px;font-size:9.5pt;word-break:break-word}.rz-inline{display:flex;flex-wrap:wrap;gap:4px 16px;margin-bottom:14px;font-size:9.5pt}
-    .rz-photo{width:96px;height:96px;border-radius:50%;object-fit:cover;flex-shrink:0}
-    .rz-head{display:flex;align-items:center;gap:18px}
-    .rz--modern .rz-head{background:var(--c);color:#fff;padding:26px 30px}.rz--modern .rz-head h2{color:rgba(255,255,255,.85)}.rz--modern .rz-photo{border:4px solid rgba(255,255,255,.6)}
-    .rz-cols{display:grid;grid-template-columns:62mm 1fr;min-height:250mm}.rz-side{background:color-mix(in srgb,var(--c) 7%,#fff);padding:22px 20px}.rz-main{padding:22px 26px}
-    .rz--classic{padding:20mm 18mm}.rz--classic .rz-head{border-bottom:3px solid var(--c);padding-bottom:14px;margin-bottom:14px}
-    .rz--minimal{padding:22mm 20mm}.rz--minimal .rz-head{margin-bottom:10px}.rz--minimal h3{border:0;color:#1f2430;letter-spacing:0;font-size:11pt}.rz--minimal h3::before{content:"";display:inline-block;width:18px;height:3px;background:var(--c);margin-left:8px;vertical-align:middle}
-    .rz-cols2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-    .rz--creative .rz-head{padding:30px 30px 26px;background:linear-gradient(120deg,var(--c),color-mix(in srgb,var(--c) 55%,#000));color:#fff;border-radius:0 0 0 60px}.rz--creative .rz-head h2{color:#fff;opacity:.85}
-    .rz--creative .rz-side{background:#fff;border-left:2px dashed color-mix(in srgb,var(--c) 30%,transparent)}.rz--creative h3{border:0;background:color-mix(in srgb,var(--c) 12%,#fff);padding:3px 10px;border-radius:8px;display:inline-block}`;
   STUDIO.register("resume", {
     title: "رزومه‌ساز", render: (v, param) => STUDIO.open(v, "resume", param, resumeDefaults, (data, item) => {
       STUDIO.editor(v, {
-        kind: "resume", title: "رزومه‌ساز حرفه‌ای", icon: "file", schema: resumeSchema, data, item, deliverText: "(PDF در اندازه A4)",
-        titleOf: (d) => `رزومه ${d.name || ""}`.trim(),
-        preview(el, d, paid) {
-          el.innerHTML = `<style>${RESUME_CSS}</style><div class="st-paper"><div class="st-scale">${resumeHtml(d)}${paid ? "" : H.watermarkHtml()}</div></div>
-            <p class="muted small center mt-1">پیش‌نمایش A4 — فایل نهایی بدون واترمارک است</p>`;
-          fitPaper(el);
-        },
-        exportFile: (d) => H.printHtml(`<style>${RESUME_CSS}</style>${resumeHtml(d)}`, `رزومه ${d.name || ""}`),
+        kind: "resume", title: "رزومه‌ساز حرفه‌ای", icon: "file", schema: resumeSchema, data, item, deliverText: "(PDF وکتور A4 با متن قابل انتخاب)",
+        titleOf: (d) => `رزومه ${d.name || ""}`.trim(), layout: "pages", smart: resumeSmart,
       });
     }),
   });
-  // Scale an A4 preview to the column width
-  function fitPaper(el) {
-    const paper = el.querySelector(".st-paper"), inner = el.querySelector(".st-scale");
-    if (!paper || !inner) return;
-    const fit = () => { const w = paper.clientWidth; const s = w / inner.firstElementChild.offsetWidth; inner.style.transform = `scale(${s})`; paper.style.height = `${inner.firstElementChild.offsetHeight * s}px`; };
-    requestAnimationFrame(fit);
-    if (!paper._ro) { paper._ro = new ResizeObserver(fit); paper._ro.observe(paper); }
-  }
-  STUDIO.fitPaper = fitPaper;
 
   // ================================================================ DOCUMENTS (templates from the panel)
   const fieldsOf = (body) => [...new Set([...String(body).matchAll(/\{\{\s*([^}]+?)\s*\}\}/g)].map((m) => m[1]))];
-  function docHtml(tpl, vals) {
-    return `<div class="dc"><div class="dc-body">${String(tpl.body).replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, k) => (vals[k] ? `<b class="dc-v">${H.esc(vals[k]).replace(/\n/g, "<br>")}</b>` : `<span class="dc-blank">${H.esc(k)}</span>`))}</div></div>`;
+  // Number → Persian words (for «مبلغ به حروف»)
+  const ONES = ["", "یک", "دو", "سه", "چهار", "پنج", "شش", "هفت", "هشت", "نه"], TEENS = ["ده", "یازده", "دوازده", "سیزده", "چهارده", "پانزده", "شانزده", "هفده", "هجده", "نوزده"];
+  const TENS = ["", "", "بیست", "سی", "چهل", "پنجاه", "شصت", "هفتاد", "هشتاد", "نود"], HUNDS = ["", "یکصد", "دویست", "سیصد", "چهارصد", "پانصد", "ششصد", "هفتصد", "هشتصد", "نهصد"];
+  const SCALES = ["", "هزار", "میلیون", "میلیارد", "تریلیون"];
+  const three = (n) => { const h = Math.floor(n / 100), t = Math.floor((n % 100) / 10), o = n % 10, p = []; if (h) p.push(HUNDS[h]); if (t === 1) p.push(TEENS[o]); else { if (t) p.push(TENS[t]); if (o) p.push(ONES[o]); } return p.join(" و "); };
+  STUDIO.words = (str) => {
+    let s = BX.enDigits(String(str || "")).replace(/[^\d]/g, "").replace(/^0+(?=\d)/, "");
+    if (!s) return ""; if (/^0+$/.test(s)) return "صفر";
+    const g = []; while (s.length) { g.unshift(Number(s.slice(-3))); s = s.slice(0, -3); }
+    if (g.length > SCALES.length) return "";
+    return g.map((x, i) => { const sc = SCALES[g.length - 1 - i]; if (!x) return ""; if (x === 1 && sc === "هزار") return "هزار"; return `${three(x)}${sc ? ` ${sc}` : ""}`; }).filter(Boolean).join(" و ");
+  };
+  const today = () => new Intl.DateTimeFormat("fa-IR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const groupNum = (v) => { const n = BX.enDigits(String(v)).replace(/[^\d]/g, ""); return n ? H.fa(Number(n).toLocaleString("en-US")) : v; };
+  // Auto-fill: dates → today, «… به حروف» ← the amount field next to it, amounts get separators
+  function docAuto(keys, vals, changed) {
+    const amountKeys = keys.filter((k) => /مبلغ|جمع|قیمت|حقوق/.test(k) && !/حروف/.test(k));
+    if (changed && amountKeys.includes(changed)) vals[changed] = groupNum(vals[changed]);
+    // invoices: total = sum of the numbered row amounts
+    const rows = keys.filter((k) => /^مبلغ\s*[۰-۹\d]+$/.test(k));
+    const tot = keys.find((k) => /جمع کل/.test(k) && !/حروف/.test(k));
+    if (rows.length && tot) { const sum = rows.reduce((a, k) => a + Number(BX.enDigits(String(vals[k] || "")).replace(/[^\d]/g, "") || 0), 0); if (sum) vals[tot] = groupNum(sum); }
+    for (const k of keys) {
+      if (/تاریخ/.test(k) && !/اعتبار|تولد|شروع|پایان|تحویل|رویداد|مهلت|خرید/.test(k) && !vals[k]) vals[k] = today();
+      if (/به حروف/.test(k)) {
+        const src = /جمع/.test(k) ? amountKeys.find((a) => /جمع/.test(a)) : amountKeys.find((a) => !/[۰-۹\d]$/.test(a)) || amountKeys[0];
+        if (src && vals[src]) { const w = STUDIO.words(vals[src]); if (w) vals[k] = `${w} ${/تومان/.test(src + k) ? "تومان" : ""}`.trim(); }
+      }
+    }
   }
-  const DOC_CSS = `.dc{width:210mm;min-height:297mm;background:#fff;color:#1f2430;font-family:Vazirmatn,Tahoma,sans-serif;font-size:11.5pt;line-height:2.1;padding:22mm 20mm;direction:rtl;position:relative}
-    .dc h2{font-size:16pt;margin:0 0 14px}.dc h3{font-size:12pt;margin:14px 0 4px}.dc p{margin:0 0 8px}.dc table{font-size:10.5pt}
-    .dc-blank{display:inline-block;min-width:90px;border-bottom:1px dashed #aaa;color:#b0b4bf;font-size:9pt;padding:0 6px}.dc-v{font-weight:700}`;
   STUDIO.register("doc", {
     title: "قرارداد و نامه رسمی",
     async render(v, param) {
@@ -386,30 +499,30 @@
         if (!tpl) return chooser();
         const keys = fieldsOf(tpl.body);
         data.values = data.values || {};
+        docAuto(keys, data.values, null);
         const schema = [{ title: tpl.title, icon: "book", fields: [
-          { type: "html", html: `<p class="muted small span-2">${H.esc(tpl.desc || "")} — جاهای خالی را پر کنید؛ متن در پیش‌نمایش جایگزین می‌شود.</p>` },
-          ...keys.map((k) => ({ k: `values.${k}`, label: H.esc(k), type: /شرح|متن|توضیح|دلیل/.test(k) ? "textarea" : "text", span: /شرح|متن|توضیح|نشانی|دلیل/.test(k) })),
-        ] }];
-        STUDIO.editor(v, {
-          kind: "doc", route: "doc", title: tpl.title, icon: "book", schema, data, item, price: item ? item.price : tpl.price, deliverText: "(قابل چاپ، PDF و فایل Word)",
-          titleOf: () => tpl.title,
-          preview(el, d, paid) { el.innerHTML = `<style>${DOC_CSS}</style><div class="st-paper"><div class="st-scale">${docHtml(tpl, d.values || {})}${paid ? "" : H.watermarkHtml()}</div></div>`; fitPaper(el); },
-          exportFile(d) {
-            const html = docHtml(tpl, d.values || {}).replace(/<span class="dc-blank">[^<]*<\/span>/g, "…………");
-            BX.modal({ title: "دریافت فایل", body: `<p class="lh">فرمت مورد نظر را انتخاب کنید:</p>`, actions: [
-              { label: "فایل Word (.doc)", onClick: () => H.download(new Blob([`﻿<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Tahoma;direction:rtl}${DOC_CSS.replace(/width:210mm;min-height:297mm;/, "")}</style></head><body dir="rtl">${html}</body></html>`], { type: "application/msword" }), `${tpl.title}.doc`) },
-              { label: "چاپ / PDF", primary: true, onClick: () => H.printHtml(`<style>${DOC_CSS}</style>${html}`, tpl.title) },
-            ] });
-          },
+          { type: "html", html: `<p class="muted small span-2">${H.esc(tpl.desc || "")} — جاهای خالی را پر کنید؛ تاریخ و «مبلغ به حروف» خودکار پر می‌شود.</p>` },
+          ...keys.map((k) => ({ k: `values.${k}`, label: H.esc(k), type: /شرح|متن|توضیح|دلیل|تعهدات|موارد/.test(k) ? "textarea" : "text", span: /شرح|متن|توضیح|نشانی|دلیل|تعهدات|موارد/.test(k) })),
+        ] }, { title: "ظاهر سند", icon: "palette", open: false, fields: [{ k: "color", type: "color", label: "رنگ نوار بالای سند", swatches: ["#1f2937", "#ff7a1a", "#2563eb", "#059669", "#7c3aed", "#b45309"] }, { k: "frame", type: "check", label: "قاب دور صفحه" }] }];
+        const ed = STUDIO.editor(v, {
+          kind: "doc", route: "doc", title: tpl.title, icon: "book", schema, data, item, price: item ? item.price : tpl.price, deliverText: "(PDF و فایل Word قابل ویرایش)",
+          titleOf: () => tpl.title, layout: "pages",
+        });
+        // re-run the auto-fill when a field changes and refresh the dependent inputs
+        v.querySelector("[data-fields]").addEventListener("change", (e) => {
+          const p = e.target.dataset.p; if (!p || !p.startsWith("values.")) return;
+          docAuto(keys, data.values, p.slice(7));
+          v.querySelectorAll("[data-p^='values.']").forEach((inp) => { const k = inp.dataset.p.slice(7); if (inp !== document.activeElement && data.values[k] !== undefined) inp.value = data.values[k]; });
+          ed.paint();
         });
       };
       const chooser = () => {
         const cats = [...new Set(docs.map((d) => d.category || "سایر"))];
-        v.innerHTML = `<div class="st-top card"><a class="icon-btn" href="#" aria-label="بازگشت">${BX.icon("arrow-right")}</a><span class="st-top-ic">${BX.icon("book")}</span><div class="grow"><b>قرارداد و نامه رسمی</b><small class="muted d-block">یک قالب انتخاب کنید</small></div></div>
+        v.innerHTML = `<div class="st-top card"><a class="icon-btn" href="#" aria-label="بازگشت">${BX.icon("arrow-right")}</a><span class="st-top-ic">${BX.icon("book")}</span><div class="grow"><b>قرارداد و نامه رسمی</b><small class="muted d-block">${H.fa(docs.length)} قالب آماده — یکی را انتخاب کنید</small></div></div>
           ${cats.map((c) => `<h3 class="st-h3">${H.esc(c)}</h3><div class="studio-grid">${docs.filter((d) => (d.category || "سایر") === c).map((d) => `
             <button type="button" class="card st-card st-doc" data-doc="${d.id}"><span class="st-card-ic">${BX.icon("file")}</span><h2>${H.esc(d.title)}</h2><p class="muted small lh">${H.esc(d.desc)}</p><span class="badge badge--brand">${H.money(d.price)}</span></button>`).join("")}</div>`).join("") || `<div class="card empty">${BX.icon("book")}<p>قالبی تعریف نشده است.</p></div>`}
           <p class="muted small mt-2">${BX.icon("info")} این متن‌ها نمونه عمومی هستند؛ برای قراردادهای مهم پیش از امضا با مشاور حقوقی مشورت کنید.</p>`;
-        v.onclick = (e) => { const b = e.target.closest("[data-doc]"); if (!b) return; v.onclick = null; const draft = STUDIO.loadDraft("doc"); start(draft && String(draft.templateId) === b.dataset.doc ? draft : { templateId: Number(b.dataset.doc), values: {} }, null); };
+        v.onclick = (e) => { const b = e.target.closest("[data-doc]"); if (!b) return; v.onclick = null; const draft = STUDIO.loadDraft("doc"); start(draft && String(draft.templateId) === b.dataset.doc ? draft : { templateId: Number(b.dataset.doc), values: {}, color: "#1f2937" }, null); };
       };
       if (param) return STUDIO.open(v, "doc", param, () => ({}), (data, item) => (pick(data.templateId) ? start(data, item) : chooser()));
       chooser();
@@ -417,46 +530,14 @@
   });
 
   // ================================================================ BRAND NAMES (free)
-  const NAME_BANK = {
-    general: { fa: ["نو", "آوا", "ماه", "مهر", "روشن", "پویا", "آرا", "سپهر", "رخ", "تاک", "نیک", "سان", "آسا", "دیبا", "رادین", "کیان"], en: ["Nova", "Zen", "Arya", "Mehr", "Pars", "Sana", "Kia", "Rad", "Vira", "Tara", "Sora", "Lumi"] },
-    food: { fa: ["دمنوش", "خوشه", "سفره", "نان", "شیرین", "قهوه", "طعم", "باغ", "دانه", "عطر", "ادویه", "تنور", "کاسه", "شکر"], en: ["Brew", "Bite", "Crumb", "Bean", "Taste", "Oven", "Spice", "Feast", "Sip", "Grain"] },
-    beauty: { fa: ["گلبرگ", "ناز", "رز", "آیینه", "مخمل", "شبنم", "بلور", "پرنیان", "ترمه", "نگار", "یاس", "مهتاب"], en: ["Glow", "Bloom", "Silk", "Rose", "Muse", "Velvet", "Luna", "Aura", "Belle", "Pure"] },
-    tech: { fa: ["رایان", "پردازش", "کد", "فن", "داده", "شبکه", "هوش", "سامانه", "ابر", "پیکسل", "نوآور", "اندیش"], en: ["Byte", "Logic", "Code", "Pixel", "Data", "Nexa", "Cloud", "Sync", "Volt", "Grid", "Bit", "Core"] },
-    fashion: { fa: ["پوش", "جامه", "دوخت", "نخ", "پارچه", "مد", "ترنج", "سبک", "پیراهن", "شال", "حریر", "اطلس"], en: ["Wear", "Thread", "Style", "Chic", "Mode", "Loom", "Stitch", "Tailor", "Vogue", "Weave"] },
-    edu: { fa: ["دانش", "آموز", "فرزانه", "اندیشه", "کتاب", "مکتب", "پژوه", "خرد", "دبستان", "روشنا", "آموزه", "ایده"], en: ["Learn", "Mind", "Sage", "Scholar", "Quest", "Skill", "Brain", "Bright", "Path", "Spark"] },
-    health: { fa: ["سلامت", "آرامش", "تندرست", "شفا", "زیست", "مهرورز", "نفس", "توان", "جان", "بهی", "سبز", "رویش"], en: ["Vita", "Care", "Heal", "Pulse", "Well", "Fit", "Life", "Zen", "Cure", "Vital"] },
-    home: { fa: ["خانه", "سرا", "آشیانه", "کاشانه", "منزل", "دیوار", "پنجره", "چوب", "سنگ", "ستون", "دکور", "فرش"], en: ["Nest", "Home", "Haven", "Casa", "Loft", "Deco", "Stone", "Wood", "Craft", "Abode"] },
-  };
-  const FA_SUF = ["‌ستان", "‌زار", "کده", "یار", "سرا", "انه", "‌نو", "‌پلاس", "‌آنلاین", "ینو", "ک", "‌شاپ"];
-  const FA_PRE = ["نو", "هم", "پیش", "آی", "دی", "ای"];
-  const EN_SUF = ["ify", "ly", "io", "hub", "lab", "nest", "go", "co", "ora", "ix", "a", "o", "zy", "verse"];
-  function makeNames(industry, keys, style) {
-    const b = NAME_BANK[industry] || NAME_BANK.general, g = NAME_BANK.general;
-    const fa = [...new Set([...keys.filter((k) => /[؀-ۿ]/.test(k)), ...b.fa, ...g.fa.slice(0, 6)])];
-    const en = [...new Set([...keys.filter((k) => /^[a-z]/i.test(k)).map((k) => k[0].toUpperCase() + k.slice(1).toLowerCase()), ...b.en, ...g.en.slice(0, 5)])];
-    const pick = (a) => a[Math.floor(Math.random() * a.length)];
-    const out = new Set();
-    for (let i = 0; out.size < 60 && i < 600; i++) {
-      const r = Math.random();
-      if (style !== "en") {
-        if (r < 0.25) out.add(pick(fa) + pick(FA_SUF));
-        else if (r < 0.45) out.add(pick(FA_PRE) + pick(fa));
-        else if (r < 0.65) out.add(`${pick(fa)} ${pick(b.fa)}`);
-        else if (style === "fa" && r < 1) out.add(pick(fa) + pick(["‌ها", "ی", "ستان", "انه"]));
-      }
-      if (style !== "fa" && r >= 0.45) {
-        const w = pick(en);
-        if (r < 0.7) out.add(w + pick(EN_SUF));
-        else if (r < 0.85) out.add(w + pick(en));
-        else out.add(w.slice(0, Math.max(3, Math.ceil(w.length * 0.7))) + pick(["a", "o", "i", "x", "y"]));
-      }
-    }
-    return [...out].filter((n) => n.length >= 3 && n.length <= 18).slice(0, 48);
-  }
+  // Quota line for the premium tools (free uses per week; X PRO gets many more)
+  STUDIO.quotaText = (q) => !q || q.limit <= 0 ? (q?.pro ? `استفاده نامحدود با ${proName()}` : "") : `${H.fa(q.left)} از ${H.fa(q.limit)} استفاده این هفته باقی مانده${q.pro ? "" : ` — با ${proName()} بیشتر`}`;
+  STUDIO.quotaWall = (out, msg) => { out.innerHTML = `<div class="card st-wall">${BX.icon("star")}<h3>${H.esc(msg)}</h3><p class="muted lh">اشتراک ${proName()}: ابزارهای ویژه تقریباً نامحدود، ${H.fa(S.pro?.studioFiles || 15)} فایل استودیو در ماه، ویرایش نامحدود طرح‌ها، کارت ویزیت دیجیتال و نشان PRO کنار نام شما.</p><a class="btn btn-primary" href="dashboard.html#pro">${BX.icon("star")} مشاهده اشتراک‌ها</a></div>`; };
+
   STUDIO.register("names", {
     title: "ایده نام برند",
     render(v) {
-      v.innerHTML = `<div class="st-top card"><a class="icon-btn" href="#" aria-label="بازگشت">${BX.icon("arrow-right")}</a><span class="st-top-ic">${BX.icon("sparkles")}</span><div class="grow"><b>ایده نام برند</b><small class="muted d-block">رایگان — هر بار نتیجه جدید</small></div></div>
+      v.innerHTML = `<div class="st-top card"><a class="icon-btn" href="#" aria-label="بازگشت">${BX.icon("arrow-right")}</a><span class="st-top-ic">${BX.icon("sparkles")}</span><div class="grow"><b>ایده نام برند</b><small class="muted d-block" data-q>هر بار نتیجه جدید</small></div></div>
         <form class="card st-names-f" data-names>
           <div class="field"><label class="field-label">حوزه کاری</label><select class="select" name="ind">${[["general", "عمومی"], ["food", "کافه، رستوران، غذا"], ["beauty", "زیبایی و آرایشی"], ["tech", "فناوری و نرم‌افزار"], ["fashion", "پوشاک و مد"], ["edu", "آموزش"], ["health", "سلامت و ورزش"], ["home", "خانه و دکوراسیون"]].map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></div>
           <div class="field"><label class="field-label">کلمه‌های دلخواه (اختیاری)</label><input class="input" name="keys" placeholder="مثلاً: مهر، Nova، سبز"></div>
@@ -466,15 +547,20 @@
         <div class="st-names" data-out></div>`;
       const f = v.querySelector("[data-names]");
       const out = v.querySelector("[data-out]");
-      f.onsubmit = (e) => {
+      f.onsubmit = async (e) => {
         e.preventDefault();
-        const names = makeNames(f.ind.value, f.keys.value.split(/[،,\s]+/).filter(Boolean), f.style.value);
-        out.innerHTML = names.map((n, i) => `<div class="st-name card" style="--d:${i * 25}ms"><b style="font-family:${/^[a-z]/i.test(n) ? "ui-sans-serif,system-ui" : "inherit"};color:hsl(${(i * 47) % 360} 75% 55%)">${H.esc(n)}</b>
+        out.innerHTML = `<div class="card st-loading" style="grid-column:1/-1">${BX.icon("loader")} در حال ساخت ایده‌ها…</div>`;
+        let r;
+        try { r = await BX.api("studio.names", { industry: f.ind.value, keys: f.keys.value, style: f.style.value }); }
+        catch (err) { if (err.code === "quota") return STUDIO.quotaWall(out, err.message); out.innerHTML = `<div class="card empty">${BX.icon("info")}<p>${H.esc(err.message)}</p></div>`; return; }
+        v.querySelector("[data-q]").textContent = STUDIO.quotaText(r.quota);
+        out.innerHTML = r.names.map(({ name: n, score }, i) => `<div class="st-name card" style="--d:${i * 25}ms"><b style="font-family:${/^[a-z]/i.test(n) ? "ui-sans-serif,system-ui" : "inherit"};color:hsl(${(i * 47) % 360} 75% 55%)">${H.esc(n)}</b>
+          <div class="st-score-bar" title="امتیاز خوش‌آوایی و کوتاهی"><i style="width:${score}%"></i><span>${H.fa(score)}</span></div>
           <div class="row"><button type="button" class="btn btn-ghost btn-xs" data-copy="${H.esc(n)}">${BX.icon("link")} کپی</button>${/^[a-z]/i.test(n) ? `<a class="btn btn-ghost btn-xs" target="_blank" rel="noopener" href="https://www.whois.com/whois/${encodeURIComponent(n.toLowerCase())}.ir">دامنه .ir</a>` : ""}<a class="btn btn-ghost btn-xs" href="order.html?service=logo">لوگو</a></div></div>`).join("")
           + `<div class="cta glow" style="grid-column:1/-1"><h2 class="h2-sm">نام را پیدا کردید؟</h2><p class="muted lh">لوگو و هویت بصری حرفه‌ای همین نام را به طراحان بهیکس بسپارید.</p><div class="cta-actions"><a class="btn btn-primary" href="order.html?service=logo">سفارش لوگو ${BX.icon("arrow")}</a></div></div>`;
       };
       out.onclick = (e) => { const c = e.target.closest("[data-copy]"); if (c) navigator.clipboard?.writeText(c.dataset.copy).then(() => BX.toast("کپی شد.", "ok")); };
-      f.requestSubmit();
+      BX.api("tools.quota", { tool: "names" }).then((q) => { v.querySelector("[data-q]").textContent = STUDIO.quotaText(q) || "هر بار نتیجه جدید"; }).catch(() => {});
     },
   });
 
@@ -482,7 +568,7 @@
   STUDIO.register("seo", {
     title: "بررسی سئوی سایت",
     render(v) {
-      v.innerHTML = `<div class="st-top card"><a class="icon-btn" href="#" aria-label="بازگشت">${BX.icon("arrow-right")}</a><span class="st-top-ic">${BX.icon("search")}</span><div class="grow"><b>بررسی سئوی سایت</b><small class="muted d-block">رایگان — ۱۸ مورد کلیدی سئو و سرعت</small></div></div>
+      v.innerHTML = `<div class="st-top card"><a class="icon-btn" href="#" aria-label="بازگشت">${BX.icon("arrow-right")}</a><span class="st-top-ic">${BX.icon("search")}</span><div class="grow"><b>بررسی سئوی سایت</b><small class="muted d-block" data-q>۱۸ مورد کلیدی سئو و سرعت</small></div></div>
         <form class="card st-seo-f" data-seo><input class="input" name="url" dir="ltr" placeholder="example.com" required><button class="btn btn-primary" type="submit">${BX.icon("search")} بررسی کن</button></form>
         <div data-out></div>`;
       const f = v.querySelector("[data-seo]"), out = v.querySelector("[data-out]");
@@ -491,6 +577,7 @@
         out.innerHTML = `<div class="card st-loading">${BX.icon("loader")} در حال بررسی سایت… (تا ۲۰ ثانیه)</div>`;
         try {
           const r = await BX.api("studio.seo", { url: f.url.value });
+          v.querySelector("[data-q]").textContent = STUDIO.quotaText(r.quota);
           const tone = r.score >= 80 ? "ok" : r.score >= 55 ? "warn" : "bad";
           out.innerHTML = `<div class="st-seo">
             <div class="card st-score st-score--${tone}"><div class="st-gauge" style="--p:${r.score}"><b>${H.fa(r.score)}</b><small>از ۱۰۰</small></div>
@@ -499,8 +586,9 @@
             <div class="card st-checks">${r.checks.map((c) => `<div class="st-check ${c.ok ? "ok" : "bad"}">${BX.icon(c.ok ? "check-circle" : "x-circle")}<div><b>${H.esc(c.label)}</b>${c.ok ? "" : `<p class="muted small">${H.esc(c.tip)}</p>`}</div></div>`).join("")}</div>
             <div class="cta glow"><h2 class="h2-sm">اصلاح همه موارد را به ما بسپارید</h2><p class="muted lh">سئوی فنی، محتوای سئوشده و افزایش سرعت سایت با گزارش ماهانه.</p><div class="cta-actions"><a class="btn btn-primary" href="service.html?id=seo">خدمات سئو ${BX.icon("arrow")}</a><a class="btn btn-ghost" href="index.html#support">مشاوره رایگان</a></div></div>
           </div>`;
-        } catch (err) { out.innerHTML = `<div class="card empty">${BX.icon("info")}<p>${H.esc(err.message)}</p></div>`; }
+        } catch (err) { if (err.code === "quota") return STUDIO.quotaWall(out, err.message); out.innerHTML = `<div class="card empty">${BX.icon("info")}<p>${H.esc(err.message)}</p></div>`; }
       };
+      BX.api("tools.quota", { tool: "seo" }).then((q) => { v.querySelector("[data-q]").textContent = STUDIO.quotaText(q) || "۱۸ مورد کلیدی سئو و سرعت"; }).catch(() => {});
     },
   });
 })();

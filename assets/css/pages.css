@@ -847,3 +847,4 @@ a.service-detail:hover { transform: translateY(-3px); border-color: rgb(255 122 
 .dlv-empty { display: flex; gap: 10px; align-items: center; padding: 14px; border-radius: 14px; border: 1px dashed var(--line-strong); font-size: .85rem; color: var(--muted); }
 .field.is-invalid .dlv-days, [data-wrap="delivery"].is-invalid .dlv { animation: shake .4s; }
 @media (max-width: 760px) { .dlv-slots { grid-template-columns: 1fr 1fr; } .dlv-day { width: 66px; } }
+.pro-wall > .icon { width: 40px; height: 40px; color: #f59e0b; }
