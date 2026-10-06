@@ -86,19 +86,19 @@ function default_settings(): array
         // Studio (studio.html): self-service builders, paid per finished file; hosted pages paid per period
         'studio' => [
             'enabled' => true, 'trialDays' => 7,
-            // ~5–10% under comparable Iranian services (cvbuilder, visitec, seli, menew…), Oct 2026
-            'resume' => 45000, 'card' => 89000, 'post' => 45000, 'doc' => 49000, 'slides' => 129000,
-            'pageCardMonth' => 29000, 'pageCardYear' => 265000, 'pageMenuMonth' => 169000, 'pageMenuYear' => 1690000,
+            // Oct 2026 market check, then +50% at the owner's request
+            'resume' => 69000, 'card' => 135000, 'post' => 69000, 'doc' => 75000, 'slides' => 195000,
+            'pageCardMonth' => 45000, 'pageCardYear' => 399000, 'pageMenuMonth' => 255000, 'pageMenuYear' => 2550000,
         ],
         // «X PRO» membership
         'pro' => [
             'enabled' => true, 'name' => 'X PRO',
             'plans' => [
-                ['id' => 'm1', 'title' => 'X PRO یک‌ماهه', 'months' => 1, 'price' => 89000, 'business' => false, 'old' => 0, 'note' => ''],
-                ['id' => 'm3', 'title' => 'X PRO سه‌ماهه', 'months' => 3, 'price' => 249000, 'business' => false, 'old' => 267000, 'note' => 'محبوب‌ترین'],
-                ['id' => 'y1', 'title' => 'X PRO سالانه', 'months' => 12, 'price' => 849000, 'business' => false, 'old' => 1068000, 'note' => '۲۰٪ صرفه‌جویی'],
-                ['id' => 'b1', 'title' => 'X PRO Business ماهانه', 'months' => 1, 'price' => 169000, 'business' => true, 'old' => 0, 'note' => 'همراه منوی QR'],
-                ['id' => 'b12', 'title' => 'X PRO Business سالانه', 'months' => 12, 'price' => 1590000, 'business' => true, 'old' => 2028000, 'note' => ''],
+                ['id' => 'm1', 'title' => 'X PRO یک‌ماهه', 'months' => 1, 'price' => 135000, 'business' => false, 'old' => 0, 'note' => ''],
+                ['id' => 'm3', 'title' => 'X PRO سه‌ماهه', 'months' => 3, 'price' => 375000, 'business' => false, 'old' => 405000, 'note' => 'محبوب‌ترین'],
+                ['id' => 'y1', 'title' => 'X PRO سالانه', 'months' => 12, 'price' => 1290000, 'business' => false, 'old' => 1620000, 'note' => '۲۰٪ صرفه‌جویی'],
+                ['id' => 'b1', 'title' => 'X PRO Business ماهانه', 'months' => 1, 'price' => 255000, 'business' => true, 'old' => 0, 'note' => 'همراه منوی QR'],
+                ['id' => 'b12', 'title' => 'X PRO Business سالانه', 'months' => 12, 'price' => 2390000, 'business' => true, 'old' => 3060000, 'note' => ''],
             ],
             // final studio files per 30 days, discount on shop products for members (%)
             'studioFiles' => 15, 'studioFilesBiz' => 40, 'discount' => 7,

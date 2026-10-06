@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 11;
+const BX_SCHEMA_VERSION = 12;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -47,6 +47,38 @@ function bx_migrate(int $from): void
             q("UPDATE settings SET v = ? WHERE k = 'studio'", [jenc($st)]);
         }
         q('UPDATE doc_templates SET price = NULL WHERE price = 150000');
+    }
+    if ($from < 12) {
+        // +50% on everything except corporate and shop sites; new office services, packages and shop categories
+        $cat = json_decode((string) file_get_contents(__DIR__ . '/catalog.json'), true);
+        $v11 = ['pptx' => 690000, 'resume' => 450000, 'excel' => 1800000, 'docs' => 1600000, 'landing' => 5600000, 'uiux' => 7400000, 'seo' => 4600000, 'ai-teaser' => 3100000, 'motion' => 4700000, 'edit' => 1390000, 'lipsync' => 2300000, 'reels' => 2200000, 'logo' => 2900000, 'poster' => 590000, 'social' => 1690000, 'ai-art' => 990000, 'packaging' => 3200000, 'chatbot' => 6500000, 'automation' => 5500000, 'infra' => 2790000];
+        foreach ($cat['catalog'] as $c) {
+            q('INSERT IGNORE INTO categories (id, title, en, icon, hue, descr, sort, active) VALUES (?,?,?,?,?,?,?,1)', [$c['id'], $c['title'], $c['en'], $c['icon'], $c['hue'], $c['desc'], $c['sort']]);
+            if ($c['id'] === 'office') q('UPDATE categories SET descr = ? WHERE id = ?', [$c['desc'], 'office']);
+            foreach ($c['services'] as $sv) {
+                $cur = row('SELECT base FROM services WHERE id = ?', [$sv['id']]);
+                if (!$cur) {
+                    insert('services', ['id' => $sv['id'], 'category_id' => $c['id'], 'title' => $sv['title'], 'icon' => $sv['icon'], 'base' => $sv['base'], 'days' => $sv['days'], 'descr' => $sv['desc'], 'fields' => jenc($sv['fields']), 'sort' => $sv['sort'], 'active' => 1]);
+                } elseif (isset($v11[$sv['id']]) && (int) $cur['base'] === $v11[$sv['id']]) {
+                    q('UPDATE services SET base = ?, fields = ? WHERE id = ?', [$sv['base'], jenc($sv['fields']), $sv['id']]);
+                }
+            }
+        }
+        foreach ($cat['productCategories'] as $i => $pc) q('INSERT IGNORE INTO product_categories (id, title, icon, sort) VALUES (?,?,?,?)', [$pc['id'], $pc['title'], $pc['icon'], $i]);
+        $st = jdec((string) val("SELECT v FROM settings WHERE k = 'studio'"), null);
+        if (is_array($st)) {
+            $old = ['resume' => 45000, 'card' => 89000, 'post' => 45000, 'doc' => 49000, 'slides' => 129000, 'pageCardMonth' => 29000, 'pageCardYear' => 265000, 'pageMenuMonth' => 169000, 'pageMenuYear' => 1690000];
+            $new = ['resume' => 69000, 'card' => 135000, 'post' => 69000, 'doc' => 75000, 'slides' => 195000, 'pageCardMonth' => 45000, 'pageCardYear' => 399000, 'pageMenuMonth' => 255000, 'pageMenuYear' => 2550000];
+            foreach ($old as $k => $v) if ((int) ($st[$k] ?? -1) === $v) $st[$k] = $new[$k];
+            q("UPDATE settings SET v = ? WHERE k = 'studio'", [jenc($st)]);
+        }
+        $pro = jdec((string) val("SELECT v FROM settings WHERE k = 'pro'"), null);
+        if (is_array($pro) && !empty($pro['plans'])) {
+            $map = [89000 => [135000, 0], 249000 => [375000, 405000], 849000 => [1290000, 1620000], 169000 => [255000, 0], 1590000 => [2390000, 3060000]];
+            foreach ($pro['plans'] as &$pl) if (isset($map[(int) $pl['price']])) [$pl['price'], $pl['old']] = $map[(int) $pl['price']];
+            unset($pl);
+            q("UPDATE settings SET v = ? WHERE k = 'pro'", [jenc($pro)]);
+        }
     }
 }
 

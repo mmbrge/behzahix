@@ -505,6 +505,8 @@ function lazy_cron(bool $force = false): void
         }
     }
     if (function_exists('dlv_reminders')) dlv_reminders();
+    // one-time: ready-made PowerPoint and Word templates for the shop
+    if (function_exists('seed_shop_templates')) { try { seed_shop_templates(); } catch (Throwable $e) { error_log('[BEHIX] template seed: ' . $e->getMessage()); } }
 }
 
 function shop_complete(int $uid, array $ids, string $couponCode = ''): array

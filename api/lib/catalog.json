@@ -1,19 +1,223 @@
 {
  "catalog": [
   {
+   "id": "packages",
+   "title": "پکیج‌ها و مشاوره",
+   "en": "Packages",
+   "icon": "crown",
+   "hue": 40,
+   "desc": "راه‌اندازی کامل کسب‌وکار آنلاین و مشاوره برندینگ",
+   "sort": -1,
+   "services": [
+    {
+     "id": "startup-pack",
+     "title": "پکیج راه‌اندازی کسب‌وکار آنلاین",
+     "icon": "crown",
+     "base": 7900000,
+     "days": 14,
+     "sort": 0,
+     "desc": "لوگو، کارت ویزیت، پیج اینستاگرام و سایت — همه با یک هویت و ارزان‌تر از سفارش جدا.",
+     "fields": [
+      {
+       "id": "tier",
+       "type": "cards",
+       "label": "سطح پکیج",
+       "required": true,
+       "options": [
+        {
+         "v": "basic",
+         "label": "پایه: لوگو + کارت ویزیت + طراحی پیج و ۹ پست",
+         "price": 0,
+         "icon": "sprout"
+        },
+        {
+         "v": "standard",
+         "label": "استاندارد: پایه + سایت معرفی تک‌صفحه‌ای",
+         "price": 6500000,
+         "icon": "trend"
+        },
+        {
+         "v": "full",
+         "label": "کامل: پایه + سایت شرکتی + سئو اولیه + کارت دیجیتال",
+         "price": 22000000,
+         "icon": "award"
+        },
+        {
+         "v": "store",
+         "label": "فروشگاهی: پایه + فروشگاه اینترنتی",
+         "price": 30000000,
+         "icon": "cart"
+        }
+       ]
+      },
+      {
+       "id": "industry",
+       "type": "select",
+       "label": "حوزه کسب‌وکار",
+       "options": [
+        {
+         "v": "food",
+         "label": "کافه و رستوران",
+         "price": 0
+        },
+        {
+         "v": "beauty",
+         "label": "زیبایی و آرایشی",
+         "price": 0
+        },
+        {
+         "v": "shop",
+         "label": "فروشگاه و پوشاک",
+         "price": 0
+        },
+        {
+         "v": "service",
+         "label": "خدماتی و پزشکی",
+         "price": 0
+        },
+        {
+         "v": "tech",
+         "label": "فناوری و استارتاپ",
+         "price": 0
+        },
+        {
+         "v": "other",
+         "label": "سایر",
+         "price": 0
+        }
+       ]
+      },
+      {
+       "id": "extras",
+       "type": "chips",
+       "label": "افزودنی‌ها",
+       "options": [
+        {
+         "v": "content",
+         "label": "تولید محتوای یک ماه اینستاگرام",
+         "price": 2500000
+        },
+        {
+         "v": "photo",
+         "label": "عکس محصول با هوش مصنوعی",
+         "price": 1500000
+        },
+        {
+         "v": "map",
+         "label": "ثبت در گوگل‌مپ و نقشه‌ها",
+         "price": 600000
+        },
+        {
+         "v": "bot",
+         "label": "چت‌بات پشتیبانی",
+         "price": 4000000
+        },
+        {
+         "v": "pack",
+         "label": "طراحی بسته‌بندی",
+         "price": 3000000
+        }
+       ]
+      },
+      {
+       "id": "note",
+       "type": "textarea",
+       "label": "درباره کسب‌وکار و سلیقه خود بنویسید"
+      }
+     ]
+    },
+    {
+     "id": "branding",
+     "title": "مشاوره برندینگ",
+     "icon": "sparkles",
+     "base": 1500000,
+     "days": 3,
+     "sort": 1,
+     "desc": "جایگاه، پرسونا، لحن و نام برند؛ از یک جلسه مشاوره تا استراتژی کامل.",
+     "fields": [
+      {
+       "id": "kind",
+       "type": "cards",
+       "label": "نوع خدمت",
+       "required": true,
+       "options": [
+        {
+         "v": "session",
+         "label": "جلسه مشاوره یک‌ساعته",
+         "price": 0,
+         "icon": "chat"
+        },
+        {
+         "v": "strategy",
+         "label": "استراتژی کامل برند",
+         "price": 4500000,
+         "icon": "chart"
+        },
+        {
+         "v": "naming",
+         "label": "نام‌گذاری برند",
+         "price": 2500000,
+         "icon": "type"
+        },
+        {
+         "v": "audit",
+         "label": "ارزیابی و بازطراحی برند فعلی",
+         "price": 3000000,
+         "icon": "refresh"
+        }
+       ]
+      },
+      {
+       "id": "mode",
+       "type": "select",
+       "label": "شیوه جلسه",
+       "options": [
+        {
+         "v": "online",
+         "label": "آنلاین",
+         "price": 0
+        },
+        {
+         "v": "inperson",
+         "label": "حضوری",
+         "price": 500000
+        }
+       ]
+      },
+      {
+       "id": "sessions",
+       "type": "number",
+       "label": "تعداد جلسه",
+       "min": 1,
+       "max": 12,
+       "value": 1,
+       "included": 1,
+       "perUnit": 1200000,
+       "suffix": "جلسه"
+      },
+      {
+       "id": "note",
+       "type": "textarea",
+       "label": "وضعیت فعلی برند و هدف شما"
+      }
+     ]
+    }
+   ]
+  },
+  {
    "id": "office",
    "title": "آفیس و اسناد",
    "en": "Office",
    "icon": "office",
    "hue": 199,
-   "desc": "پاورپوینت، رزومه، اکسل و اسناد حرفه‌ای",
+   "desc": "تایپ و صفحه‌آرایی، امتحان، پاورپوینت، رزومه، اکسل، ترجمه، فرم‌های اداری و آموزش",
    "sort": 0,
    "services": [
     {
      "id": "pptx",
      "title": "طراحی پاورپوینت حرفه‌ای",
      "icon": "presentation",
-     "base": 690000,
+     "base": 1050000,
      "days": 3,
      "desc": "ارائه‌ای که دیده می‌شود؛ از پیچ‌دک سرمایه‌گذاری تا دفاع پایان‌نامه.",
      "sort": 0,
@@ -32,7 +236,7 @@
         {
          "v": "pitch",
          "label": "پیچ‌دک سرمایه‌گذاری",
-         "price": 800000,
+         "price": 1200000,
          "icon": "chart"
         },
         {
@@ -44,7 +248,7 @@
         {
          "v": "thesis",
          "label": "دفاع پایان‌نامه",
-         "price": 300000,
+         "price": 450000,
          "icon": "award"
         }
        ],
@@ -58,7 +262,7 @@
        "max": 150,
        "value": 12,
        "included": 10,
-       "perUnit": 120000,
+       "perUnit": 180000,
        "suffix": "اسلاید"
       },
       {
@@ -74,12 +278,12 @@
         {
          "v": "edit",
          "label": "نیاز به ویرایش و خلاصه‌سازی",
-         "price": 400000
+         "price": 600000
         },
         {
          "v": "write",
          "label": "نیاز به نگارش کامل محتوا",
-         "price": 1200000
+         "price": 1800000
         }
        ]
       },
@@ -91,22 +295,22 @@
         {
          "v": "anim",
          "label": "انیمیشن و ترنزیشن",
-         "price": 300000
+         "price": 450000
         },
         {
          "v": "info",
          "label": "اینفوگرافیک و نمودار",
-         "price": 500000
+         "price": 750000
         },
         {
          "v": "icons",
          "label": "آیکن اختصاصی",
-         "price": 400000
+         "price": 600000
         },
         {
          "v": "en",
          "label": "نسخه انگلیسی",
-         "price": 600000
+         "price": 900000
         }
        ]
       }
@@ -116,7 +320,7 @@
      "id": "resume",
      "title": "رزومه و کاور لتر",
      "icon": "file",
-     "base": 450000,
+     "base": 680000,
      "days": 2,
      "desc": "رزومه‌ای که از فیلتر ATS رد می‌شود و دیده می‌شود.",
      "sort": 1,
@@ -135,13 +339,13 @@
         {
          "v": "mid",
          "label": "میان‌رده",
-         "price": 200000,
+         "price": 300000,
          "icon": "trend"
         },
         {
          "v": "senior",
          "label": "ارشد / مدیر",
-         "price": 500000,
+         "price": 750000,
          "icon": "crown"
         }
        ],
@@ -160,12 +364,12 @@
         {
          "v": "en",
          "label": "انگلیسی",
-         "price": 300000
+         "price": 450000
         },
         {
          "v": "both",
          "label": "فارسی و انگلیسی",
-         "price": 600000
+         "price": 900000
         }
        ]
       },
@@ -177,17 +381,17 @@
         {
          "v": "cover",
          "label": "کاور لتر",
-         "price": 400000
+         "price": 600000
         },
         {
          "v": "linkedin",
          "label": "بهینه‌سازی لینکدین",
-         "price": 500000
+         "price": 750000
         },
         {
          "v": "ats",
          "label": "نسخه سازگار با ATS",
-         "price": 200000
+         "price": 300000
         }
        ]
       },
@@ -203,7 +407,7 @@
      "id": "excel",
      "title": "اکسل و داشبورد مدیریتی",
      "icon": "table",
-     "base": 1800000,
+     "base": 2700000,
      "days": 5,
      "desc": "گزارش‌های خودکار، داشبورد و فرم‌های هوشمند.",
      "sort": 2,
@@ -228,13 +432,13 @@
         {
          "v": "acc",
          "label": "حسابداری و انبار ساده",
-         "price": 500000,
+         "price": 750000,
          "icon": "wallet"
         },
         {
          "v": "macro",
          "label": "اتوماسیون با ماکرو / VBA",
-         "price": 1500000,
+         "price": 2250000,
          "icon": "zap"
         }
        ],
@@ -248,7 +452,7 @@
        "max": 40,
        "value": 3,
        "included": 3,
-       "perUnit": 250000,
+       "perUnit": 380000,
        "suffix": "شیت"
       },
       {
@@ -264,12 +468,12 @@
         {
          "v": "import",
          "label": "فایل‌های اکسل موجود",
-         "price": 300000
+         "price": 450000
         },
         {
          "v": "db",
          "label": "اتصال به نرم‌افزار / دیتابیس",
-         "price": 1500000
+         "price": 2250000
         }
        ]
       }
@@ -279,7 +483,7 @@
      "id": "docs",
      "title": "کاتالوگ، پروپوزال و بروشور",
      "icon": "book",
-     "base": 1600000,
+     "base": 2400000,
      "days": 4,
      "desc": "اسناد چاپی و دیجیتال با هویت برند شما.",
      "sort": 3,
@@ -304,13 +508,13 @@
         {
          "v": "brochure",
          "label": "بروشور / فلایر",
-         "price": -600000,
+         "price": -900000,
          "icon": "image"
         },
         {
          "v": "report",
          "label": "گزارش سالانه",
-         "price": 800000,
+         "price": 1200000,
          "icon": "chart"
         }
        ],
@@ -324,7 +528,7 @@
        "max": 120,
        "value": 8,
        "included": 8,
-       "perUnit": 150000,
+       "perUnit": 220000,
        "suffix": "صفحه"
       },
       {
@@ -340,16 +544,571 @@
         {
          "v": "print",
          "label": "آماده چاپ",
-         "price": 300000
+         "price": 450000
         },
         {
          "v": "both",
          "label": "هر دو",
-         "price": 400000
+         "price": 600000
         }
        ]
       }
      ]
+    },
+    {
+     "id": "word",
+     "title": "تایپ، ویرایش و صفحه‌آرایی Word",
+     "icon": "type",
+     "base": 450000,
+     "days": 3,
+     "desc": "پایان‌نامه، مقاله، جزوه، سوال امتحان، گزارش کار یا هر سند Word؛ نوعش را خودتان مشخص کنید.",
+     "fields": [
+      {
+       "id": "kind",
+       "type": "cards",
+       "label": "نوع سند",
+       "required": true,
+       "options": [
+        {
+         "v": "thesis",
+         "label": "پایان‌نامه و مقاله",
+         "price": 300000,
+         "icon": "award"
+        },
+        {
+         "v": "booklet",
+         "label": "جزوه و کتاب",
+         "price": 0,
+         "icon": "book"
+        },
+        {
+         "v": "exam",
+         "label": "سوالات امتحانی",
+         "price": 0,
+         "icon": "edit"
+        },
+        {
+         "v": "report",
+         "label": "گزارش کار و کارآموزی",
+         "price": 0,
+         "icon": "file"
+        },
+        {
+         "v": "office",
+         "label": "نامه و اسناد اداری",
+         "price": 0,
+         "icon": "briefcase"
+        },
+        {
+         "v": "other",
+         "label": "سایر",
+         "price": 0,
+         "icon": "layers"
+        }
+       ]
+      },
+      {
+       "id": "pages",
+       "type": "number",
+       "label": "تعداد صفحه",
+       "min": 1,
+       "max": 600,
+       "value": 10,
+       "included": 10,
+       "perUnit": 25000,
+       "suffix": "صفحه"
+      },
+      {
+       "id": "source",
+       "type": "select",
+       "label": "منبع",
+       "options": [
+        {
+         "v": "word",
+         "label": "فایل Word موجود (فقط ویرایش و صفحه‌آرایی)",
+         "price": 0
+        },
+        {
+         "v": "pdf",
+         "label": "فایل PDF",
+         "price": 150000
+        },
+        {
+         "v": "hand",
+         "label": "دست‌نویس یا عکس (تایپ کامل)",
+         "price": 350000
+        }
+       ]
+      },
+      {
+       "id": "lang",
+       "type": "select",
+       "label": "زبان",
+       "options": [
+        {
+         "v": "fa",
+         "label": "فارسی",
+         "price": 0
+        },
+        {
+         "v": "en",
+         "label": "انگلیسی",
+         "price": 200000
+        },
+        {
+         "v": "mix",
+         "label": "فارسی و انگلیسی",
+         "price": 150000
+        }
+       ]
+      },
+      {
+       "id": "extras",
+       "type": "chips",
+       "label": "امکانات اضافه",
+       "options": [
+        {
+         "v": "math",
+         "label": "فرمول و معادلات",
+         "price": 400000
+        },
+        {
+         "v": "tables",
+         "label": "جدول و نمودار",
+         "price": 300000
+        },
+        {
+         "v": "toc",
+         "label": "فهرست خودکار و ارجاع‌دهی",
+         "price": 250000
+        },
+        {
+         "v": "abstract",
+         "label": "ترجمه چکیده انگلیسی",
+         "price": 400000
+        },
+        {
+         "v": "edit",
+         "label": "ویراستاری ادبی",
+         "price": 500000
+        },
+        {
+         "v": "print",
+         "label": "آماده‌سازی برای چاپ و صحافی",
+         "price": 200000
+        }
+       ]
+      },
+      {
+       "id": "note",
+       "type": "textarea",
+       "label": "توضیح (رشته، شیوه‌نامه دانشگاه، قالب خاص…)"
+      }
+     ],
+     "sort": 4
+    },
+    {
+     "id": "exam",
+     "title": "طراحی سوال و آزمون",
+     "icon": "edit",
+     "base": 600000,
+     "days": 3,
+     "desc": "امتحان مدرسه و دانشگاه، آزمون استخدامی یا آزمون آنلاین با پاسخنامه.",
+     "fields": [
+      {
+       "id": "kind",
+       "type": "cards",
+       "label": "نوع آزمون",
+       "required": true,
+       "options": [
+        {
+         "v": "school",
+         "label": "امتحان مدرسه",
+         "price": 0,
+         "icon": "book"
+        },
+        {
+         "v": "uni",
+         "label": "امتحان دانشگاه",
+         "price": 200000,
+         "icon": "award"
+        },
+        {
+         "v": "hire",
+         "label": "آزمون استخدامی",
+         "price": 400000,
+         "icon": "briefcase"
+        },
+        {
+         "v": "online",
+         "label": "آزمون آنلاین (Google Forms / پرس‌لاین)",
+         "price": 400000,
+         "icon": "globe"
+        }
+       ]
+      },
+      {
+       "id": "count",
+       "type": "number",
+       "label": "تعداد سوال",
+       "min": 5,
+       "max": 300,
+       "value": 20,
+       "included": 20,
+       "perUnit": 15000,
+       "suffix": "سوال"
+      },
+      {
+       "id": "qtype",
+       "type": "chips",
+       "label": "نوع سوال",
+       "options": [
+        {
+         "v": "test",
+         "label": "تستی",
+         "price": 0
+        },
+        {
+         "v": "desc",
+         "label": "تشریحی",
+         "price": 100000
+        },
+        {
+         "v": "tf",
+         "label": "صحیح و غلط",
+         "price": 0
+        },
+        {
+         "v": "fill",
+         "label": "جای خالی",
+         "price": 0
+        }
+       ]
+      },
+      {
+       "id": "extras",
+       "type": "chips",
+       "label": "خدمات تکمیلی",
+       "options": [
+        {
+         "v": "answers",
+         "label": "پاسخنامه تشریحی",
+         "price": 300000
+        },
+        {
+         "v": "score",
+         "label": "کلید و بارم‌بندی",
+         "price": 150000
+        },
+        {
+         "v": "versions",
+         "label": "چند نسخه (A/B)",
+         "price": 250000
+        }
+       ]
+      },
+      {
+       "id": "topic",
+       "type": "text",
+       "label": "درس / پایه / سرفصل"
+      }
+     ],
+     "sort": 5
+    },
+    {
+     "id": "data",
+     "title": "ورود داده و تبدیل فایل",
+     "icon": "table",
+     "base": 350000,
+     "days": 2,
+     "desc": "PDF به Word، تایپ از عکس و اسکن، ورود اطلاعات به اکسل و یکپارچه‌سازی فایل‌ها.",
+     "fields": [
+      {
+       "id": "kind",
+       "type": "cards",
+       "label": "نوع کار",
+       "required": true,
+       "options": [
+        {
+         "v": "pdf",
+         "label": "PDF به Word قابل ویرایش",
+         "price": 0,
+         "icon": "file"
+        },
+        {
+         "v": "ocr",
+         "label": "اسکن و عکس به متن",
+         "price": 100000,
+         "icon": "camera"
+        },
+        {
+         "v": "excel",
+         "label": "ورود داده به اکسل",
+         "price": 0,
+         "icon": "table"
+        },
+        {
+         "v": "merge",
+         "label": "تبدیل و یکپارچه‌سازی فایل‌ها",
+         "price": 0,
+         "icon": "layers"
+        }
+       ]
+      },
+      {
+       "id": "pages",
+       "type": "number",
+       "label": "حجم کار (صفحه یا ۵۰ ردیف)",
+       "min": 1,
+       "max": 1000,
+       "value": 10,
+       "included": 10,
+       "perUnit": 20000,
+       "suffix": "واحد"
+      },
+      {
+       "id": "quality",
+       "type": "select",
+       "label": "کیفیت منبع",
+       "options": [
+        {
+         "v": "good",
+         "label": "خوانا",
+         "price": 0
+        },
+        {
+         "v": "bad",
+         "label": "کم‌کیفیت یا دست‌نویس",
+         "price": 200000
+        }
+       ]
+      }
+     ],
+     "sort": 6
+    },
+    {
+     "id": "translate",
+     "title": "ترجمه و ویراستاری متن",
+     "icon": "globe",
+     "base": 450000,
+     "days": 3,
+     "desc": "ترجمه عمومی، تخصصی، مقاله و متن سایت؛ با ویرایش نهایی.",
+     "fields": [
+      {
+       "id": "kind",
+       "type": "cards",
+       "label": "نوع متن",
+       "required": true,
+       "options": [
+        {
+         "v": "general",
+         "label": "عمومی",
+         "price": 0,
+         "icon": "book"
+        },
+        {
+         "v": "academic",
+         "label": "مقاله و تخصصی",
+         "price": 300000,
+         "icon": "award"
+        },
+        {
+         "v": "business",
+         "label": "کسب‌وکار و سایت",
+         "price": 150000,
+         "icon": "briefcase"
+        },
+        {
+         "v": "edit",
+         "label": "فقط ویراستاری",
+         "price": 0,
+         "icon": "pen"
+        }
+       ]
+      },
+      {
+       "id": "dir",
+       "type": "select",
+       "label": "زبان",
+       "options": [
+        {
+         "v": "enfa",
+         "label": "انگلیسی به فارسی",
+         "price": 0
+        },
+        {
+         "v": "faen",
+         "label": "فارسی به انگلیسی",
+         "price": 300000
+        },
+        {
+         "v": "other",
+         "label": "زبان‌های دیگر",
+         "price": 500000
+        }
+       ]
+      },
+      {
+       "id": "words",
+       "type": "number",
+       "label": "تعداد کلمه",
+       "min": 250,
+       "max": 100000,
+       "value": 1000,
+       "included": 1000,
+       "perUnit": 150,
+       "suffix": "کلمه"
+      }
+     ],
+     "sort": 7
+    },
+    {
+     "id": "forms",
+     "title": "فرم، سربرگ و قالب اداری",
+     "icon": "briefcase",
+     "base": 600000,
+     "days": 3,
+     "desc": "سربرگ و قالب نامه، فاکتور اکسل، فرم استخدام و ارزیابی، فرم آنلاین.",
+     "fields": [
+      {
+       "id": "kind",
+       "type": "cards",
+       "label": "نوع قالب",
+       "required": true,
+       "options": [
+        {
+         "v": "letter",
+         "label": "سربرگ و قالب نامه Word",
+         "price": 0,
+         "icon": "file"
+        },
+        {
+         "v": "invoice",
+         "label": "فاکتور و پیش‌فاکتور اکسل",
+         "price": 0,
+         "icon": "table"
+        },
+        {
+         "v": "hr",
+         "label": "فرم استخدام و ارزیابی",
+         "price": 0,
+         "icon": "users"
+        },
+        {
+         "v": "online",
+         "label": "فرم آنلاین (Google Forms)",
+         "price": 150000,
+         "icon": "globe"
+        }
+       ]
+      },
+      {
+       "id": "count",
+       "type": "number",
+       "label": "تعداد قالب",
+       "min": 1,
+       "max": 30,
+       "value": 1,
+       "included": 1,
+       "perUnit": 250000,
+       "suffix": "قالب"
+      },
+      {
+       "id": "brand",
+       "type": "select",
+       "label": "هویت بصری",
+       "options": [
+        {
+         "v": "have",
+         "label": "لوگو و رنگ برند دارم",
+         "price": 0
+        },
+        {
+         "v": "simple",
+         "label": "طراحی ساده بدون لوگو",
+         "price": 0
+        },
+        {
+         "v": "logo",
+         "label": "نیاز به لوگو هم دارم",
+         "price": 1500000
+        }
+       ]
+      }
+     ],
+     "sort": 8
+    },
+    {
+     "id": "office-train",
+     "title": "آموزش آفیس و هوش مصنوعی",
+     "icon": "presentation",
+     "base": 750000,
+     "days": 2,
+     "desc": "آموزش خصوصی یا سازمانی Word، Excel، PowerPoint و ابزارهای هوش مصنوعی.",
+     "fields": [
+      {
+       "id": "topic",
+       "type": "chips",
+       "label": "موضوع",
+       "required": true,
+       "options": [
+        {
+         "v": "word",
+         "label": "Word",
+         "price": 0
+        },
+        {
+         "v": "excel",
+         "label": "Excel",
+         "price": 0
+        },
+        {
+         "v": "ppt",
+         "label": "PowerPoint",
+         "price": 0
+        },
+        {
+         "v": "ai",
+         "label": "ChatGPT و ابزارهای AI",
+         "price": 150000
+        }
+       ]
+      },
+      {
+       "id": "mode",
+       "type": "select",
+       "label": "شیوه برگزاری",
+       "options": [
+        {
+         "v": "online",
+         "label": "آنلاین",
+         "price": 0
+        },
+        {
+         "v": "inperson",
+         "label": "حضوری",
+         "price": 300000
+        },
+        {
+         "v": "team",
+         "label": "سازمانی (گروهی)",
+         "price": 1500000
+        }
+       ]
+      },
+      {
+       "id": "sessions",
+       "type": "number",
+       "label": "تعداد جلسه (۹۰ دقیقه)",
+       "min": 1,
+       "max": 30,
+       "value": 1,
+       "included": 1,
+       "perUnit": 600000,
+       "suffix": "جلسه"
+      }
+     ],
+     "sort": 9
     }
    ]
   },
@@ -366,7 +1125,7 @@
      "id": "landing",
      "title": "لندینگ پیج",
      "icon": "layout",
-     "base": 5600000,
+     "base": 8400000,
      "days": 7,
      "desc": "یک صفحه، یک هدف: تبدیل بازدیدکننده به مشتری.",
      "sort": 0,
@@ -397,7 +1156,7 @@
         {
          "v": "app",
          "label": "معرفی اپلیکیشن",
-         "price": 500000,
+         "price": 750000,
          "icon": "phone"
         }
        ],
@@ -411,7 +1170,7 @@
        "max": 20,
        "value": 7,
        "included": 6,
-       "perUnit": 400000,
+       "perUnit": 600000,
        "suffix": "بخش"
       },
       {
@@ -427,22 +1186,22 @@
         {
          "v": "copy",
          "label": "نگارش متن تبلیغاتی",
-         "price": 1500000
+         "price": 2250000
         },
         {
          "v": "anim",
          "label": "انیمیشن‌های تعاملی",
-         "price": 1200000
+         "price": 1800000
         },
         {
          "v": "ab",
          "label": "نسخه دوم برای تست A/B",
-         "price": 2000000
+         "price": 3000000
         },
         {
          "v": "crm",
          "label": "اتصال به CRM / تلگرام",
-         "price": 800000
+         "price": 1200000
         }
        ]
       },
@@ -644,7 +1403,7 @@
      "id": "uiux",
      "title": "طراحی UI/UX",
      "icon": "pen",
-     "base": 7400000,
+     "base": 11100000,
      "days": 12,
      "desc": "طراحی تجربه و رابط کاربری اپ و وب در فیگما.",
      "sort": 3,
@@ -669,7 +1428,7 @@
         {
          "v": "both",
          "label": "وب و موبایل",
-         "price": 5000000,
+         "price": 7500000,
          "icon": "layers"
         }
        ],
@@ -683,7 +1442,7 @@
        "max": 120,
        "value": 12,
        "included": 10,
-       "perUnit": 450000,
+       "perUnit": 680000,
        "suffix": "اسکرین"
       },
       {
@@ -699,17 +1458,17 @@
         {
          "v": "proto",
          "label": "پروتوتایپ تعاملی",
-         "price": 2000000
+         "price": 3000000
         },
         {
          "v": "ds",
          "label": "دیزاین سیستم",
-         "price": 4000000
+         "price": 6000000
         },
         {
          "v": "research",
          "label": "تحقیق کاربر",
-         "price": 3500000
+         "price": 5250000
         }
        ]
       }
@@ -719,7 +1478,7 @@
      "id": "seo",
      "title": "سئو و تولید محتوا",
      "icon": "search",
-     "base": 4600000,
+     "base": 6900000,
      "days": 30,
      "desc": "رشد ارگانیک در گوگل با محتوای هدفمند (ماهانه).",
      "sort": 4,
@@ -732,7 +1491,7 @@
        "max": 12,
        "value": 3,
        "included": 1,
-       "perUnit": 4500000,
+       "perUnit": 6750000,
        "suffix": "ماه"
       },
       {
@@ -743,7 +1502,7 @@
        "max": 40,
        "value": 8,
        "included": 4,
-       "perUnit": 350000,
+       "perUnit": 520000,
        "suffix": "مقاله"
       },
       {
@@ -777,7 +1536,7 @@
      "id": "ai-teaser",
      "title": "تیزر تبلیغاتی با هوش مصنوعی",
      "icon": "sparkles",
-     "base": 3100000,
+     "base": 4650000,
      "days": 4,
      "desc": "تیزر سینمایی با هوش مصنوعی، سریع‌تر و ارزان‌تر از فیلم‌برداری.",
      "sort": 0,
@@ -795,17 +1554,17 @@
         {
          "v": "30",
          "label": "۳۰ ثانیه",
-         "price": 1500000
+         "price": 2250000
         },
         {
          "v": "60",
          "label": "۶۰ ثانیه",
-         "price": 3500000
+         "price": 5250000
         },
         {
          "v": "90",
          "label": "۹۰ ثانیه",
-         "price": 5500000
+         "price": 8250000
         }
        ],
        "required": true
@@ -823,12 +1582,12 @@
         {
          "v": "169",
          "label": "افقی ۱۶:۹",
-         "price": 300000
+         "price": 450000
         },
         {
          "v": "11",
          "label": "مربع ۱:۱",
-         "price": 300000
+         "price": 450000
         }
        ]
       },
@@ -846,13 +1605,13 @@
         {
          "v": "ai",
          "label": "گوینده هوش مصنوعی",
-         "price": 500000,
+         "price": 750000,
          "icon": "mic"
         },
         {
          "v": "pro",
          "label": "گوینده حرفه‌ای",
-         "price": 2000000,
+         "price": 3000000,
          "icon": "award"
         }
        ]
@@ -870,7 +1629,7 @@
         {
          "v": "write",
          "label": "نیاز به نگارش سناریو",
-         "price": 1200000
+         "price": 1800000
         }
        ]
       }
@@ -880,7 +1639,7 @@
      "id": "motion",
      "title": "موشن‌گرافیک",
      "icon": "play",
-     "base": 4700000,
+     "base": 7050000,
      "days": 10,
      "desc": "توضیح محصول و خدمات با انیمیشن جذاب.",
      "sort": 1,
@@ -899,7 +1658,7 @@
         {
          "v": "typo",
          "label": "تایپوگرافی",
-         "price": -1000000,
+         "price": -1500000,
          "icon": "type"
         },
         {
@@ -911,7 +1670,7 @@
         {
          "v": "3d",
          "label": "سه‌بعدی",
-         "price": 6000000,
+         "price": 9000000,
          "icon": "box"
         }
        ],
@@ -925,7 +1684,7 @@
        "max": 300,
        "value": 60,
        "included": 30,
-       "perUnit": 90000,
+       "perUnit": 140000,
        "step": 15,
        "suffix": "ثانیه"
       },
@@ -937,17 +1696,17 @@
         {
          "v": "voice",
          "label": "گویندگی",
-         "price": 1200000
+         "price": 1800000
         },
         {
          "v": "sub",
          "label": "زیرنویس",
-         "price": 400000
+         "price": 600000
         },
         {
          "v": "cut",
          "label": "نسخه کوتاه برای ریلز",
-         "price": 900000
+         "price": 1350000
         }
        ]
       }
@@ -957,7 +1716,7 @@
      "id": "edit",
      "title": "تدوین ویدیو",
      "icon": "scissors",
-     "base": 1390000,
+     "base": 2100000,
      "days": 3,
      "desc": "تدوین حرفه‌ای ویدیوهای خام، ولاگ و آموزشی.",
      "sort": 2,
@@ -970,7 +1729,7 @@
        "max": 600,
        "value": 20,
        "included": 10,
-       "perUnit": 60000,
+       "perUnit": 90000,
        "suffix": "دقیقه"
       },
       {
@@ -981,7 +1740,7 @@
        "max": 30,
        "value": 1,
        "included": 1,
-       "perUnit": 700000,
+       "perUnit": 1050000,
        "suffix": "ویدیو"
       },
       {
@@ -992,22 +1751,22 @@
         {
          "v": "color",
          "label": "اصلاح رنگ",
-         "price": 500000
+         "price": 750000
         },
         {
          "v": "sub",
          "label": "زیرنویس فارسی",
-         "price": 400000
+         "price": 600000
         },
         {
          "v": "sound",
          "label": "میکس صدا",
-         "price": 400000
+         "price": 600000
         },
         {
          "v": "thumb",
          "label": "طراحی کاور",
-         "price": 300000
+         "price": 450000
         }
        ]
       }
@@ -1017,7 +1776,7 @@
      "id": "lipsync",
      "title": "دوبله و لب‌سینک AI",
      "icon": "mic",
-     "base": 2300000,
+     "base": 3450000,
      "days": 3,
      "desc": "ویدیوی شما به هر زبانی، با حرکت لب طبیعی.",
      "sort": 3,
@@ -1036,13 +1795,13 @@
         {
          "v": "avatar",
          "label": "آواتار سخنگو",
-         "price": 1000000,
+         "price": 1500000,
          "icon": "user"
         },
         {
          "v": "fix",
          "label": "اصلاح دیالوگ",
-         "price": -500000,
+         "price": -750000,
          "icon": "edit"
         }
        ],
@@ -1056,7 +1815,7 @@
        "max": 120,
        "value": 3,
        "included": 1,
-       "perUnit": 700000,
+       "perUnit": 1050000,
        "suffix": "دقیقه"
       },
       {
@@ -1077,12 +1836,12 @@
         {
          "v": "ar",
          "label": "عربی",
-         "price": 300000
+         "price": 450000
         },
         {
          "v": "tr",
          "label": "ترکی",
-         "price": 300000
+         "price": 450000
         }
        ]
       }
@@ -1092,7 +1851,7 @@
      "id": "reels",
      "title": "پک ریلز و استوری ویدیویی",
      "icon": "phone",
-     "base": 2200000,
+     "base": 3300000,
      "days": 5,
      "desc": "محتوای ویدیویی ماهانه برای اینستاگرام و شبکه‌های اجتماعی.",
      "sort": 4,
@@ -1105,7 +1864,7 @@
        "max": 60,
        "value": 6,
        "included": 4,
-       "perUnit": 500000,
+       "perUnit": 750000,
        "suffix": "ویدیو"
       },
       {
@@ -1148,12 +1907,12 @@
         {
          "v": "ai",
          "label": "ساخت کامل با AI",
-         "price": 1500000
+         "price": 2250000
         },
         {
          "v": "stock",
          "label": "فوتیج استوک",
-         "price": 800000
+         "price": 1200000
         }
        ]
       }
@@ -1174,7 +1933,7 @@
      "id": "logo",
      "title": "لوگو و هویت بصری",
      "icon": "hexagon",
-     "base": 2900000,
+     "base": 4350000,
      "days": 7,
      "desc": "لوگویی که برند شما را در یک نگاه معرفی می‌کند.",
      "sort": 0,
@@ -1200,19 +1959,19 @@
         {
          "v": "mark",
          "label": "تصویری (نشانه)",
-         "price": 500000,
+         "price": 750000,
          "icon": "hexagon"
         },
         {
          "v": "combo",
          "label": "ترکیبی",
-         "price": 800000,
+         "price": 1200000,
          "icon": "layers"
         },
         {
          "v": "mascot",
          "label": "کاراکتر / مسکات",
-         "price": 2500000,
+         "price": 3750000,
          "icon": "smile"
         }
        ],
@@ -1231,12 +1990,12 @@
         {
          "v": "3",
          "label": "۳ کانسپت",
-         "price": 800000
+         "price": 1200000
         },
         {
          "v": "5",
          "label": "۵ کانسپت",
-         "price": 2000000
+         "price": 3000000
         }
        ]
       },
@@ -1248,22 +2007,22 @@
         {
          "v": "guide",
          "label": "برندبوک",
-         "price": 3000000
+         "price": 4500000
         },
         {
          "v": "card",
          "label": "کارت ویزیت و سربرگ",
-         "price": 800000
+         "price": 1200000
         },
         {
          "v": "social",
          "label": "کیت شبکه‌های اجتماعی",
-         "price": 1200000
+         "price": 1800000
         },
         {
          "v": "motion",
          "label": "لوگوموشن",
-         "price": 1500000
+         "price": 2250000
         }
        ]
       },
@@ -1279,7 +2038,7 @@
      "id": "poster",
      "title": "پوستر و بنر تبلیغاتی",
      "icon": "image",
-     "base": 590000,
+     "base": 880000,
      "days": 2,
      "desc": "طراحی تبلیغاتی برای چاپ و فضای مجازی.",
      "sort": 1,
@@ -1292,7 +2051,7 @@
        "max": 50,
        "value": 2,
        "included": 1,
-       "perUnit": 500000,
+       "perUnit": 750000,
        "suffix": "طرح"
       },
       {
@@ -1318,7 +2077,7 @@
         {
          "v": "bill",
          "label": "بیلبورد / استند",
-         "price": 600000
+         "price": 900000
         },
         {
          "v": "web",
@@ -1340,7 +2099,7 @@
         {
          "v": "yes",
          "label": "فایل آماده چاپ (CMYK)",
-         "price": 200000
+         "price": 300000
         }
        ]
       }
@@ -1350,7 +2109,7 @@
      "id": "social",
      "title": "پست و استوری شبکه‌های اجتماعی",
      "icon": "heart",
-     "base": 1690000,
+     "base": 2550000,
      "days": 5,
      "desc": "محتوای گرافیکی منظم و هماهنگ با برند.",
      "sort": 2,
@@ -1363,7 +2122,7 @@
        "max": 60,
        "value": 12,
        "included": 8,
-       "perUnit": 180000,
+       "perUnit": 270000,
        "suffix": "پست"
       },
       {
@@ -1374,7 +2133,7 @@
        "max": 90,
        "value": 10,
        "included": 0,
-       "perUnit": 90000,
+       "perUnit": 140000,
        "suffix": "استوری"
       },
       {
@@ -1385,17 +2144,17 @@
         {
          "v": "caption",
          "label": "نگارش کپشن",
-         "price": 900000
+         "price": 1350000
         },
         {
          "v": "template",
          "label": "قالب قابل ویرایش",
-         "price": 700000
+         "price": 1050000
         },
         {
          "v": "highlight",
          "label": "کاور هایلایت",
-         "price": 300000
+         "price": 450000
         }
        ]
       },
@@ -1412,7 +2171,7 @@
      "id": "ai-art",
      "title": "تصویرسازی با هوش مصنوعی",
      "icon": "wand",
-     "base": 990000,
+     "base": 1500000,
      "days": 2,
      "desc": "تصاویر منحصربه‌فرد برای تبلیغات، کتاب و محصول.",
      "sort": 3,
@@ -1437,13 +2196,13 @@
         {
          "v": "3d",
          "label": "سه‌بعدی",
-         "price": 200000,
+         "price": 300000,
          "icon": "box"
         },
         {
          "v": "paint",
          "label": "نقاشی دیجیتال",
-         "price": 200000,
+         "price": 300000,
          "icon": "palette"
         }
        ],
@@ -1457,7 +2216,7 @@
        "max": 100,
        "value": 5,
        "included": 3,
-       "perUnit": 250000,
+       "perUnit": 380000,
        "suffix": "تصویر"
       },
       {
@@ -1473,12 +2232,12 @@
         {
          "v": "book",
          "label": "کتاب / داستان",
-         "price": 300000
+         "price": 450000
         },
         {
          "v": "product",
          "label": "عکس محصول",
-         "price": 400000
+         "price": 600000
         }
        ]
       }
@@ -1488,7 +2247,7 @@
      "id": "packaging",
      "title": "طراحی بسته‌بندی و لیبل",
      "icon": "box",
-     "base": 3200000,
+     "base": 4800000,
      "days": 7,
      "desc": "بسته‌بندی که در قفسه فروشگاه دیده می‌شود.",
      "sort": 4,
@@ -1508,7 +2267,7 @@
        "max": 30,
        "value": 1,
        "included": 1,
-       "perUnit": 900000,
+       "perUnit": 1350000,
        "suffix": "تنوع"
       },
       {
@@ -1519,17 +2278,17 @@
         {
          "v": "mockup",
          "label": "ماکاپ سه‌بعدی",
-         "price": 600000
+         "price": 900000
         },
         {
          "v": "dieline",
          "label": "دایلاین / قالب برش",
-         "price": 500000
+         "price": 750000
         },
         {
          "v": "label",
          "label": "لیبل جداگانه",
-         "price": 400000
+         "price": 600000
         }
        ]
       }
@@ -1550,7 +2309,7 @@
      "id": "chatbot",
      "title": "چت‌بات هوشمند",
      "icon": "chat",
-     "base": 6500000,
+     "base": 9750000,
      "days": 10,
      "desc": "پاسخ‌گویی ۲۴ ساعته به مشتری با هوش مصنوعی.",
      "sort": 0,
@@ -1568,17 +2327,17 @@
         {
          "v": "tg",
          "label": "تلگرام",
-         "price": 500000
+         "price": 750000
         },
         {
          "v": "wa",
          "label": "واتساپ",
-         "price": 1500000
+         "price": 2250000
         },
         {
          "v": "ig",
          "label": "اینستاگرام دایرکت",
-         "price": 1500000
+         "price": 2250000
         }
        ],
        "required": true
@@ -1596,12 +2355,12 @@
         {
          "v": "docs",
          "label": "اسناد و کاتالوگ",
-         "price": 1500000
+         "price": 2250000
         },
         {
          "v": "api",
          "label": "اتصال به سیستم / دیتابیس",
-         "price": 4000000
+         "price": 6000000
         }
        ]
       },
@@ -1613,7 +2372,7 @@
        "max": 100,
        "value": 5,
        "included": 5,
-       "perUnit": 150000,
+       "perUnit": 220000,
        "suffix": "هزار"
       }
      ]
@@ -1622,7 +2381,7 @@
      "id": "automation",
      "title": "اتوماسیون اداری",
      "icon": "zap",
-     "base": 5500000,
+     "base": 8250000,
      "days": 12,
      "desc": "کارهای تکراری را به سیستم بسپارید.",
      "sort": 1,
@@ -1657,12 +2416,12 @@
         {
          "v": "acc",
          "label": "نرم‌افزار حسابداری",
-         "price": 1500000
+         "price": 2250000
         },
         {
          "v": "sms",
          "label": "پیامک",
-         "price": 500000
+         "price": 750000
         }
        ]
       },
@@ -1674,7 +2433,7 @@
        "max": 500,
        "value": 5,
        "included": 5,
-       "perUnit": 120000,
+       "perUnit": 180000,
        "suffix": "نفر"
       }
      ]
@@ -1683,7 +2442,7 @@
      "id": "infra",
      "title": "زیرساخت ویندوز و شبکه",
      "icon": "server",
-     "base": 2790000,
+     "base": 4200000,
      "days": 4,
      "desc": "نصب، امنیت، بکاپ و مانیتورینگ سیستم‌ها.",
      "sort": 2,
@@ -1696,7 +2455,7 @@
        "max": 300,
        "value": 10,
        "included": 5,
-       "perUnit": 250000,
+       "perUnit": 380000,
        "suffix": "دستگاه"
       },
       {
@@ -1712,22 +2471,22 @@
         {
          "v": "net",
          "label": "شبکه و اشتراک‌گذاری",
-         "price": 1000000
+         "price": 1500000
         },
         {
          "v": "backup",
          "label": "بکاپ خودکار",
-         "price": 1200000
+         "price": 1800000
         },
         {
          "v": "monitor",
          "label": "مانیتورینگ",
-         "price": 1500000
+         "price": 2250000
         },
         {
          "v": "security",
          "label": "امنیت و آنتی‌ویروس",
-         "price": 800000
+         "price": 1200000
         }
        ]
       },
@@ -1744,7 +2503,7 @@
         {
          "v": "monthly",
          "label": "قرارداد ماهانه",
-         "price": 2500000
+         "price": 3750000
         }
        ]
       }
@@ -1762,6 +2521,16 @@
   {
    "id": "resume-tpl",
    "title": "قالب رزومه",
+   "icon": "file"
+  },
+  {
+   "id": "canva-tpl",
+   "title": "قالب Canva",
+   "icon": "palette"
+  },
+  {
+   "id": "word-tpl",
+   "title": "قالب Word و اسناد",
    "icon": "file"
   },
   {

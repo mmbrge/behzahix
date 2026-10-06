@@ -866,6 +866,7 @@ function a_fresh_start(): void
         if (table_exists('product_reviews')) q('DELETE FROM product_reviews');
         q('DELETE FROM products');
         wipe_files("'product','cover','gallery'");
+        q("DELETE FROM settings WHERE k = 'tpl_seed'"); // ready-made templates come back on the next cron
         $done[] = 'محصولات فروشگاه';
     }
     if (in_array('portfolio', $parts, true)) {

@@ -190,3 +190,43 @@ function docx_build(array $blocks, string $title = '', string $font = 'Tahoma'):
         'docProps/core.xml' => OX_XML . '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>' . ox_esc($title) . '</dc:title><dc:creator>BEHIX Studio</dc:creator></cp:coreProperties>',
     ]);
 }
+
+// ================================================================ Word resume template (editable, sold in the shop)
+// Two-column table layout: colored header, tinted side column, main column with
+// section headings — all placeholder text the buyer replaces in Word.
+function docx_resume_template(string $color, string $font = 'Tahoma', bool $sideRight = true): string
+{
+    $c = ltrim(bx_hex($color, '#2563eb'), '#');
+    $soft = ox_hex(bx_shade('#' . $c, 0.9));
+    $f = ox_esc($font);
+    $r = function (string $t, float $size, string $col = '1F2430', bool $b = false) use ($f) {
+        $rtl = preg_match('/[\x{0600}-\x{06FF}]/u', $t) ? '<w:rtl/>' : '';
+        $sz = (int) round($size * 2);
+        return "<w:r><w:rPr><w:rFonts w:ascii=\"$f\" w:hAnsi=\"$f\" w:cs=\"$f\"/>" . ($b ? '<w:b/><w:bCs/>' : '') . "<w:color w:val=\"$col\"/><w:sz w:val=\"$sz\"/><w:szCs w:val=\"$sz\"/>$rtl</w:rPr><w:t xml:space=\"preserve\">" . ox_esc($t) . '</w:t></w:r>';
+    };
+    $p = fn (string $runs, int $after = 80, string $jc = '', string $border = '') => "<w:p><w:pPr><w:bidi/>$border<w:spacing w:before=\"0\" w:after=\"$after\" w:line=\"300\" w:lineRule=\"auto\"/>" . ($jc ? "<w:jc w:val=\"$jc\"/>" : '') . "</w:pPr>$runs</w:p>";
+    $h = fn (string $t, string $col) => $p($r($t, 12.5, $col, true), 100, '', "<w:pBdr><w:bottom w:val=\"single\" w:sz=\"12\" w:space=\"2\" w:color=\"$col\"/></w:pBdr>");
+    $bul = fn (string $t) => $p($r('●  ', 7, $c) . $r($t, 10), 60);
+    $cell = fn (int $w, string $fill, string $body) => "<w:tc><w:tcPr><w:tcW w:w=\"$w\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"$fill\"/><w:tcMar><w:top w:w=\"240\" w:type=\"dxa\"/><w:left w:w=\"260\" w:type=\"dxa\"/><w:bottom w:w=\"240\" w:type=\"dxa\"/><w:right w:w=\"260\" w:type=\"dxa\"/></w:tcMar></w:tcPr>$body</w:tc>";
+    $side = $h('اطلاعات تماس', $c) . $p($r('موبایل: ۰۹۱۲ ۰۰۰ ۰۰۰۰', 10)) . $p($r('ایمیل: name@mail.com', 10)) . $p($r('شهر: تهران', 10)) . $p($r('linkedin.com/in/yourname', 10), 240)
+        . $h('مهارت‌ها', $c) . implode('', array_map($bul, ['مهارت اول', 'مهارت دوم', 'مهارت سوم', 'مهارت چهارم', 'مهارت پنجم']))
+        . $p('', 160) . $h('زبان‌ها', $c) . $p($r('انگلیسی — خیلی خوب', 10)) . $p($r('عربی — متوسط', 10), 240)
+        . $h('علایق', $c) . $p($r('کتاب، عکاسی، ورزش', 10));
+    $job = fn ($role, $co, $dt) => $p($r($role, 11, '1F2430', true) . $r('   |   ' . $co, 10, $c) . $r('   ' . $dt, 9, '6B7080'), 40) . implode('', array_map($bul, ['یک دستاورد مهم با عدد و نتیجه (مثلاً افزایش ۳۰٪ فروش)', 'مسئولیت کلیدی دوم', 'پروژه یا کار شاخص سوم']));
+    $main = $h('درباره من', $c) . $p($r('دو تا چهار خط درباره تجربه، مهارت‌های کلیدی و هدف شغلی خود بنویسید. این بخش اولین چیزی است که کارفرما می‌خواند.', 10.5), 240)
+        . $h('سوابق کاری', $c) . $job('عنوان شغلی', 'نام شرکت', '۱۴۰۰ — اکنون') . $p('', 80) . $job('عنوان شغلی قبلی', 'نام شرکت', '۱۳۹۷ — ۱۴۰۰') . $p('', 160)
+        . $h('تحصیلات', $c) . $p($r('کارشناسی ارشد رشته …', 11, '1F2430', true) . $r('   |   نام دانشگاه   ', 10, $c) . $r('۱۳۹۵ — ۱۳۹۷', 9, '6B7080')) . $p($r('کارشناسی رشته …', 11, '1F2430', true) . $r('   |   نام دانشگاه   ', 10, $c) . $r('۱۳۹۱ — ۱۳۹۵', 9, '6B7080'), 240)
+        . $h('دوره‌ها و گواهی‌ها', $c) . implode('', array_map($bul, ['نام دوره — برگزارکننده، سال', 'نام دوره — برگزارکننده، سال']));
+    $head = "<w:tbl><w:tblPr><w:bidiVisual/><w:tblW w:w=\"10466\" w:type=\"dxa\"/><w:tblBorders><w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/></w:tblBorders><w:tblLayout w:type=\"fixed\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"10466\"/></w:tblGrid><w:tr>"
+        . $cell(10466, $c, $p($r('نام و نام خانوادگی', 24, 'FFFFFF', true), 40) . $p($r('عنوان شغلی شما', 13, 'FFFFFF'), 0)) . '</w:tr></w:tbl>';
+    $cols = $sideRight ? [[3300, $soft, $side], [7166, 'FFFFFF', $main]] : [[7166, 'FFFFFF', $main], [3300, $soft, $side]];
+    $body = "<w:tbl><w:tblPr><w:bidiVisual/><w:tblW w:w=\"10466\" w:type=\"dxa\"/><w:tblBorders><w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/></w:tblBorders><w:tblLayout w:type=\"fixed\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"{$cols[0][0]}\"/><w:gridCol w:w=\"{$cols[1][0]}\"/></w:tblGrid><w:tr><w:trPr><w:trHeight w:val=\"13600\"/></w:trPr>"
+        . $cell(...$cols[0]) . $cell(...$cols[1]) . '</w:tr></w:tbl>';
+    $doc = OX_XML . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>' . $head . $body
+        . '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="0" w:footer="0" w:gutter="0"/><w:bidi/></w:sectPr></w:body></w:document>';
+    return ox_zip([
+        '[Content_Types].xml' => OX_XML . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+        '_rels/.rels' => OX_XML . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+        'word/document.xml' => $doc,
+    ]);
+}
