@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 9;
+const BX_SCHEMA_VERSION = 10;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -19,7 +19,8 @@ function bx_columns(): array
         ['users', 'cart_at', 'DATETIME NULL'],
         ['users', 'cart_reminded', 'TINYINT(1) NOT NULL DEFAULT 0'],
         ['products', 'reviews', 'INT UNSIGNED NOT NULL DEFAULT 0'], // v6 — review count (rating = average)
-        ['services', 'delivery', 'TINYINT(1) NOT NULL DEFAULT 0'], // v8 — in-person delivery: customer books a date and time slot
+        ['services', 'delivery', 'TINYINT(1) NOT NULL DEFAULT 0'],
+        ['users', 'session_ver', 'INT UNSIGNED NOT NULL DEFAULT 0'], // v10 — «sign out everywhere» // v8 — in-person delivery: customer books a date and time slot
     ];
 }
 
@@ -257,6 +258,29 @@ function bx_schema(): array
         "CREATE TABLE IF NOT EXISTS leads (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
+            created_at DATETIME NOT NULL
+        ) $t",
+        // v10 — security: event log, per-IP throttling, blocked addresses
+        "CREATE TABLE IF NOT EXISTS security_log (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            type VARCHAR(20) NOT NULL,
+            ip VARCHAR(45) NOT NULL,
+            user_id INT UNSIGNED NULL,
+            detail VARCHAR(255) NOT NULL DEFAULT '',
+            ua VARCHAR(190) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL,
+            KEY type_time (type, created_at),
+            KEY ip (ip)
+        ) $t",
+        "CREATE TABLE IF NOT EXISTS throttle (
+            k VARCHAR(120) NOT NULL PRIMARY KEY,
+            hits INT UNSIGNED NOT NULL DEFAULT 0,
+            reset_at INT UNSIGNED NOT NULL
+        ) $t",
+        "CREATE TABLE IF NOT EXISTS ip_blocks (
+            ip VARCHAR(45) NOT NULL PRIMARY KEY,
+            reason VARCHAR(190) NOT NULL DEFAULT '',
+            until_at DATETIME NULL,
             created_at DATETIME NOT NULL
         ) $t",
         // v9 — studio: self-service builders (resume, card, post, docs, slides) and hosted pages (digital card, QR menu)

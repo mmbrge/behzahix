@@ -225,6 +225,8 @@ function payment_start(int $userId, string $purpose, array $ref, int $amount, st
     $p = setting('payment');
     $driver = $p['driver'];
     if ($amount < 1000) fail('مبلغ پرداخت معتبر نیست.', 422);
+    // The test gateway approves anything — never allow it on a live site
+    if ($driver === 'test' && empty(setting('general', 'demoMode'))) fail('درگاه پرداخت هنوز تنظیم نشده است؛ لطفاً بعداً تلاش کنید.', 503);
     if (isset(BNPL_PROVIDERS[$method])) {
         if ($purpose === 'charge') fail('شارژ کیف پول با پرداخت اقساطی ممکن نیست.', 422);
         if (!in_array($method, bnpl_available($amount), true)) fail('این روش پرداخت برای این مبلغ در دسترس نیست.', 422);
@@ -304,7 +306,7 @@ function payment_callback(): void
     } elseif (isset(BNPL_PROVIDERS[$pay['driver']])) {
         try { [$ok, $refId] = bnpl_verify($pay); } catch (Throwable $e) { $ok = false; }
     } elseif ($pay['driver'] === 'test') {
-        $ok = ($_GET['Status'] ?? '') === 'OK' && hash_equals((string) $pay['authority'], (string) ($_GET['Authority'] ?? ''));
+        $ok = !empty(setting('general', 'demoMode')) && ($_GET['Status'] ?? '') === 'OK' && hash_equals((string) $pay['authority'], (string) ($_GET['Authority'] ?? ''));
         $refId = 'TEST';
     }
     if (!$ok) {

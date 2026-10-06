@@ -170,7 +170,8 @@ window.BX.ready.then(function () {
       try {
         const r = await api("auth.otp.send", { phone, purpose: "login" });
         otpView(phone, r.demoCode, async (code) => {
-          await api("auth.otp.login", { phone, code });
+          const r = await api("auth.otp.login", { phone, code });
+          if (r.need2fa) return twoStep(r.message);
           toast("وارد شدید.", "ok");
           setTimeout(go, 300);
         });
@@ -182,6 +183,18 @@ window.BX.ready.then(function () {
     if (e.target.name === "role") { role = e.target.value; registerView(); }
   });
 
+  // Admin two-step sign-in: code sent by SMS after the password
+  function twoStep(msg) {
+    BX.modal({
+      title: "تأیید دومرحله‌ای",
+      body: `<p class="muted small lh">${BX.esc(msg || "کد تأیید پیامک شد.")}</p><input class="input mt-2" id="tf-code" dir="ltr" inputmode="numeric" autocomplete="one-time-code" placeholder="کد ۶ رقمی" maxlength="8">`,
+      onOpen: (w) => setTimeout(() => w.querySelector("#tf-code").focus(), 50),
+      actions: [{ label: "انصراف" }, { label: "ورود", primary: true, onClick: (w) => {
+        api("auth.2fa", { code: enDigits(w.querySelector("#tf-code").value) }).then((r) => { toast(`خوش آمدید ${r.me.name}`, "ok"); setTimeout(go, 300); }).catch((err) => toast(err.message, "bad"));
+      } }],
+    });
+  }
+
   box.addEventListener("submit", async (e) => {
     const f = e.target;
     if (f.dataset.form === "login") {
@@ -189,6 +202,7 @@ window.BX.ready.then(function () {
       busy(f, true);
       try {
         const r = await api("auth.login", { phone: enDigits(f.elements.phone.value), password: f.elements.password.value });
+        if (r.need2fa) { busy(f, false); return twoStep(r.message); }
         toast(`خوش آمدید ${r.me.name}`, "ok");
         setTimeout(go, 300);
       } catch (err) {

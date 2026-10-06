@@ -473,3 +473,18 @@ small.bad { color: var(--bad); }
 @media (max-width: 900px) { .cal-wrap { grid-template-columns: 1fr; } .cal-day { position: static; } .cal-cell { min-height: 58px; padding: 6px; } .cal-cell small { display: none; } .cal-grid { gap: 4px; } }
 .sp-pages { display: flex; flex-direction: column; gap: 8px; }
 .sp-page { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--inset); flex-wrap: wrap; }
+
+/* security */
+.sec-hero { display: flex; gap: 22px; align-items: center; padding: 22px; }
+.sec-hero h2 { font-size: 1.15rem; font-weight: 900; }
+.sec-hero .st-gauge { --c: var(--ok); flex-shrink: 0; width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; align-content: center; background: radial-gradient(closest-side, var(--surface) 78%, transparent 79%), conic-gradient(var(--c) calc(var(--p) * 1%), var(--track) 0); }
+.sec-hero .st-gauge b { font-size: 2rem; font-weight: 900; line-height: 1; }
+.sec-hero .st-gauge small { font-size: .68rem; color: var(--muted); }
+.sec-hero--warn .st-gauge { --c: #f59e0b; } .sec-hero--bad .st-gauge { --c: var(--bad); }
+.sec-checks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 18px; }
+.sec-check { display: flex; gap: 8px; align-items: flex-start; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: .86rem; }
+.sec-check > .icon { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; }
+.sec-check.ok > .icon { color: var(--ok); } .sec-check.bad > .icon { color: var(--bad); }
+.sec-files li { padding: 4px 0; font-size: .85rem; } .sec-files li.bad { color: var(--bad); }
+.link-btn { font: inherit; color: var(--accent); text-decoration: underline dotted; }
+@media (max-width: 900px) { .sec-checks { grid-template-columns: 1fr; } .sec-hero { flex-direction: column; text-align: center; } }

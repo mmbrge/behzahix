@@ -66,7 +66,7 @@ function default_settings(): array
         'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس'],
         'sms' => ['driver' => 'none', 'apiKey' => '', 'template' => 'verify', 'templateId' => '', 'paramName' => 'CODE', 'adminPhone' => ''],
         // Event SMS: per event on/off and the provider template name (Kavenegar) or id (SMS.ir)
-        'sms_events' => array_fill_keys(['order_new', 'order_quote', 'order_paid', 'order_review', 'order_due', 'order_done', 'shop_paid', 'cart_reminder', 'ticket_reply', 'referral_reward', 'designer_assigned', 'revision_requested', 'product_sold', 'payout_paid', 'admin_new_order', 'admin_support', 'delivery_booked', 'delivery_reminder'], ['on' => false, 'template' => '']),
+        'sms_events' => array_fill_keys(['order_new', 'order_quote', 'order_paid', 'order_review', 'order_due', 'order_done', 'shop_paid', 'cart_reminder', 'ticket_reply', 'referral_reward', 'designer_assigned', 'revision_requested', 'product_sold', 'payout_paid', 'admin_new_order', 'admin_support', 'delivery_booked', 'delivery_reminder', 'admin_login'], ['on' => false, 'template' => '']),
         'theme' => ['brand' => '#ff7a1a', 'brand2' => '#ffa24a', 'defaultTheme' => 'dark', 'cursor' => true],
         'uploads' => ['maxMB' => 50, 'ext' => 'jpg,jpeg,png,webp,gif,svg,pdf,zip,rar,7z,psd,ai,eps,pptx,ppt,docx,doc,xlsx,xls,mp4,mov,mp3,wav,aep,prproj,fig,txt'],
         'shop' => ['enabled' => true],
@@ -81,6 +81,8 @@ function default_settings(): array
         ],
         // Seller details printed on invoices (empty = taken from site name / contact)
         'invoice' => ['sellerName' => '', 'economicCode' => '', 'nationalId' => '', 'regNo' => '', 'address' => '', 'postalCode' => '', 'phone' => '', 'vatPercent' => 0, 'note' => ''],
+        // Security: admin two-step login by SMS, admin login alert, IP blocking after failed sign-ins
+        'security' => ['admin2fa' => false, 'loginAlert' => true, 'maxFails' => 10, 'blockMinutes' => 30, 'trustProxy' => false],
         // Studio (studio.html): self-service builders, paid per finished file; hosted pages paid per period
         'studio' => [
             'enabled' => true, 'trialDays' => 7,

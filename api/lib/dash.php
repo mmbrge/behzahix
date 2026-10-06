@@ -261,7 +261,10 @@ function a_password_change(): void
     if (!password_verify((string) in('old', ''), $u['password_hash'])) fail('رمز فعلی اشتباه است.', 422);
     $new = (string) in('new', '');
     if (strlen($new) < 6) fail('رمز جدید باید حداقل ۶ کاراکتر باشد.', 422);
-    update('users', ['password_hash' => password_hash($new, PASSWORD_DEFAULT)], 'id = ?', [$u['id']]);
+    // a new password signs the account out on every other device
+    update('users', ['password_hash' => password_hash($new, PASSWORD_DEFAULT), 'session_ver' => (int) ($u['session_ver'] ?? 0) + 1], 'id = ?', [$u['id']]);
+    session_mark((int) $u['id']);
+    sec_log('password', 'تغییر رمز', (int) $u['id']);
     done('رمز عبور تغییر کرد.');
 }
 function a_prefs_save(): void
@@ -1052,6 +1055,7 @@ function a_settings_save(): void
     $value = in('value', []);
     if (!is_array($value)) fail('مقدار نامعتبر است.', 422);
     $current = setting($group);
+    sec_log('admin_action', 'تغییر تنظیمات: ' . $group, (int) me()['id']);
     foreach ($defaults[$group] as $k => $d) {
         if (array_key_exists($k, $value)) $current[$k] = coerce_like($d, $value[$k]);
     }

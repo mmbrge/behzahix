@@ -139,6 +139,7 @@ function next_order_code(): string
 function r_order_submit(): void
 {
     rate_limit('order', 10, 3600);
+    ip_limit('order', 25, 3600);
     $svc = find_service(str_in('serviceId', 40));
     if (!$svc || !$svc['active']) fail('خدمت انتخاب‌شده معتبر نیست.', 422);
     $details = clean_details($svc, arr_in('details'));
@@ -305,17 +306,21 @@ function r_file(): void
 function r_auth_login(): void
 {
     rate_limit('login', 8, 600);
+    ip_limit('login', 30, 900);
     $phone = phone_in();
     $u = row('SELECT * FROM users WHERE phone = ?', [$phone]);
-    if (!$u || !password_verify((string) in('password', ''), $u['password_hash'])) fail('شماره موبایل یا رمز عبور اشتباه است.', 422);
+    if (!$u || !password_verify((string) in('password', ''), $u['password_hash'])) { login_failed($phone, 'رمز'); fail('شماره موبایل یا رمز عبور اشتباه است.', 422); }
     if ($u['status'] === 'blocked') fail('حساب کاربری شما مسدود شده است.', 403);
+    if (admin_2fa_needed($u)) admin_2fa_start($u);
     login_as((int) $u['id']);
+    login_succeeded($u);
     out(['me' => user_out(row('SELECT * FROM users WHERE id = ?', [$u['id']]), true)]);
 }
 
 function r_auth_otp_send(): void
 {
     rate_limit('otp', 5, 3600);
+    ip_limit('otp', 12, 3600);
     $phone = phone_in();
     $purpose = str_in('purpose', 16) === 'register' ? 'register' : 'login';
     $exists = (bool) row('SELECT id FROM users WHERE phone = ?', [$phone]);
@@ -343,6 +348,7 @@ function otp_verify(string $phone, string $purpose): void
     if ((int) $o['attempts'] >= 5) fail('تعداد تلاش‌ها زیاد است؛ کد جدید بگیرید.', 429);
     if (!password_verify($code, $o['code_hash'])) {
         q('UPDATE otps SET attempts = attempts + 1 WHERE phone = ?', [$phone]);
+        login_failed($phone, 'کد پیامکی');
         fail('کد تأیید اشتباه است.', 422);
     }
     q('DELETE FROM otps WHERE phone = ?', [$phone]);
@@ -354,13 +360,16 @@ function r_auth_otp_login(): void
     otp_verify($phone, 'login');
     $u = row('SELECT * FROM users WHERE phone = ?', [$phone]);
     if (!$u || $u['status'] === 'blocked') fail('حساب کاربری فعال نیست.', 403);
+    if (admin_2fa_needed($u)) admin_2fa_start($u);
     login_as((int) $u['id']);
+    login_succeeded($u);
     out(['me' => user_out($u, true)]);
 }
 
 function r_auth_register(): void
 {
     rate_limit('register', 5, 3600);
+    ip_limit('register', 10, 3600);
     $role = str_in('role', 16);
     if (!in_array($role, ['customer', 'designer', 'seller'], true)) $role = 'customer';
     $name = str_in('name', 120);

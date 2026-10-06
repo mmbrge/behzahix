@@ -226,6 +226,11 @@ function me(): ?array
         unset($_SESSION['uid']);
         $u = null;
     }
+    // signed out everywhere (password change / admin «sign out all devices»)
+    if ($u && isset($u['session_ver']) && (int) $u['session_ver'] !== (int) ($_SESSION['sv'] ?? 0)) {
+        unset($_SESSION['uid']);
+        $u = null;
+    }
     $cache = [$id, $u];
     return $u;
 }
@@ -246,6 +251,7 @@ function login_as(int $id): void
 {
     session_regenerate_id(true);
     $_SESSION['uid'] = $id;
+    if (function_exists('session_mark')) session_mark($id);
 }
 
 // ------------------------------------------------------------------ settings

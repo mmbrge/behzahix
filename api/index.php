@@ -6,6 +6,7 @@ ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
 require __DIR__ . '/lib/core.php';
+require __DIR__ . '/lib/security.php';
 require __DIR__ . '/lib/public.php';
 require __DIR__ . '/lib/tools.php';
 require __DIR__ . '/lib/chat.php';
@@ -32,6 +33,11 @@ try {
     error_log('[BEHIX] schema migration: ' . $e->getMessage()); // keep the site up; retried next request
 }
 start_session();
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+// Blocked addresses get nothing but the boot data (so the site still shows a message)
+if (($b = ip_blocked()) && $route !== 'boot') fail('دسترسی از این اتصال موقتاً مسدود شده است. اگر اشتباهی رخ داده با پشتیبانی تماس بگیرید.', 403, 'blocked');
 
 // GET routes (no state change, no CSRF)
 // Scheduled jobs (abandoned-cart SMS…): piggyback on traffic; never blocks the request
@@ -60,7 +66,7 @@ $public = [
     'products.list' => 'r_products_list', 'designers.list' => 'r_designers_list', 'contact.send' => 'r_contact_send',
     'newsletter' => 'r_newsletter', 'coupon.check' => 'r_coupon_check', 'order.submit' => 'r_order_submit', 'order.attach' => 'r_order_attach',
     'auth.login' => 'r_auth_login', 'auth.otp.send' => 'r_auth_otp_send', 'auth.otp.login' => 'r_auth_otp_login',
-    'auth.register' => 'r_auth_register', 'auth.logout' => 'r_auth_logout', 'auth.demo' => 'r_auth_demo',
+    'auth.register' => 'r_auth_register', 'auth.2fa' => 'r_auth_2fa', 'auth.logout' => 'r_auth_logout', 'auth.demo' => 'r_auth_demo',
     'fav.toggle' => 'r_fav_toggle', 'shop.checkout' => 'r_shop_checkout', 'shop.quote' => 'r_shop_quote',
     'cart.sync' => 'r_cart_sync',
     'chat.open' => 'r_chat_open', 'chat.send' => 'r_chat_send', 'chat.poll' => 'r_chat_poll', 'chat.escalate' => 'r_chat_escalate', 'chat.feedback' => 'r_chat_feedback',

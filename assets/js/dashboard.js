@@ -674,6 +674,7 @@
       { id: "blog", label: "وبلاگ", icon: "book", render: (p) => BXD.routes.blog(p) },
       { id: "tools", label: "ابزارها و لینک‌ها", icon: "wrench", render: (p) => BXD.routes.tools(p) },
       { id: "notifications", label: "اعلان‌ها", icon: "bell", render: notificationsView },
+      { id: "security", label: "امنیت", icon: "shield", render: (p) => BXD.routes.security(p) },
       { id: "settings", label: "تنظیمات سایت", icon: "settings", render: (p) => BXD.routes.settings(p) },
     ];
     function adminOverview() {

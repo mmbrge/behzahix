@@ -434,6 +434,7 @@ function r_chat_send(): void
 {
     if (empty(setting('chat', 'enabled'))) fail('گفتگوی آنلاین فعلاً غیرفعال است.', 403);
     rate_limit('chat', 25, 60);
+    ip_limit('chat', 60, 300);
     $text = str_in('text', 2000);
     if ($text === '') fail('پیام خالی است.', 422);
     $c = chat_current(true);

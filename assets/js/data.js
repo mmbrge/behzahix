@@ -73,6 +73,7 @@
 
   const BX = (window.BX = Object.assign(window.BX || {}, {
     api: call,
+    csrf: () => csrf,
     ApiError,
     ORDER_STATUS,
     ORDER_FLOW,

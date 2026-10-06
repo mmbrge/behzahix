@@ -327,6 +327,7 @@ function a_doctpl_delete(): void
 function r_studio_seo(): void
 {
     rate_limit('seo-audit', 8, 600);
+    ip_limit('seo-audit', 15, 3600);
     $url = trim(str_in('url', 300));
     if (!preg_match('#^https?://#i', $url)) $url = 'https://' . $url;
     // Only public addresses: each hop (incl. redirects) is resolved, checked and pinned

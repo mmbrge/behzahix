@@ -37,6 +37,20 @@ Options -Indexes
   Header always set X-Frame-Options "SAMEORIGIN"
 </IfModule>
 
+# Never serve backups, logs, dotfiles or dependency folders
+<FilesMatch "(^\.|\.(sql|gz|log|bak|old|env|ini|lock|md|dist|sh)$|^composer\.(json|lock)$)">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+<IfModule mod_rewrite.c>
+  RewriteRule ^(vendor|api/vendor|api/lib|api/fonts)(/|$) - [F,L]
+</IfModule>
+
 AddType application/manifest+json .webmanifest
 
 <IfModule mod_expires.c>
