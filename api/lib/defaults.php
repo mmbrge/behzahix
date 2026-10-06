@@ -81,6 +81,12 @@ function default_settings(): array
         ],
         // Seller details printed on invoices (empty = taken from site name / contact)
         'invoice' => ['sellerName' => '', 'economicCode' => '', 'nationalId' => '', 'regNo' => '', 'address' => '', 'postalCode' => '', 'phone' => '', 'vatPercent' => 0, 'note' => ''],
+        // Studio (studio.html): self-service builders, paid per finished file; hosted pages paid per period
+        'studio' => [
+            'enabled' => true, 'trialDays' => 7,
+            'resume' => 290000, 'card' => 190000, 'post' => 90000, 'doc' => 150000, 'slides' => 390000,
+            'pageCardMonth' => 99000, 'pageCardYear' => 790000, 'pageMenuMonth' => 149000, 'pageMenuYear' => 1190000,
+        ],
         // In-person delivery: weekdays (0 = Sunday … 6 = Saturday), time slots with capacity, closed dates
         'delivery' => [
             'enabled' => true, 'place' => '', 'note' => 'لطفاً در زمان انتخاب‌شده با کد سفارش مراجعه کنید.',
@@ -133,6 +139,7 @@ function public_settings(): array
         'theme' => $s['theme'],
         'uploads' => ['maxMB' => (int) $s['uploads']['maxMB'], 'ext' => $s['uploads']['ext']],
         'shop' => $s['shop'],
+        'studio' => $s['studio'],
         'delivery' => ['place' => (string) $s['delivery']['place'], 'note' => (string) $s['delivery']['note'], 'changeHours' => (int) $s['delivery']['changeHours'], 'afterWork' => (bool) $s['delivery']['afterWork'], 'enabled' => (bool) $s['delivery']['enabled']],
         'chat' => ['enabled' => (bool) $s['chat']['enabled'], 'botName' => (string) $s['chat']['botName'], 'greeting' => (string) $s['chat']['greeting']],
         'tools' => ['enabled' => (bool) $s['tools']['enabled'], 'disabled' => array_values((array) $s['tools']['disabled']), 'shortRequireLogin' => (bool) $s['tools']['shortRequireLogin']],

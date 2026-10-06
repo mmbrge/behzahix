@@ -471,3 +471,5 @@ small.bad { color: var(--bad); }
 .cal-bk.cancelled { opacity: .55; }
 .cal-bk .actions { width: 100%; justify-content: flex-start; }
 @media (max-width: 900px) { .cal-wrap { grid-template-columns: 1fr; } .cal-day { position: static; } .cal-cell { min-height: 58px; padding: 6px; } .cal-cell small { display: none; } .cal-grid { gap: 4px; } }
+.sp-pages { display: flex; flex-direction: column; gap: 8px; }
+.sp-page { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--inset); flex-wrap: wrap; }

@@ -6,7 +6,7 @@
 define('BX', true);
 ini_set('display_errors', '0');
 
-const SEO_PAGES = ['index', 'services', 'service', 'order', 'portfolio', 'shop', 'designers', 'about', 'terms', 'tools', 'blog', '404'];
+const SEO_PAGES = ['index', 'services', 'service', 'order', 'portfolio', 'shop', 'designers', 'about', 'terms', 'tools', 'blog', 'studio', '404'];
 $page = preg_replace('/[^a-z0-9]/', '', strtolower((string) ($_GET['page'] ?? 'index')));
 $special = $_GET['sitemap'] ?? $_GET['robots'] ?? $_GET['feed'] ?? null;
 if (!in_array($page, SEO_PAGES, true)) $page = '404';
@@ -42,7 +42,7 @@ try {
     $status = 200;
     $inject = [];
     $crumb = ['index.html' => 'خانه'];
-    $titles = ['services' => 'خدمات', 'shop' => 'فروشگاه', 'portfolio' => 'نمونه‌کارها', 'designers' => 'طراحان', 'about' => 'درباره ما', 'tools' => 'ابزارهای رایگان', 'blog' => 'وبلاگ', 'order' => 'ثبت سفارش', 'terms' => 'قوانین'];
+    $titles = ['services' => 'خدمات', 'shop' => 'فروشگاه', 'portfolio' => 'نمونه‌کارها', 'designers' => 'طراحان', 'about' => 'درباره ما', 'tools' => 'ابزارهای رایگان', 'blog' => 'وبلاگ', 'order' => 'ثبت سفارش', 'terms' => 'قوانین', 'studio' => 'استودیو آنلاین'];
 
     if ($page === 'index') {
         $m['title'] = $seo['title'];

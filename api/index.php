@@ -10,6 +10,7 @@ require __DIR__ . '/lib/public.php';
 require __DIR__ . '/lib/tools.php';
 require __DIR__ . '/lib/chat.php';
 require __DIR__ . '/lib/delivery.php';
+require __DIR__ . '/lib/studio.php';
 
 set_exception_handler(function (Throwable $e) {
     error_log('[BEHIX] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
@@ -63,7 +64,7 @@ $public = [
     'fav.toggle' => 'r_fav_toggle', 'shop.checkout' => 'r_shop_checkout', 'shop.quote' => 'r_shop_quote',
     'cart.sync' => 'r_cart_sync',
     'chat.open' => 'r_chat_open', 'chat.send' => 'r_chat_send', 'chat.poll' => 'r_chat_poll', 'chat.escalate' => 'r_chat_escalate', 'chat.feedback' => 'r_chat_feedback',
-    'delivery.slots' => 'r_delivery_slots',
+    'delivery.slots' => 'r_delivery_slots', 'studio.info' => 'r_studio_info', 'studio.seo' => 'r_studio_seo',
     'product.reviews' => 'r_product_reviews', 'product.review' => 'r_product_review',
     'tools.track' => 'r_tools_track', 'tools.short.create' => 'r_short_create', 'tools.short.mine' => 'r_short_mine', 'tools.short.stats' => 'r_short_stats',
 ];

@@ -116,7 +116,8 @@
         inp.type = "file"; inp.accept = "image/*";
         inp.onchange = async () => {
           if (!inp.files[0]) return;
-          try { const r = await BX.api("a.post.image", { id: id === "new" ? 0 : id }, { image: inp.files[0] }); exec("insertHTML", `<img src="${r.url}" alt="${esc(f.elements.title.value)}">`); }
+          const files = []; files.image = inp.files[0];
+          try { const r = await BX.api("a.post.image", { id: id === "new" ? 0 : id }, files); exec("insertHTML", `<img src="${r.url}" alt="${esc(f.elements.title.value)}">`); }
           catch (err) { BX.toast(err.message, "bad"); }
         };
         inp.click();

@@ -164,7 +164,7 @@
     { id: "designers", label: "طراحان", href: "designers.html" },
     { id: "tools", label: "ابزارها", href: "tools.html" },
     { id: "blog", label: "وبلاگ", href: "blog.html" },
-    { id: "pricing", label: "تعرفه‌ها", href: "index.html#packages" },
+    { id: "studio", label: "استودیو", href: "studio.html" },
     { id: "about", label: "درباره ما", href: "about.html" },
   ];
   const page = document.body.dataset.page || "";
@@ -307,6 +307,7 @@
       shopOn && ["shop.html", "store", "فروشگاه فایل", "shop"],
       ["designers.html", "users", "طراحان", "designers"],
       ["tools.html", "wrench", "ابزارهای رایگان", "tools"],
+      ["studio.html", "sparkles", "استودیو: خودت بساز", "studio"],
       ["blog.html", "book", "وبلاگ و آموزش", "blog"],
       ["index.html#packages", "percent", "تعرفه‌ها و پکیج‌ها", "pricing"],
       ["about.html", "info", "درباره ما و سوالات", "about"],
@@ -500,6 +501,7 @@
               ${st.shop?.enabled !== false ? '<li><a href="shop.html">فروشگاه فایل</a></li>' : ""}
               <li><a href="designers.html">طراحان</a></li>
               <li><a href="tools.html">ابزارهای رایگان</a></li>
+              <li><a href="studio.html">استودیو آنلاین</a></li>
               <li><a href="blog.html">وبلاگ</a></li>
               <li><a href="about.html">درباره ما</a></li>
               <li><a href="about.html#faq">سوالات متداول</a></li>

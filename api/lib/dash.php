@@ -874,6 +874,11 @@ function a_fresh_start(): void
         foreach (['tool_events', 'short_clicks', 'short_links'] as $t) if (table_exists($t)) q("DELETE FROM $t");
         $done[] = 'آمار ابزارها و لینک‌های کوتاه';
     }
+    if (in_array('studio', $parts, true)) {
+        foreach (['studio_items', 'pages'] as $t) if (table_exists($t)) q("DELETE FROM $t");
+        wipe_files("'page'");
+        $done[] = 'طرح‌ها و صفحه‌های استودیو';
+    }
     if (in_array('chats', $parts, true)) {
         foreach (['chat_messages', 'chats'] as $t) if (table_exists($t)) q("DELETE FROM $t");
         $done[] = 'گفتگوهای پشتیبانی';

@@ -468,6 +468,16 @@
       ["cart", [["reminder", "پیامک یادآوری سبد خرید رهاشده", "switch"], ["hours", "ارسال یادآوری بعد از چند ساعت", "number"]],
         "برای کاربران واردشده‌ای که فایل در سبد گذاشته‌اند و خرید نکرده‌اند؛ یک بار برای هر سبد. قالب «یادآوری سبد خرید» را در قالب‌های پیامک فعال کنید."],
     ] },
+    studio: { title: "استودیو", icon: "sparkles", groups: [
+      ["studio", [
+        ["enabled", "استودیو (studio.html) برای کاربران فعال باشد", "switch"],
+        ["resume", "قیمت فایل رزومه (تومان، ۰ = رایگان)", "number"], ["card", "قیمت کارت ویزیت چاپی", "number"], ["post", "قیمت هر پست / استوری / پوستر", "number"],
+        ["doc", "قیمت پیش‌فرض هر سند و قرارداد", "number"], ["slides", "قیمت فایل پاورپوینت", "number"],
+        ["pageCardMonth", "کارت ویزیت دیجیتال — ماهانه", "number"], ["pageCardYear", "کارت ویزیت دیجیتال — سالانه", "number"],
+        ["pageMenuMonth", "منوی QR — ماهانه", "number"], ["pageMenuYear", "منوی QR — سالانه", "number"],
+        ["trialDays", "روزهای آزمایش رایگان صفحه‌ها (۰ = بدون آزمایش)", "number"],
+      ], "همه محصولات استودیو کاملاً خودکار و بدون سرویس خارجی ساخته و تحویل می‌شوند. پیش‌نمایش رایگان است و فایل نهایی بعد از پرداخت (کیف پول یا درگاه) دانلود می‌شود. قالب‌های قرارداد را در «استودیو ← قالب‌های سند» اضافه کنید."],
+    ] },
     delivery: { title: "تحویل حضوری", icon: "calendar", groups: [
       ["delivery", [
         ["enabled", "تحویل حضوری فعال باشد (برای خدماتی که در تنظیمات خدمت «تحویل حضوری» دارند)", "switch"],
@@ -607,7 +617,7 @@
           <p class="muted lh small">هر چیزی که در دوره آزمایش ساخته شده و نمی‌خواهید بماند را انتخاب کنید. تنظیمات سایت، خدمات و شاخه‌ها و حساب‌های مدیر همیشه می‌مانند. این کار برگشت‌پذیر نیست.</p>
           <form data-form="fresh-start" class="mt-2">
             <div class="checks-grid">${[["demo", "حساب‌های نمونه (نمایشی)", true], ["orders", "همه سفارش‌ها، پرداخت‌ها، تراکنش‌ها، تیکت‌ها و اعلان‌ها", true], ["products", "همه محصولات فروشگاه و خریدها", false],
-              ["portfolio", "همه نمونه‌کارها", true], ["users", "همه کاربران غیرمدیر (مشتری، طراح، فروشنده)", false], ["tools", "آمار ابزارها و لینک‌های کوتاه", true], ["chats", "گفتگوهای پشتیبانی", true], ["coupons", "کدهای تخفیف", false]]
+              ["portfolio", "همه نمونه‌کارها", true], ["users", "همه کاربران غیرمدیر (مشتری، طراح، فروشنده)", false], ["tools", "آمار ابزارها و لینک‌های کوتاه", true], ["chats", "گفتگوهای پشتیبانی", true], ["studio", "طرح‌ها و صفحه‌های استودیو", true], ["coupons", "کدهای تخفیف", false]]
               .map(([v, l, on]) => `<label class="switch"><input type="checkbox" name="parts" value="${v}" ${on ? "checked" : ""}><span class="track"></span>${l}</label>`).join("")}</div>
             <div class="row mt-2"><input class="input" name="confirm" placeholder="برای تأیید بنویسید: پاکسازی" style="max-width:260px"><button class="btn btn-danger">${icon("trash")} پاکسازی</button></div>
           </form>
@@ -620,7 +630,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">

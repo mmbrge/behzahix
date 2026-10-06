@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 8;
+const BX_SCHEMA_VERSION = 9;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -257,6 +257,46 @@ function bx_schema(): array
         "CREATE TABLE IF NOT EXISTS leads (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
+            created_at DATETIME NOT NULL
+        ) $t",
+        // v9 — studio: self-service builders (resume, card, post, docs, slides) and hosted pages (digital card, QR menu)
+        "CREATE TABLE IF NOT EXISTS studio_items (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id INT UNSIGNED NOT NULL,
+            kind VARCHAR(20) NOT NULL,
+            title VARCHAR(190) NOT NULL DEFAULT '',
+            data LONGTEXT NOT NULL,
+            paid TINYINT(1) NOT NULL DEFAULT 0,
+            price BIGINT NOT NULL DEFAULT 0,
+            paid_at DATETIME NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            KEY user_kind (user_id, kind),
+            KEY paid (paid, paid_at)
+        ) $t",
+        "CREATE TABLE IF NOT EXISTS pages (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id INT UNSIGNED NOT NULL,
+            kind VARCHAR(12) NOT NULL,
+            slug VARCHAR(60) NOT NULL,
+            title VARCHAR(190) NOT NULL DEFAULT '',
+            data LONGTEXT NOT NULL,
+            views INT UNSIGNED NOT NULL DEFAULT 0,
+            expires_at DATETIME NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            UNIQUE KEY slug (slug),
+            KEY user_id (user_id)
+        ) $t",
+        "CREATE TABLE IF NOT EXISTS doc_templates (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(190) NOT NULL,
+            category VARCHAR(80) NOT NULL DEFAULT '',
+            descr VARCHAR(300) NOT NULL DEFAULT '',
+            body LONGTEXT NOT NULL,
+            price BIGINT NULL,
+            active TINYINT(1) NOT NULL DEFAULT 1,
+            sort INT NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL
         ) $t",
         // v8 — in-person delivery bookings (date + time slot with capacity)

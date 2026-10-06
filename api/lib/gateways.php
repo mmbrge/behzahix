@@ -278,7 +278,7 @@ function payment_callback(): void
         exit;
     };
     if (!$pay) $back('overview', false, 'پرداخت پیدا نشد.');
-    $hash = ['charge' => 'wallet', 'order' => 'orders', 'cart' => 'downloads'][$pay['purpose']] ?? 'overview';
+    $hash = ['charge' => 'wallet', 'order' => 'orders', 'cart' => 'downloads', 'studio' => 'studio'][$pay['purpose']] ?? 'overview';
     if ($pay['status'] === 'paid') $back($hash, true, 'این پرداخت قبلاً تأیید شده است.');
 
     $p = setting('payment');
@@ -350,6 +350,10 @@ function payment_apply(array $pay): string
         require_once __DIR__ . '/public.php';
         shop_complete($uid, array_map('intval', $ref['items'] ?? []), (string) ($ref['coupon'] ?? ''));
         return 'خرید با موفقیت انجام شد؛ فایل‌ها در بخش دانلودها آماده است.';
+    }
+    if ($pay['purpose'] === 'studio') {
+        require_once __DIR__ . '/studio.php';
+        return studio_apply_payment($uid, $amount, $ref);
     }
     return 'پرداخت انجام شد.';
 }

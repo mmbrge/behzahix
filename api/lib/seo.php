@@ -330,7 +330,7 @@ function seo_clean_html(string $html): string
 function seo_footer_html(): string
 {
     $out = '<nav class="container seo-foot" aria-label="نقشه سایت"><ul>';
-    foreach (['index.html' => 'خانه', 'services.html' => 'خدمات', 'shop.html' => 'فروشگاه', 'portfolio.html' => 'نمونه‌کارها', 'designers.html' => 'طراحان', 'blog.html' => 'وبلاگ', 'tools.html' => 'ابزارهای رایگان', 'about.html' => 'درباره ما', 'terms.html' => 'قوانین'] as $u => $t) $out .= '<li><a href="' . $u . '">' . seo_h($t) . '</a></li>';
+    foreach (['index.html' => 'خانه', 'services.html' => 'خدمات', 'shop.html' => 'فروشگاه', 'portfolio.html' => 'نمونه‌کارها', 'designers.html' => 'طراحان', 'blog.html' => 'وبلاگ', 'studio.html' => 'استودیو آنلاین', 'tools.html' => 'ابزارهای رایگان', 'about.html' => 'درباره ما', 'terms.html' => 'قوانین'] as $u => $t) $out .= '<li><a href="' . $u . '">' . seo_h($t) . '</a></li>';
     $out .= '</ul><ul>';
     foreach (catalog(true) as $c) foreach ($c['services'] as $s) $out .= '<li><a href="service.html?id=' . seo_h(rawurlencode($s['id'])) . '">' . seo_h($s['title']) . '</a></li>';
     return $out . '</ul></nav>';
@@ -345,7 +345,7 @@ function seo_sitemap(): void
     };
     $x = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
     $x .= $u('', null, '1.0', 'daily');
-    foreach (['services.html' => '0.9', 'shop.html' => '0.8', 'blog.html' => '0.8', 'portfolio.html' => '0.7', 'designers.html' => '0.6', 'tools.html' => '0.7', 'order.html' => '0.6', 'about.html' => '0.5', 'terms.html' => '0.2'] as $p => $pri) {
+    foreach (['services.html' => '0.9', 'studio.html' => '0.9', 'shop.html' => '0.8', 'blog.html' => '0.8', 'portfolio.html' => '0.7', 'designers.html' => '0.6', 'tools.html' => '0.7', 'order.html' => '0.6', 'about.html' => '0.5', 'terms.html' => '0.2'] as $p => $pri) {
         if ($p === 'shop.html' && setting('shop', 'enabled') === false) continue;
         $x .= $u($p, null, $pri);
     }
