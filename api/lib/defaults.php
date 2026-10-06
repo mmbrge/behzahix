@@ -66,7 +66,7 @@ function default_settings(): array
         'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس'],
         'sms' => ['driver' => 'none', 'apiKey' => '', 'template' => 'verify', 'templateId' => '', 'paramName' => 'CODE', 'adminPhone' => ''],
         // Event SMS: per event on/off and the provider template name (Kavenegar) or id (SMS.ir)
-        'sms_events' => array_fill_keys(['order_new', 'order_quote', 'order_paid', 'order_review', 'order_due', 'order_done', 'shop_paid', 'cart_reminder', 'ticket_reply', 'referral_reward', 'designer_assigned', 'revision_requested', 'product_sold', 'payout_paid', 'admin_new_order', 'admin_support'], ['on' => false, 'template' => '']),
+        'sms_events' => array_fill_keys(['order_new', 'order_quote', 'order_paid', 'order_review', 'order_due', 'order_done', 'shop_paid', 'cart_reminder', 'ticket_reply', 'referral_reward', 'designer_assigned', 'revision_requested', 'product_sold', 'payout_paid', 'admin_new_order', 'admin_support', 'delivery_booked', 'delivery_reminder'], ['on' => false, 'template' => '']),
         'theme' => ['brand' => '#ff7a1a', 'brand2' => '#ffa24a', 'defaultTheme' => 'dark', 'cursor' => true],
         'uploads' => ['maxMB' => 50, 'ext' => 'jpg,jpeg,png,webp,gif,svg,pdf,zip,rar,7z,psd,ai,eps,pptx,ppt,docx,doc,xlsx,xls,mp4,mov,mp3,wav,aep,prproj,fig,txt'],
         'shop' => ['enabled' => true],
@@ -81,6 +81,18 @@ function default_settings(): array
         ],
         // Seller details printed on invoices (empty = taken from site name / contact)
         'invoice' => ['sellerName' => '', 'economicCode' => '', 'nationalId' => '', 'regNo' => '', 'address' => '', 'postalCode' => '', 'phone' => '', 'vatPercent' => 0, 'note' => ''],
+        // In-person delivery: weekdays (0 = Sunday … 6 = Saturday), time slots with capacity, closed dates
+        'delivery' => [
+            'enabled' => true, 'place' => '', 'note' => 'لطفاً در زمان انتخاب‌شده با کد سفارش مراجعه کنید.',
+            'minDays' => 1, 'maxDays' => 21, 'afterWork' => true, 'changeHours' => 24,
+            'weekdays' => [6, 0, 1, 2, 3, 4],
+            'slots' => [
+                ['id' => 's1', 'label' => 'صبح', 'from' => '09:00', 'to' => '12:00', 'cap' => 4, 'days' => []],
+                ['id' => 's2', 'label' => 'ظهر', 'from' => '12:00', 'to' => '15:00', 'cap' => 4, 'days' => [6, 0, 1, 2, 3]],
+                ['id' => 's3', 'label' => 'عصر', 'from' => '16:00', 'to' => '19:00', 'cap' => 3, 'days' => [6, 0, 1, 2, 3]],
+            ],
+            'closed' => [],
+        ],
         // Floating support: smart bot + live chat. faq: one per line «keyword, keyword | answer»
         'chat' => [
             'enabled' => true, 'botName' => 'دستیار بهیکس',
@@ -121,6 +133,7 @@ function public_settings(): array
         'theme' => $s['theme'],
         'uploads' => ['maxMB' => (int) $s['uploads']['maxMB'], 'ext' => $s['uploads']['ext']],
         'shop' => $s['shop'],
+        'delivery' => ['place' => (string) $s['delivery']['place'], 'note' => (string) $s['delivery']['note'], 'changeHours' => (int) $s['delivery']['changeHours'], 'afterWork' => (bool) $s['delivery']['afterWork'], 'enabled' => (bool) $s['delivery']['enabled']],
         'chat' => ['enabled' => (bool) $s['chat']['enabled'], 'botName' => (string) $s['chat']['botName'], 'greeting' => (string) $s['chat']['greeting']],
         'tools' => ['enabled' => (bool) $s['tools']['enabled'], 'disabled' => array_values((array) $s['tools']['disabled']), 'shortRequireLogin' => (bool) $s['tools']['shortRequireLogin']],
         'sms' => ['enabled' => $s['sms']['driver'] !== 'none'],

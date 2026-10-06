@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 7;
+const BX_SCHEMA_VERSION = 8;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -19,6 +19,7 @@ function bx_columns(): array
         ['users', 'cart_at', 'DATETIME NULL'],
         ['users', 'cart_reminded', 'TINYINT(1) NOT NULL DEFAULT 0'],
         ['products', 'reviews', 'INT UNSIGNED NOT NULL DEFAULT 0'], // v6 — review count (rating = average)
+        ['services', 'delivery', 'TINYINT(1) NOT NULL DEFAULT 0'], // v8 — in-person delivery: customer books a date and time slot
     ];
 }
 
@@ -257,6 +258,21 @@ function bx_schema(): array
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL
+        ) $t",
+        // v8 — in-person delivery bookings (date + time slot with capacity)
+        "CREATE TABLE IF NOT EXISTS bookings (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            order_id INT UNSIGNED NOT NULL,
+            user_id INT UNSIGNED NOT NULL,
+            date DATE NOT NULL,
+            slot VARCHAR(20) NOT NULL,
+            slot_label VARCHAR(190) NOT NULL DEFAULT '',
+            status VARCHAR(12) NOT NULL DEFAULT 'booked',
+            note VARCHAR(300) NULL,
+            reminded TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            KEY date_slot (date, slot, status),
+            KEY order_id (order_id)
         ) $t",
         // v7 — blog
         "CREATE TABLE IF NOT EXISTS posts (

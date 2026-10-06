@@ -9,6 +9,7 @@ if (!defined('BX')) { http_response_code(403); exit; }
 const SMS_VARS = [
     'name' => ['نام', true, 'سارا محمدی'], 'code' => ['کد', false, 'BX-1024'], 'amount' => ['مبلغ (تومان)', false, '2,500,000'],
     'count' => ['تعداد', false, '3'], 'phone' => ['موبایل', false, '09121234567'],
+    'date' => ['تاریخ و ساعت', true, 'چهارشنبه ۱۶ مهر، صبح (۰۹:۰۰ تا ۱۲:۰۰)'],
 ];
 
 // id => [title, recipient, vars, text]; {site} is replaced by the site name when shown
@@ -30,6 +31,8 @@ function sms_events_def(): array
         'product_sold' => ['فروش محصول', 'فروشنده', ['amount'], "یک فروش جدید در فروشگاه شما ثبت شد؛ سهم شما {amount} تومان.\n{site}"],
         'payout_paid' => ['واریز تسویه', 'طراح / فروشنده', ['amount'], "مبلغ {amount} تومان به حساب شما واریز شد.\n{site}"],
         'admin_new_order' => ['سفارش جدید (برای مدیر)', 'مدیر', ['code', 'name'], "سفارش جدید {code} از {name} در {site} ثبت شد."],
+        'delivery_booked' => ['ثبت/تغییر زمان تحویل', 'مشتری', ['code', 'date'], "زمان تحویل سفارش {code}: {date}\nتغییر زمان از پنل کاربری {site}"],
+        'delivery_reminder' => ['یادآوری تحویل (روز قبل)', 'مشتری', ['name', 'date'], "{name} عزیز، یادآوری: زمان تحویل سفارش شما فردا {date} است.\n{site}"],
         'admin_support' => ['درخواست پشتیبانی (برای مدیر)', 'مدیر', ['name', 'phone'], "درخواست گفتگوی پشتیبانی از {name} با شماره {phone} در {site} ثبت شد."],
     ];
 }

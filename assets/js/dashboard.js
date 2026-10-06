@@ -258,6 +258,15 @@
         if (o.status === "done" && !o.rating) actions += `<button class="btn btn-primary btn-block" data-act="rate" data-id="${o.id}">${icon("star")} امتیاز به طراح</button>`;
         if (o.status === "done") actions += `<a class="btn btn-ghost btn-block" href="order.html?service=${encodeURIComponent(o.serviceId)}">${icon("refresh")} سفارش مجدد</a>`;
       }
+      // In-person delivery: booked slot, change / pick a time
+      const needDlv = s.delivery || o.delivery;
+      if (needDlv && (role === "customer" || role === "admin") && o.status !== "cancelled") {
+        const d = o.delivery && o.delivery.status !== "cancelled" ? o.delivery : null;
+        const st = { booked: ["رزرو شده", "info"], done: ["تحویل شد", "ok"], noshow: ["عدم مراجعه", "bad"] };
+        actions = `<div class="dlv-box">${icon("calendar")}<div class="grow"><small class="muted">تحویل حضوری</small><br>${d ? `<b>${esc(d.label)}</b> ${pill(st[d.status] || ["", ""])}` : '<b class="bad">زمان تحویل انتخاب نشده</b>'}</div></div>
+          ${d && d.status === "booked" ? `<button class="btn btn-ghost btn-block btn-sm" data-act="dlv-change" data-id="${d.id}" data-order="${o.id}">${icon("calendar")} تغییر زمان تحویل</button>` : ""}
+          ${!d ? `<button class="btn btn-primary btn-block btn-sm" data-act="dlv-pick" data-order="${o.id}">${icon("calendar")} انتخاب زمان تحویل</button>` : ""}` + actions;
+      }
       if ((role === "customer" && o.quote != null) || role === "admin") {
         actions += `<a class="btn btn-ghost btn-block btn-sm" href="api/index.php?r=invoice&order=${o.id}" target="_blank" rel="noopener">${icon("file")} ${o.paid ? "فاکتور فروش" : "پیش‌فاکتور"} (چاپ / PDF)</a>`;
       }
@@ -653,6 +662,7 @@
     const ADMIN = [
       { id: "overview", label: "داشبورد کل", icon: "home", render: adminOverview },
       { id: "orders", label: "سفارش‌ها", icon: "list", render: adminOrders, count: () => S.orders.filter((o) => o.status === "new").length },
+      { id: "delivery", label: "تقویم تحویل", icon: "calendar", render: (p) => BXD.routes.delivery(p), count: () => S.deliveryToday || 0 },
       { id: "support", label: "پشتیبانی آنلاین", icon: "chat", render: (p) => BXD.routes.support(p), count: () => S.supportWaiting || 0 },
       { id: "users", label: "کاربران", icon: "users", render: (p) => BXD.routes.users(p), count: () => S.users.filter((u) => u.status === "pending").length },
       { id: "catalog", label: "خدمات و محصولات", icon: "tag", render: (p) => BXD.routes.catalog(p), count: () => S.products.filter((p) => p.status === "pending").length },
@@ -929,6 +939,10 @@
         app.querySelector("#ch-amount").value = num(Number(el.dataset.v));
         app.querySelectorAll(".amount-chips button").forEach((b) => b.classList.toggle("is-active", b === el));
       },
+      "dlv-change": (el) => BX.deliveryModal({ title: "تغییر زمان تحویل", value: (findOrder(el.dataset.order) || {}).delivery, days: me.role === "admin" ? 0 : (findOrder(el.dataset.order) || {}).readyIn || 0,
+        onSave: (v) => quiet(act("booking.change", { id: el.dataset.id, date: v.date, slot: v.slot })) }),
+      "dlv-pick": (el) => BX.deliveryModal({ title: "انتخاب زمان تحویل", days: me.role === "admin" ? 0 : (findOrder(el.dataset.order) || {}).readyIn || 0,
+        onSave: (v) => quiet(act("booking.create", { orderId: el.dataset.order, date: v.date, slot: v.slot })) }),
       "ref-copy": (el) => navigator.clipboard?.writeText(el.dataset.link).then(() => toast("لینک دعوت کپی شد.", "ok")),
       "ref-share": (el) => navigator.share?.({ title: BX.settings.general?.siteNameFa || "بهیکس", text: "با این لینک در بهیکس ثبت‌نام کن و هدیه بگیر:", url: el.dataset.link }).catch(() => {}),
       unfav: (el) => quiet(act("fav.toggle", { productId: el.dataset.id })),

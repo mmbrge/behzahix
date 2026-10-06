@@ -23,7 +23,7 @@ window.BX.ready.then(function () {
   const blank = () => ({
     step: 0, serviceId: null, details: {}, desc: "",
     style: { styles: [], colors: ["#ff7a1a", "#1e293b", "#f5f5f5"], noColors: false, refs: "", files: [], hasBrand: "no" },
-    deadline: "normal", addons: [], budget: BUDGETS[0], coupon: "",
+    deadline: "normal", addons: [], budget: BUDGETS[0], coupon: "", delivery: null,
     contact: { name: user?.name || "", phone: user?.phone || "", email: user?.email || "", business: user?.business || "", way: "phone" },
     agree: false,
   });
@@ -49,12 +49,29 @@ window.BX.ready.then(function () {
     if (state.serviceId === id) return;
     state.serviceId = id;
     state.details = {};
+    state.delivery = null;
     for (const f of findService(id).fields) {
       if (f.type === "number") state.details[f.id] = f.value ?? f.min ?? 0;
       else if (f.type === "select") state.details[f.id] = f.options[0].v;
       else if (f.type === "chips") state.details[f.id] = [];
     }
     if (render) renderAll();
+  }
+
+  // ---------------------------------------------------------------- In-person delivery
+  function needsDelivery() {
+    const s = svc();
+    return !!(s && s.delivery && BX.deliveryPicker && BX.settings.delivery?.enabled !== false);
+  }
+  function mountDelivery() {
+    const el = root.querySelector("[data-dlv]");
+    if (!el) return;
+    const lead = BX.settings.delivery?.afterWork === false ? 0 : quote().days;
+    BX.deliveryPicker(el, {
+      days: lead, value: state.delivery,
+      onChange: (v) => { state.delivery = v; saveDraft(); renderSummary(); },
+      onInvalid: () => { state.delivery = null; saveDraft(); renderSummary(); },
+    });
   }
 
   // ---------------------------------------------------------------- Helpers
@@ -278,6 +295,11 @@ window.BX.ready.then(function () {
           <span class="field-label">خدمات تکمیلی</span>
           <div class="chips">${ADDONS.map((a) => `<label class="chip"><input type="checkbox" value="${a.v}" data-addon ${state.addons.includes(a.v) ? "checked" : ""}><span class="chip-check">${icon("check")}</span>${esc(a.label)}<span class="chip-price">+${faDigits(Math.round(a.pct * 100))}٪</span></label>`).join("")}</div>
         </div>
+        ${needsDelivery() ? `<div class="field" data-wrap="delivery">
+          <span class="field-label">${icon("calendar")} تاریخ و ساعت تحویل حضوری <span class="req">*</span></span>
+          <p class="field-hint">روزهای قابل انتخاب بعد از زمان آماده‌شدن کار شروع می‌شوند. ظرفیت هر بازه محدود است.</p>
+          <div class="dlv" data-dlv></div>
+        </div>` : ""}
         <div class="form-grid form-grid-2">
           <div class="field">
             <label class="field-label" for="budget">بودجه شما</label>
@@ -325,6 +347,7 @@ window.BX.ready.then(function () {
       ["رنگ‌ها", st.noColors ? "به انتخاب طراح" : st.colors.map((c) => `<span class="dot" style="background:${c}"></span>`).join(" ")],
       ["پیوست‌ها", pendingFiles.length ? `${faDigits(pendingFiles.length)} فایل` : "—"],
       ["سرعت تحویل", `${DEADLINES.find((d) => d.v === state.deadline).label} (${faDigits(q.days)} روز)`],
+      ...(needsDelivery() ? [["تحویل حضوری", state.delivery ? esc(state.delivery.label) : "—"]] : []),
       ["خدمات تکمیلی", state.addons.map((a) => ADDONS.find((x) => x.v === a).label).join("، ") || "—"],
       ["بودجه", state.budget],
       ["تماس", `${esc(state.contact.name)} · <span dir="ltr">${faDigits(state.contact.phone)}</span>`],
@@ -350,6 +373,7 @@ window.BX.ready.then(function () {
         if (f.required && empty) errors.push([f.id, `«${esc(f.label)}» را مشخص کنید.`]);
       }
     }
+    if (step === 3 && needsDelivery() && !state.delivery) errors.push(["delivery", "تاریخ و ساعت تحویل حضوری را انتخاب کنید."]);
     if (step === 4) {
       if (state.contact.name.trim().length < 3) errors.push(["c-name", "نام را کامل وارد کنید."]);
       if (!/^09\d{9}$/.test(enDigits(state.contact.phone).trim())) errors.push(["c-phone", "شماره موبایل معتبر نیست (مثلاً ۰۹۱۲۱۲۳۴۵۶۷)."]);
@@ -380,6 +404,7 @@ window.BX.ready.then(function () {
       <ul class="summary-list">
         ${keyRows}
         <li><span>تحویل</span><span>${faDigits(q.days)} روز (${DEADLINES.find((d) => d.v === state.deadline).label})</span></li>
+        ${needsDelivery() ? `<li><span>تحویل حضوری</span><span>${state.delivery ? esc(state.delivery.label) : '<span class="muted">انتخاب نشده</span>'}</span></li>` : ""}
         ${q.discount ? `<li><span>تخفیف</span><span class="ok">−${toman(q.discount)}</span></li>` : ""}
       </ul>
       <div class="summary-total">
@@ -404,6 +429,7 @@ window.BX.ready.then(function () {
     pane.classList.remove("wizard-pane");
     void pane.offsetWidth; // replay the enter animation
     pane.classList.add("wizard-pane");
+    mountDelivery();
   }
 
   function renderSteps() {
@@ -588,6 +614,7 @@ window.BX.ready.then(function () {
     }
     if (el.dataset.top && (el.tagName === "SELECT" || el.type === "radio")) {
       state[el.dataset.top] = el.value;
+      if (el.dataset.top === "deadline") mountDelivery(); // ready date moves → available days move
       return bumpPrice();
     }
     if (el.dataset.topBool) {
@@ -690,7 +717,7 @@ window.BX.ready.then(function () {
       res = await BX.api("order.submit", {
         serviceId: state.serviceId, details: state.details, desc: state.desc,
         style: { ...state.style, files: undefined }, deadline: state.deadline, addons: state.addons,
-        budget: state.budget, coupon: coupon() ? state.coupon : "", contact: { ...state.contact, phone: enDigits(state.contact.phone).trim() },
+        budget: state.budget, coupon: coupon() ? state.coupon : "", delivery: needsDelivery() ? state.delivery : null, contact: { ...state.contact, phone: enDigits(state.contact.phone).trim() },
       });
     } catch (err) {
       submitting = false;
@@ -701,6 +728,11 @@ window.BX.ready.then(function () {
           body: `<p class="lh">${esc(err.message)}</p>`,
           actions: [{ label: "بستن" }, { label: "ورود و ادامه", primary: true, onClick: () => { location.href = "auth.html?next=order.html"; } }],
         });
+      } else if (err.code === "slot_full") {
+        state.delivery = null;
+        BX.deliveryPicker?.reset();
+        go(3);
+        toast(err.message, "bad");
       } else toast(err.message, "bad");
       return;
     }

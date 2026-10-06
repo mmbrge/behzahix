@@ -184,6 +184,10 @@ function r_order_submit(): void
         'hasBrand' => in_array($style['hasBrand'] ?? 'no', ['no', 'logo', 'full'], true) ? ($style['hasBrand'] ?? 'no') : 'no',
     ];
     $business = mb_substr(trim((string) ($contact['business'] ?? '')), 0, 120);
+    // In-person delivery: the chosen date + time slot must still have room
+    $dlv = !empty($svc['delivery']) && !empty(setting('delivery', 'enabled')) ? arr_in('delivery') : null;
+    if ($dlv !== null && (empty($dlv['date']) || empty($dlv['slot']))) fail('زمان تحویل حضوری را از تقویم انتخاب کنید.', 422);
+    db()->beginTransaction();
     $code = '';
     for ($i = 0; $i < 3; $i++) {
         $code = next_order_code();
@@ -202,12 +206,19 @@ function r_order_submit(): void
         }
     }
     insert('order_events', ['order_id' => $oid, 'status' => 'new', 'created_at' => now()]);
+    $booking = null;
+    if ($dlv !== null) {
+        $lead = !empty(setting('delivery', 'afterWork')) ? (int) $est['days'] : 0;
+        $booking = dlv_book((int) $oid, (int) $u['id'], (string) $dlv['date'], (string) $dlv['slot'], $lead);
+    }
+    db()->commit();
+    if ($booking) sms_notify('delivery_booked', (string) $u['phone'], ['code' => $code, 'date' => $booking['label']]);
     if ($coupon) q('UPDATE coupons SET uses = uses + 1 WHERE code = ?', [$coupon['code']]);
     notify_admins("سفارش جدید $code — {$svc['title']}", 'orders');
     notify((int) $u['id'], "سفارش $code ثبت شد و در صف بررسی است.", 'orders');
     sms_notify('order_new', (string) $u['phone'], ['name' => $name ?: $u['name'], 'code' => $code]);
     sms_admin('admin_new_order', ['code' => $code, 'name' => $name ?: $u['name']]);
-    out(['id' => (string) $oid, 'code' => $code, 'estimate' => $est['total'] - $discount, 'createdAccount' => $created !== null, 'tempPassword' => $created, 'phone' => $u['phone']]);
+    out(['id' => (string) $oid, 'code' => $code, 'estimate' => $est['total'] - $discount, 'delivery' => $booking['label'] ?? null, 'createdAccount' => $created !== null, 'tempPassword' => $created, 'phone' => $u['phone']]);
 }
 
 // ------------------------------------------------------------------ files
@@ -476,6 +487,7 @@ function lazy_cron(bool $force = false): void
             sms_notify('cart_reminder', (string) $u['phone'], ['name' => $u['name'], 'count' => (string) $left]);
         }
     }
+    if (function_exists('dlv_reminders')) dlv_reminders();
 }
 
 function shop_complete(int $uid, array $ids, string $couponCode = ''): array

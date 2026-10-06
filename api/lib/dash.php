@@ -80,6 +80,7 @@ function r_dash(): void
         $snap['leads'] = (int) val('SELECT COUNT(*) FROM leads');
         $snap['demoUsers'] = (int) val('SELECT COUNT(*) FROM users WHERE is_demo = 1');
         $snap['supportWaiting'] = table_exists('chats') ? (int) val("SELECT COUNT(*) FROM chats WHERE status = 'waiting' OR admin_unread > 0") : 0;
+        $snap['deliveryToday'] = table_exists('bookings') ? (int) val("SELECT COUNT(*) FROM bookings WHERE date = ? AND status = 'booked'", [(new DateTime('now', new DateTimeZone('Asia/Tehran')))->format('Y-m-d')]) : 0;
         $snap['smsEvents'] = [];
         foreach (sms_events_def() as $eid => $d) {
             $tok = sms_tokens($d[2]);
@@ -850,6 +851,7 @@ function a_fresh_start(): void
         $done[] = 'حساب‌های نمونه';
     }
     if (in_array('orders', $parts, true)) {
+        if (table_exists('bookings')) q('DELETE FROM bookings');
         foreach (['order_events', 'order_messages', 'orders', 'payments', 'transactions', 'payouts', 'purchases', 'ticket_replies', 'tickets', 'notifications'] as $t) q("DELETE FROM $t");
         wipe_files("'attachment','deliverable'");
         q('UPDATE users SET wallet = 0');
@@ -992,8 +994,8 @@ function a_service_save(): void
     $title = str_in('title', 160);
     if (!$title) fail('عنوان خدمت را وارد کنید.', 422);
     $fields = clean_fields(arr_in('fields'));
-    q('REPLACE INTO services (id, category_id, title, icon, base, days, descr, fields, sort, active) VALUES (?,?,?,?,?,?,?,?,?,?)',
-        [$id, $cat, $title, (preg_replace('/[^a-z0-9-]/', '', str_in('icon', 40)) ?: 'sparkle'), amount_in('base'), max(1, int_in('days', 3)), str_in('desc', 1000), jenc($fields), int_in('sort'), in('active', true) ? 1 : 0]);
+    q('REPLACE INTO services (id, category_id, title, icon, base, days, descr, fields, sort, active, delivery) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+        [$id, $cat, $title, (preg_replace('/[^a-z0-9-]/', '', str_in('icon', 40)) ?: 'sparkle'), amount_in('base'), max(1, int_in('days', 3)), str_in('desc', 1000), jenc($fields), int_in('sort'), in('active', true) ? 1 : 0, in('delivery') ? 1 : 0]);
     done('خدمت ذخیره شد.');
 }
 function a_service_delete(): void
@@ -1055,6 +1057,18 @@ function a_settings_save(): void
     if ($group === 'theme') {
         foreach (['brand', 'brand2'] as $k) if (!preg_match('/^#[0-9a-fA-F]{6}$/', $current[$k])) $current[$k] = $defaults['theme'][$k];
         if (!in_array($current['defaultTheme'], ['dark', 'light'], true)) $current['defaultTheme'] = 'dark';
+    }
+    if ($group === 'delivery') {
+        $current['weekdays'] = array_values(array_unique(array_filter(array_map('intval', (array) $current['weekdays']), function ($d) { return $d >= 0 && $d <= 6; })));
+        $current['slots'] = array_values(array_filter(array_map(function ($x) {
+            if (!is_array($x) || trim((string) ($x['label'] ?? '')) === '') return null;
+            $t = function ($v) { $v = en_digits((string) $v); return preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $v) ? $v : ''; };
+            return ['id' => substr(preg_replace('/[^a-z0-9]/i', '', (string) ($x['id'] ?? '')), 0, 20) ?: 's' . substr(md5(json_encode($x)), 0, 6), 'label' => mb_substr(trim((string) $x['label']), 0, 40),
+                'from' => $t($x['from'] ?? ''), 'to' => $t($x['to'] ?? ''), 'cap' => max(0, min(999, (int) ($x['cap'] ?? 0))),
+                'days' => array_values(array_filter(array_map('intval', (array) ($x['days'] ?? [])), function ($d) { return $d >= 0 && $d <= 6; }))];
+        }, (array) $current['slots'])));
+        $current['closed'] = array_values(array_filter(array_map(function ($l) { return mb_substr(trim((string) $l), 0, 20); }, (array) $current['closed'])));
+        foreach (['minDays' => [0, 60], 'maxDays' => [1, 180], 'changeHours' => [0, 240]] as $k => [$lo, $hi]) $current[$k] = max($lo, min($hi, (int) $current[$k]));
     }
     if ($group === 'orders') {
         $current['deadlines'] = array_values(array_filter(array_map(function ($d) {

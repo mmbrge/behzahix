@@ -318,6 +318,7 @@
           <div class="field"><label class="field-label">زمان تحویل پایه (روز)</label><input class="input" name="days" dir="ltr" inputmode="numeric" value="${faDigits(svc.days)}"></div>
           <div class="field span-2"><label class="field-label">توضیح کوتاه</label><textarea class="textarea" name="desc" style="min-height:70px">${esc(svc.desc || "")}</textarea></div>
           <label class="switch"><input type="checkbox" name="active" ${svc.active !== false ? "checked" : ""}><span class="track"></span>فعال (قابل سفارش)</label>
+          <label class="switch"><input type="checkbox" name="delivery" ${svc.delivery ? "checked" : ""}><span class="track"></span>تحویل حضوری (مشتری روز و ساعت تحویل را از تقویم انتخاب می‌کند)</label>
         </div>
         <details class="fb-icons"><summary>${icon("image")} انتخاب آیکن خدمت</summary>${iconPicker("icon", svc.icon)}</details>
         <div class="fb">
@@ -360,7 +361,7 @@
           if (fields.some((f) => !f.label)) { toast("عنوان همه فیلدها را وارد کنید (یا فیلد خالی را حذف کنید).", "bad"); return false; }
           BXD.quiet(BXD.act("service.save", {
             isNew, id: e.id.value.trim(), title: e.title.value, category: e.category.value, sort: BX.enDigits(e.sort.value),
-            base: BX.enDigits(e.base.value), days: BX.enDigits(e.days.value), desc: e.desc.value, active: e.active.checked,
+            base: BX.enDigits(e.base.value), days: BX.enDigits(e.days.value), desc: e.desc.value, active: e.active.checked, delivery: e.delivery.checked,
             icon: wrap.querySelector("[name=icon]:checked")?.value || svc.icon, fields,
           }).then(() => BX.ready && reloadCatalog()));
         },
@@ -467,6 +468,17 @@
       ["cart", [["reminder", "پیامک یادآوری سبد خرید رهاشده", "switch"], ["hours", "ارسال یادآوری بعد از چند ساعت", "number"]],
         "برای کاربران واردشده‌ای که فایل در سبد گذاشته‌اند و خرید نکرده‌اند؛ یک بار برای هر سبد. قالب «یادآوری سبد خرید» را در قالب‌های پیامک فعال کنید."],
     ] },
+    delivery: { title: "تحویل حضوری", icon: "calendar", groups: [
+      ["delivery", [
+        ["enabled", "تحویل حضوری فعال باشد (برای خدماتی که در تنظیمات خدمت «تحویل حضوری» دارند)", "switch"],
+        ["place", "محل تحویل (آدرس نمایش داده‌شده به مشتری)", "text"], ["note", "توضیح برای مشتری", "text"],
+        ["minDays", "حداقل فاصله تا اولین روز قابل انتخاب (روز)", "number"], ["maxDays", "تا چند روز آینده قابل رزرو باشد", "number"],
+        ["afterWork", "اولین روز قابل انتخاب بعد از زمان آماده‌شدن کار باشد", "switch"], ["changeHours", "مشتری تا چند ساعت قبل بتواند زمان را تغییر دهد", "number"],
+        ["weekdays", "روزهای کاری تحویل", "weekdays"],
+        ["slots", "بازه‌های زمانی هر روز و ظرفیت هر بازه", "slots"],
+        ["closed", "روزهای تعطیل (هر خط یک تاریخ شمسی، مثلاً ۱۴۰۵/۰۷/۲۰)", "lines"],
+      ], "ظرفیت یعنی حداکثر چند مشتری در آن بازه می‌توانند نوبت بگیرند؛ بازه پر به‌طور خودکار غیرقابل انتخاب می‌شود. برای هر بازه می‌توانید مشخص کنید فقط در چه روزهایی فعال باشد (مثلاً پنجشنبه‌ها فقط صبح). نوبت‌ها را در «تقویم تحویل» ببینید."],
+    ] },
     seo: { title: "سئو", icon: "search", groups: [
       ["seo", [
         ["title", "عنوان صفحه اصلی در گوگل (۵۰ تا ۶۰ کاراکتر)", "text"], ["description", "توضیحات متای صفحه اصلی (۱۲۰ تا ۱۶۰ کاراکتر)", "textarea"],
@@ -563,6 +575,8 @@
     if (type === "packages") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="packages">${(value || []).map((p) => packageRow(p)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="packages" data-target="${name}">${icon("plus")} افزودن پکیج</button></div>`;
     if (type === "bundle") return `<div class="field span-2"><span class="field-label">${label}</span><div class="bundle-grid">${[2, 3, 4, 5].map((n) => `<label class="mini-field"><span>${faDigits(n)} خدمت (٪)</span><input class="input" dir="ltr" name="${name}.${n}" value="${faDigits(value?.[n] ?? "")}"></label>`).join("")}</div></div>`;
     if (type === "morph") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="morph">${(value || []).map((m) => morphRow(m)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="morph" data-target="${name}">${icon("plus")} افزودن کلمه</button></div>`;
+    if (type === "weekdays") return `<div class="field span-2"><span class="field-label">${label}</span><div class="chips" data-weekdays="${name}">${WEEKDAYS.map(([v, l]) => `<label class="chip"><input type="checkbox" value="${v}" ${(value || []).map(Number).includes(v) ? "checked" : ""}><span class="chip-check">${icon("check")}</span>${l}</label>`).join("")}</div></div>`;
+    if (type === "slots") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="slots">${(value || []).map((x) => slotRow(x)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="slots" data-target="${name}">${icon("plus")} افزودن بازه</button></div>`;
     if (type === "deadlines") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="deadlines">${(value || []).map((d) => deadlineRow(d)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="deadlines" data-target="${name}">${icon("plus")} افزودن سرعت</button></div>`;
     if (type === "addons") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="addons">${(value || []).map((a) => addonRow(a)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="addons" data-target="${name}">${icon("plus")} افزودن خدمت تکمیلی</button></div>`;
     return `<div class="field"><label class="field-label">${label}</label><input class="input" name="${name}" ${type === "ltr" ? 'dir="ltr"' : ""} value="${val(value)}"></div>`;
@@ -572,6 +586,9 @@
   const upBtn = () => `<button type="button" class="icon-btn icon-btn-sm" data-act="row-up" aria-label="جابه‌جایی به بالا" title="جابه‌جایی به بالا">${BX.icon("chevron-up")}</button>`;
   const morphRow = (m = {}) => `<div class="edit-row" data-row><input class="input" data-f="word" placeholder="کلمه (مثلاً طراحی)" maxlength="24" value="${val(m.word)}"><input class="input" data-f="caption" placeholder="زیرنویس این کلمه" maxlength="160" value="${val(m.caption)}">${upBtn()}${rmBtn()}</div>`;
   const deadlineRow = (d = {}) => `<div class="edit-row" data-row><input class="input" data-f="label" placeholder="عنوان (مثلاً فوری)" value="${val(d.label)}"><input class="input" data-f="hint" placeholder="توضیح" value="${val(d.hint)}"><input class="input" data-f="mult" dir="ltr" placeholder="ضریب قیمت" title="ضریب قیمت (۱ = بدون تغییر)" value="${val(d.mult ?? 1)}"><input class="input" data-f="daysMult" dir="ltr" placeholder="ضریب زمان" title="ضریب زمان تحویل" value="${val(d.daysMult ?? 1)}"><input type="hidden" data-f="v" value="${val(d.v)}"><input type="hidden" data-f="icon" value="${val(d.icon || "clock")}">${rmBtn()}</div>`;
+  const WEEKDAYS = [[6, "شنبه"], [0, "یکشنبه"], [1, "دوشنبه"], [2, "سه‌شنبه"], [3, "چهارشنبه"], [4, "پنجشنبه"], [5, "جمعه"]];
+  const slotRow = (x = {}) => `<div class="edit-row slot-row" data-row><input class="input" data-f="label" placeholder="عنوان (مثلاً صبح)" value="${val(x.label)}"><input class="input" type="time" data-f="from" dir="ltr" title="از ساعت" value="${val(x.from || "09:00")}"><input class="input" type="time" data-f="to" dir="ltr" title="تا ساعت" value="${val(x.to || "12:00")}"><input class="input" data-f="cap" dir="ltr" inputmode="numeric" title="ظرفیت (نفر)" placeholder="ظرفیت" value="${val(x.cap ?? 3)}"><input type="hidden" data-f="id" value="${val(x.id)}">
+    <div class="slot-days" title="فقط در این روزها (هیچ‌کدام = همه روزهای کاری)">${WEEKDAYS.map(([v, l]) => `<label><input type="checkbox" data-day value="${v}" ${(x.days || []).map(Number).includes(v) ? "checked" : ""}><span>${l.slice(0, 1)}</span></label>`).join("")}</div>${rmBtn()}</div>`;
   const addonRow = (a = {}) => `<div class="edit-row" data-row><input class="input" data-f="label" placeholder="عنوان" value="${val(a.label)}"><input class="input" data-f="pct" dir="ltr" placeholder="درصد" title="درصد افزایش قیمت" value="${val(a.pct != null ? Math.round(a.pct * 100) : "")}"><input type="hidden" data-f="v" value="${val(a.v)}">${rmBtn()}</div>`;
 
   BXD.routes.settings = function (param) {
@@ -603,7 +620,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { general: "اطلاعات سایت", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">
@@ -665,6 +682,13 @@
       if (type === "switch") out[k] = el.checked;
       else if (type === "number") out[k] = Number(BX.enDigits(el.value).replace(/[^\d.]/g, "")) || 0;
       else if (type === "lines") out[k] = el.value.split("\n").map((x) => x.trim()).filter(Boolean);
+      else if (type === "weekdays") out[k] = [...form.querySelectorAll(`[data-weekdays="${name}"] input:checked`)].map((x) => Number(x.value));
+      else if (type === "slots") {
+        out[k] = [...form.querySelectorAll(`[data-rows="${name}"] [data-row]`)].map((row, i) => {
+          const g = (f) => row.querySelector(`[data-f="${f}"]`).value.trim();
+          return { id: g("id") || `s${Date.now().toString(36)}${i}`, label: g("label"), from: g("from"), to: g("to"), cap: Number(BX.enDigits(g("cap"))) || 0, days: [...row.querySelectorAll("[data-day]:checked")].map((x) => Number(x.value)) };
+        }).filter((x) => x.label);
+      }
       else if (type === "bundle") out[k] = Object.fromEntries([2, 3, 4, 5].map((n) => [n, Number(BX.enDigits(form.elements[`${name}.${n}`].value)) || 0]).filter(([, v]) => v > 0));
       else if (type === "morph") {
         out[k] = [...form.querySelectorAll(`[data-rows="${name}"] [data-row]`)].map((row) => ({
@@ -674,7 +698,6 @@
         out[k] = [...form.querySelectorAll(`[data-rows="${name}"] [data-row]`)].map((row, i) => {
           const g = (f) => row.querySelector(`[data-f="${f}"]`);
           if (type === "packages") return { id: g("id").value || `p${i + 1}`, title: g("title").value.trim(), price: Number(BX.enDigits(g("price").value).replace(/\D/g, "")) || 0, days: Number(BX.enDigits(g("days").value)) || 1, selected: g("selected").checked };
-          if (type === "morph") return `<div class="field span-2"><span class="field-label">${label}</span><div class="rows-editor" data-rows="${name}" data-kind="morph">${(value || []).map((m) => morphRow(m)).join("")}</div><button type="button" class="btn btn-ghost btn-xs" data-act="row-add" data-kind="morph" data-target="${name}">${icon("plus")} افزودن کلمه</button></div>`;
     if (type === "deadlines") return { v: g("v").value || `d${i + 1}`, label: g("label").value.trim(), hint: g("hint").value.trim(), mult: Number(BX.enDigits(g("mult").value)) || 1, daysMult: Number(BX.enDigits(g("daysMult").value)) || 1, icon: g("icon").value || "clock" };
           return { v: g("v").value || `a${i + 1}`, label: g("label").value.trim(), pct: (Number(BX.enDigits(g("pct").value)) || 0) / 100 };
         }).filter((x) => x.title || x.label);
@@ -704,7 +727,7 @@
   Object.assign(BXD.acts, {
     "row-add": (el) => {
       const box = el.parentElement.querySelector(`[data-rows="${el.dataset.target}"]`);
-      box.insertAdjacentHTML("beforeend", { packages: packageRow, deadlines: deadlineRow, addons: addonRow, morph: morphRow }[el.dataset.kind]());
+      box.insertAdjacentHTML("beforeend", { packages: packageRow, deadlines: deadlineRow, addons: addonRow, morph: morphRow, slots: slotRow }[el.dataset.kind]());
       box.lastElementChild?.querySelector("input")?.focus();
     },
     "row-remove": (el) => el.closest("[data-row]").remove(),

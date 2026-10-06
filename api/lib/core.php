@@ -329,7 +329,8 @@ function catalog(bool $onlyActive = true): array
         foreach ($svcs as $s) {
             if ($s['category_id'] !== $c['id']) continue;
             $list[] = ['id' => $s['id'], 'title' => $s['title'], 'icon' => $s['icon'], 'base' => (int) $s['base'], 'days' => (int) $s['days'],
-                'desc' => $s['descr'] ?? '', 'fields' => jdec($s['fields'], []), 'sort' => (int) $s['sort'], 'active' => (bool) $s['active'], 'category' => $c['id']];
+                'desc' => $s['descr'] ?? '', 'fields' => jdec($s['fields'], []), 'sort' => (int) $s['sort'], 'active' => (bool) $s['active'], 'category' => $c['id'],
+                'delivery' => !empty($s['delivery'])];
         }
         $out[] = ['id' => $c['id'], 'title' => $c['title'], 'en' => $c['en'] ?? '', 'icon' => $c['icon'], 'hue' => (int) $c['hue'],
             'desc' => $c['descr'] ?? '', 'sort' => (int) $c['sort'], 'active' => (bool) $c['active'], 'services' => $list];
@@ -464,6 +465,12 @@ function order_out(array $o, bool $full = true, bool $withContact = true): array
         'style' => jdec($o['style'], []), 'coupon' => $o['coupon'], 'paid' => (bool) $o['paid'], 'paidAmount' => (int) ($o['paid_amount'] ?? 0), 'deposit' => order_deposit($o), 'rating' => $o['rating'] !== null ? (int) $o['rating'] : null,
         'review' => $o['review'], 'applicants' => array_map('strval', jdec($o['applicants'], [])), 'createdAt' => ms($o['created_at'])];
     if ($withContact) $out['contact'] = jdec($o['contact'], []);
+    // In-person delivery slot booked with this order (latest non-cancelled, else the latest)
+    try {
+        $b = row("SELECT * FROM bookings WHERE order_id = ? ORDER BY (status = 'cancelled'), id DESC LIMIT 1", [$id]);
+        $out['delivery'] = $b ? ['id' => (int) $b['id'], 'date' => $b['date'], 'slot' => $b['slot'], 'label' => $b['slot_label'], 'status' => $b['status']] : null;
+        if (function_exists('order_ready_in')) $out['readyIn'] = order_ready_in($o);
+    } catch (Throwable $e) { $out['delivery'] = null; }
     if ($full) {
         $out['timeline'] = array_map(function ($e) { return ['status' => $e['status'], 'note' => $e['note'], 'at' => ms($e['created_at'])]; },
             rows('SELECT * FROM order_events WHERE order_id = ? ORDER BY id', [$id]));
