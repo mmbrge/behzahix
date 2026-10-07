@@ -77,7 +77,12 @@
     root.querySelector(".svx-rail").addEventListener("click", (e) => { const b = e.target.closest(".svx-cat"); if (b) show(Number(b.dataset.i)); });
     // Desktop: hovering a category previews it
     const fine = window.matchMedia("(hover: hover) and (min-width: 900px)");
-    tabs.forEach((t) => t.addEventListener("pointerenter", () => { if (fine.matches) show(Number(t.dataset.i)); }));
+    // small delay so sweeping the mouse across the list does not rebuild every category
+    let hoverT;
+    tabs.forEach((t) => {
+      t.addEventListener("pointerenter", () => { if (!fine.matches) return; clearTimeout(hoverT); hoverT = setTimeout(() => show(Number(t.dataset.i)), 160); });
+      t.addEventListener("pointerleave", () => clearTimeout(hoverT));
+    });
     root.querySelector(".svx-rail").addEventListener("keydown", (e) => {
       const k = { ArrowDown: 1, ArrowLeft: 1, ArrowUp: -1, ArrowRight: -1 }[e.key];
       if (k) { e.preventDefault(); show(cur + k, true); }
@@ -89,14 +94,6 @@
       const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
       if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.6) { show(cur + (dx < 0 ? 1 : -1)); navigator.vibrate?.(5); }
     }, { passive: true });
-    // Cursor-following glow on cards
-    st.addEventListener("pointermove", (e) => {
-      const card = e.target.closest(".svx-card");
-      if (!card) return;
-      const r = card.getBoundingClientRect();
-      card.style.setProperty("--mx", `${e.clientX - r.left}px`);
-      card.style.setProperty("--my", `${e.clientY - r.top}px`);
-    });
     const hash = decodeURIComponent(location.hash.slice(1));
     const start = Math.max(0, BX.CATALOG.findIndex((c) => c.id === hash));
     show(start);

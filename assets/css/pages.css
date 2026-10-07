@@ -38,36 +38,40 @@
 .nav-item:hover .chev, .nav-item:focus-within .chev { transform: rotate(180deg); }
 .mega {
   position: absolute; top: 100%; left: 50%; z-index: 60;
-  width: min(1100px, calc(100vw - 32px)); padding-top: 12px;
-  opacity: 0; visibility: hidden; transform: translate(-50%, 10px);
-  transition: opacity .25s, transform .35s var(--ease-out), visibility .25s;
+  width: min(1040px, calc(100vw - 32px)); padding-top: 12px;
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%, 6px);
+  transition: opacity .2s, transform .25s var(--ease-out), visibility 0s linear .2s;
 }
-.nav-item:hover .mega, .nav-item:focus-within .mega { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.nav-item:hover .mega, .nav-item:focus-within .mega { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); transition-delay: 0s; }
+/* solid background (no backdrop blur): the blur over the animated hero was the main source of lag */
 .mega-grid {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 16px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; padding: 14px;
   border: 1px solid var(--line); border-radius: 24px 24px 0 0;
-  background: var(--menu-bg); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-  box-shadow: var(--shadow);
+  background: var(--menu-bg); box-shadow: var(--shadow); contain: layout paint;
 }
-.mega-col { --h: 25; padding: 8px; border-radius: 16px; transition: background-color .25s; }
+.mega-col { --h: 25; padding: 8px; border-radius: 16px; transition: background-color .2s; min-width: 0; }
 .mega-col:hover { background: hsl(var(--h) 80% 55% / .07); }
-.mega-head { display: flex; align-items: center; gap: 10px; padding: 6px; margin-bottom: 6px; }
+.mega-head { display: flex; align-items: center; gap: 10px; padding: 4px 6px; margin-bottom: 4px; }
 .mega-head b { display: block; font-size: .9rem; }
-.mega-head small { display: block; font-size: .7rem; color: var(--muted); letter-spacing: .1em; }
+.mega-head small { display: block; font-size: .72rem; color: var(--muted); }
 .mega-icon {
-  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+  flex-shrink: 0; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
   background: hsl(var(--h) 85% 55% / .14); color: hsl(var(--h) 90% 60%);
-  transition: transform .4s var(--ease-spring);
+  transition: transform .3s var(--ease-spring);
 }
 :root[data-theme="light"] .mega-icon { color: hsl(var(--h) 80% 40%); }
-.mega-col:hover .mega-icon { transform: rotate(-10deg) scale(1.1); }
+.mega-col:hover .mega-icon { transform: rotate(-10deg) scale(1.08); }
 .mega-col ul a {
-  display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 10px;
-  font-size: .82rem; color: var(--muted); transition: background-color .2s, color .2s, padding .25s var(--ease-out);
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px;
+  font-size: .82rem; color: var(--muted); transition: background-color .2s, color .2s;
 }
-.mega-col ul a .icon { width: 16px; height: 16px; opacity: .7; }
-.mega-col ul a:hover { color: var(--fg); background: var(--hover); padding-right: 14px; }
+.mega-col ul a span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mega-col ul a .icon { flex-shrink: 0; width: 16px; height: 16px; opacity: .7; }
+.mega-col ul a:hover { color: var(--fg); background: var(--hover); }
 .mega-col ul a:hover .icon { color: hsl(var(--h) 90% 60%); opacity: 1; }
+.mega-more { display: inline-flex; align-items: center; gap: 4px; margin: 2px 8px 0; font-size: .76rem; font-weight: 700; color: hsl(var(--h) 85% 55%); }
+:root[data-theme="light"] .mega-more { color: hsl(var(--h) 80% 40%); }
+.mega-more .icon { width: 14px; height: 14px; }
 .mega-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px;
   border: 1px solid var(--line); border-top: 0; border-radius: 0 0 24px 24px;
@@ -874,7 +878,7 @@ a.service-detail:hover { transform: translateY(-3px); border-color: rgb(255 122 
 .svx-head::before, .svx-head::after { content: ""; position: absolute; border-radius: 50%; background: rgb(255 255 255 / .1); pointer-events: none; }
 .svx-head::before { width: 260px; height: 260px; left: -70px; bottom: -150px; }
 .svx-head::after { width: 140px; height: 140px; left: 32%; top: -80px; background: rgb(255 255 255 / .07); }
-.svx-head-ic { position: relative; width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; background: rgb(255 255 255 / .18); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3); backdrop-filter: blur(6px); }
+.svx-head-ic { position: relative; width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; background: rgb(255 255 255 / .18); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3); }
 .svx-head-ic .icon { width: 36px; height: 36px; }
 .svx-head-t { position: relative; min-width: 0; }
 .svx-head-t small { letter-spacing: .2em; font-size: .7rem; opacity: .8; font-weight: 700; text-transform: uppercase; }
@@ -885,10 +889,10 @@ a.service-detail:hover { transform: translateY(-3px); border-color: rgb(255 122 
 .svx-stats b { font-size: 1.05rem; font-weight: 900; }
 
 .svx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-.svx-card { --mx: 50%; --my: 50%; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 22px; border: 1px solid var(--line); color: var(--fg);
-  background: radial-gradient(260px circle at var(--mx) var(--my), hsl(var(--h) 90% 58% / .12), transparent 60%), var(--card);
-  transition: transform .4s var(--ease-spring), border-color .3s, box-shadow .35s; }
-.svx-card:hover { transform: translateY(-4px); border-color: hsl(var(--h) 85% 55% / .5); box-shadow: 0 22px 40px -26px hsl(var(--h) 85% 45%); }
+.svx-card { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 22px; border: 1px solid var(--line); color: var(--fg);
+  background: linear-gradient(160deg, hsl(var(--h) 90% 58% / .06), transparent 45%), var(--card);
+  transition: transform .3s var(--ease-out), border-color .25s; }
+.svx-card:hover { transform: translateY(-3px); border-color: hsl(var(--h) 85% 55% / .55); }
 .svx-card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .svx-card-ic { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; color: hsl(var(--h) 85% 55%); background: hsl(var(--h) 85% 55% / .12); transition: transform .45s var(--ease-spring), background .3s, color .3s; }
 .svx-card-ic .icon { width: 21px; height: 21px; }
@@ -907,7 +911,7 @@ a.service-detail:hover { transform: translateY(-3px); border-color: rgb(255 122 
 
 /* entrance when switching categories */
 .svx-stage.is-in .svx-head { animation: svx-head .55s var(--ease-out) both; }
-.svx-stage.is-in .svx-card { animation: svx-card .5s var(--ease-out) both; animation-delay: calc(var(--j) * 45ms + 80ms); }
+.svx-stage.is-in .svx-card { animation: svx-card .4s var(--ease-out) both; animation-delay: calc(min(var(--j), 8) * 35ms + 60ms); }
 @keyframes svx-head { from { opacity: 0; transform: translateX(calc(var(--dir) * -24px)) scale(.98); } }
 @keyframes svx-card { from { opacity: 0; transform: translateY(16px) scale(.97); } }
 @media (prefers-reduced-motion: reduce) { .svx-stage.is-in .svx-head, .svx-stage.is-in .svx-card { animation: none; } .svx-cat { transition: none; opacity: 1; transform: none; } }

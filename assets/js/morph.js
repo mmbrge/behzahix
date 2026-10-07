@@ -205,7 +205,9 @@
   function frame(now) {
     if (!running) return;
     requestAnimationFrame(frame);
-    if (!visible || !built || document.documentElement.classList.contains("menu-open")) return;
+    // paused while a menu covers it (mobile sheet or the desktop services menu)
+    const rc = document.documentElement.classList;
+    if (!visible || !built || rc.contains("menu-open") || rc.contains("mega-open")) return;
     const dt = Math.min(50, now - last);
     last = now;
     time += dt / 1000;

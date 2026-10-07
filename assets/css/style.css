@@ -607,3 +607,5 @@ a.logo:hover .logo-a { animation-duration: 1.6s; }
 .avatar-xs .pro-tag, .avatar-sm .pro-tag { font-size: 7px; bottom: -5px; padding: 1px 3px; }
 .avatar-lg .pro-tag { font-size: 11px; bottom: -8px; padding: 3px 7px; }
 .pro-badge { display: inline-flex; align-items: center; gap: 3px; font-size: .68rem; font-weight: 900; letter-spacing: .05em; padding: 2px 7px; border-radius: 999px; color: #1a1205; background: linear-gradient(120deg, #fde68a, #f59e0b); vertical-align: middle; }
+/* services menu open: stop decorative loops underneath it */
+.mega-open body *:not(.mega, .mega *), .mega-open .logo::after { animation-play-state: paused !important; }

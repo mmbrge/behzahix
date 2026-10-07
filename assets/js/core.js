@@ -176,20 +176,23 @@
   ];
   const page = document.body.dataset.page || "";
 
+  // Services mega menu: 3 columns × 2 rows of categories, up to 5 services each
   function megaMenu() {
+    const MAX = 5;
     return `<div class="mega" role="menu">
       <div class="mega-grid">
         ${BX.CATALOG.map((c) => `
           <div class="mega-col" style="--h:${c.hue}">
             <a class="mega-head" href="services.html#cat-${c.id}">
               <span class="mega-icon">${icon(c.icon)}</span>
-              <span><b>${esc(c.title)}</b><small dir="ltr">${esc(c.en)}</small></span>
+              <span><b>${esc(c.title)}</b><small>${faDigits(c.services.length)} خدمت</small></span>
             </a>
-            <ul>${c.services.map((s) => `<li><a href="service.html?id=${encodeURIComponent(s.id)}">${icon(s.icon)}${esc(s.title)}</a></li>`).join("")}</ul>
+            <ul>${c.services.slice(0, MAX).map((s) => `<li><a href="service.html?id=${encodeURIComponent(s.id)}">${icon(s.icon)}<span>${esc(s.title)}</span></a></li>`).join("")}</ul>
+            ${c.services.length > MAX ? `<a class="mega-more" href="services.html#cat-${c.id}">و ${faDigits(c.services.length - MAX)} خدمت دیگر ${icon("arrow")}</a>` : ""}
           </div>`).join("")}
       </div>
       <div class="mega-foot">
-        <a href="services.html">${icon("grid")} نمایش درخت کامل خدمات</a>
+        <a href="services.html">${icon("grid")} مشاهده همه خدمات</a>
         <a href="order.html" class="btn btn-primary btn-sm">ثبت سفارش آنلاین ${icon("arrow")}</a>
       </div>
     </div>`;
@@ -231,6 +234,13 @@
     // Mega menu: keyboard / touch friendly toggle on top of CSS hover
     const mega = el.querySelector(".has-mega");
     if (mega) {
+      // pause heavy page animations while the services menu is open
+      const root = document.documentElement;
+      const open = () => root.classList.add("mega-open"), close = () => root.classList.remove("mega-open");
+      mega.addEventListener("pointerenter", open);
+      mega.addEventListener("pointerleave", close);
+      mega.addEventListener("focusin", open);
+      mega.addEventListener("focusout", (e) => { if (!mega.contains(e.relatedTarget)) close(); });
       mega.addEventListener("keydown", (e) => {
         if (e.key === "Escape") mega.querySelector("a").focus();
       });
