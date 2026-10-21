@@ -35,6 +35,7 @@
           <label class="switch"><input type="checkbox" name="security.loginAlert" ${s.loginAlert ? "checked" : ""}><span class="track"></span>پیامک هشدار هنگام هر ورود مدیر (قالب «هشدار ورود مدیر»)</label>
           <div class="form-grid form-grid-2"><div class="field"><label class="field-label">مسدودسازی بعد از چند ورود ناموفق</label><input class="input" name="security.maxFails" dir="ltr" value="${faDigits(s.maxFails)}"></div>
           <div class="field"><label class="field-label">مدت مسدودی (دقیقه)</label><input class="input" name="security.blockMinutes" dir="ltr" value="${faDigits(s.blockMinutes)}"></div></div>
+          <label class="switch"><input type="checkbox" name="security.guard" ${s.guard !== false ? "checked" : ""}><span class="track"></span>محافظت از کد صفحه‌ها: کلیک راست، Ctrl+U (نمایش کد)، Ctrl+S (ذخیره صفحه) و F12 / Ctrl+Shift+I (Inspect) برای بازدیدکننده‌ها بسته شود — روی سئو و گوگل اثری ندارد و برای مدیر همیشه باز است</label>
           <label class="switch"><input type="checkbox" name="security.trustProxy" ${s.trustProxy ? "checked" : ""}><span class="track"></span>سایت پشت CDN است (ابر آروان / کلودفلر) — آی‌پی واقعی از هدر خوانده شود</label>
           <button class="btn btn-primary" type="submit">${icon("check")} ذخیره</button></form>`)}
         ${box("آی‌پی‌های مسدود", "lock", `${r.blocks.length ? r.blocks.map((b) => `<div class="list-row"><span class="cell-icon">${icon("lock")}</span><div class="grow"><b dir="ltr">${esc(b.ip)}</b><br><small class="muted">${esc(b.reason)} · ${b.until ? `تا ${BX.date(b.until)}` : "دائمی"}</small></div><button class="btn btn-ghost btn-xs" data-act="sec-unblock" data-ip="${esc(b.ip)}">رفع</button></div>`).join("") : '<p class="muted small">آی‌پی مسدودی وجود ندارد.</p>'}
@@ -57,7 +58,7 @@
   BXD.afterRender = (view, id, param) => { if (prevAfter) prevAfter(view, id, param); const el = view.querySelector("[data-security]"); if (el) load(el).catch((e) => { el.innerHTML = `<div class="card empty">${icon("info")}<p>${esc(e.message)}</p></div>`; }); };
   BXD.forms["security-settings"] = (f) => {
     const e = f.elements, n = (x) => Number(BX.enDigits(x.value)) || 0;
-    BXD.quiet(BXD.act("settings.save", { group: "security", value: { admin2fa: e["security.admin2fa"].checked, loginAlert: e["security.loginAlert"].checked, trustProxy: e["security.trustProxy"].checked, maxFails: n(e["security.maxFails"]), blockMinutes: n(e["security.blockMinutes"]) } }));
+    BXD.quiet(BXD.act("settings.save", { group: "security", value: { admin2fa: e["security.admin2fa"].checked, loginAlert: e["security.loginAlert"].checked, trustProxy: e["security.trustProxy"].checked, guard: e["security.guard"].checked, maxFails: n(e["security.maxFails"]), blockMinutes: n(e["security.blockMinutes"]) } }));
   };
   Object.assign(BXD.acts, {
     "sec-reload": reload,

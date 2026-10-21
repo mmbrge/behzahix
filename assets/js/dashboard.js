@@ -682,6 +682,13 @@
       { id: "security", label: "امنیت", icon: "shield", render: (p) => BXD.routes.security(p) },
       { id: "settings", label: "تنظیمات سایت", icon: "settings", render: (p) => BXD.routes.settings(p) },
     ];
+    // «چهارشنبه، ۲۹ مهر ۱۴۰۵» (Persian calendar, words in reading order)
+    function todayFa() {
+      try {
+        const p = Object.fromEntries(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+        return `${p.weekday}، ${p.day} ${p.month} ${p.year}`;
+      } catch (e) { return date(Date.now()); }
+    }
     function adminOverview() {
       const income = S.transactions.filter((t) => ["payment", "purchase"].includes(t.type));
       const revenue = income.reduce((s, t) => s - t.amount, 0);
@@ -690,7 +697,23 @@
       const maxS = Math.max(1, ...byStatus.map((x) => x[1]));
       const pending = S.users.filter((u) => u.status === "pending").length + S.products.filter((p) => p.status === "pending").length;
       const demo = S.settings.general?.demoMode;
+      const h = new Date().getHours();
+      const hello = h < 5 ? "شب بخیر" : h < 12 ? "صبح بخیر" : h < 17 ? "روز بخیر" : "عصر بخیر";
+      const fresh = S.orders.filter((o) => o.status === "new").length;
+      const quick = [
+        ["#orders", "inbox", "سفارش جدید", fresh], ["#users", "shield", "در انتظار تأیید", pending],
+        ["#support", "chat", "گفتگوی منتظر", S.supportWaiting || 0], ["#notifications", "bell", "اعلان خوانده‌نشده", S.notifications.filter((n) => !n.read).length],
+      ];
       return `<div class="dash-grid">
+        <section class="admin-hero">
+          <div class="admin-hero-t">
+            <span class="admin-hero-badge">${icon("crown")} پنل مدیر کل</span>
+            <h2>${hello}، ${esc(me.name.split(" ")[0])} 👋</h2>
+            <p>${todayFa()} · ${faDigits(S.orders.length)} سفارش و ${faDigits(S.users.length)} کاربر در سایت شما</p>
+          </div>
+          <div class="admin-quick">${quick.map(([href, ic, l, n]) => `<a href="${href}" class="${n ? "has-n" : ""}">${icon(ic)}<b>${faDigits(n)}</b><span>${l}</span></a>`).join("")}</div>
+          <div class="admin-hero-links"><a href="#settings">${icon("settings")} تنظیمات</a><a href="#studio">${icon("sparkles")} استودیو</a><a href="#security">${icon("shield")} امنیت</a><a href="index.html" target="_blank">${icon("globe")} مشاهده سایت</a></div>
+        </section>
         ${demo ? `<div class="banner">${icon("info")}<span>سایت در <b>حالت نمایشی</b> است: ${faDigits(S.demoUsers || 0)} حساب نمونه وجود دارد و درگاه «تست» بدون پول کار می‌کند. پیش از راه‌اندازی، از <a class="brand" href="#settings/demo">تنظیمات ← داده‌های نمایشی</a> آن‌ها را حذف و درگاه واقعی را تنظیم کنید.</span></div>` : ""}
         <div class="tiles">
           ${tile("ورودی (پرداخت‌ها)", money(revenue), "trend", `سهم پلتفرم ≈ ${money(Math.max(0, revenue - earned))}`)}
@@ -764,12 +787,15 @@
     function shell() {
       const nav = navFor();
       const unread = S.notifications.filter((n) => !n.read).length;
+      // the owner's panel gets its own, richer look
+      const isAdmin = me.role === "admin" && !S.impersonating;
+      app.classList.toggle("is-admin", isAdmin);
       app.innerHTML = `
         <aside class="dash-side" id="dash-side" aria-label="منوی پنل">
           <div class="side-brand">${BX.logoHtml("a", 'aria-label="صفحه اصلی"')}<button class="icon-btn icon-btn-sm side-close" data-act="side-close" aria-label="بستن منو">${icon("cross")}</button></div>
-          <div class="side-user">${avatar(me)}<div><b>${esc(me.name)}</b><span class="badge badge--brand">${ROLE_LABEL[me.role]}</span></div></div>
+          <div class="side-user">${avatar(me)}<div><b>${esc(me.name)}</b><span class="badge badge--brand">${isAdmin ? `${icon("crown")} ` : ""}${ROLE_LABEL[me.role]}</span></div></div>
           <nav class="side-nav">
-            <p class="side-nav-title">منو</p>
+            <p class="side-nav-title">${isAdmin ? "مدیریت سایت" : "منو"}</p>
             ${nav.map((n) => {
               const c = n.count ? n.count() : n.id === "notifications" ? unread : 0;
               return `<a class="side-link" href="#${n.id}" data-nav="${n.id}">${icon(n.icon)}${n.label}${c ? `<span class="count">${faDigits(c)}</span>` : ""}</a>`;

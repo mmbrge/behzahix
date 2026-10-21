@@ -237,14 +237,18 @@ function seo_blog_list_html(int $page = 1, string $tag = ''): string
   </section>
   <section class="container section-sm" style="padding-top:8px">
     <?php if (!$list): ?><div class="card empty"><svg class="icon"><use href="#i-book"/></svg><p>به‌زودی اولین مطالب منتشر می‌شود.</p></div>
-    <?php else: ?><div class="grid-auto blog-grid"><?php foreach ($list as $i => $p): ?>
-      <article class="card blog-card" data-reveal style="--d:<?= ($i % 6) * 60 ?>ms">
-        <a href="<?= $h(seo_post_url($p)) ?>" class="blog-thumb"<?= $p['cover'] ? ' style="background-image:url(\'' . $h('api/index.php?r=file&id=' . rawurlencode($p['cover'])) . '\')"' : '' ?>><?= $p['cover'] ? '' : '<svg class="icon"><use href="#i-book"/></svg>' ?></a>
+    <?php else:
+      $cats = array_column(rows("SELECT category, COUNT(*) n FROM posts WHERE status = 'published' AND published_at <= ? AND category <> '' GROUP BY category ORDER BY n DESC LIMIT 12", [gmdate('Y-m-d H:i:s')]), 'category');
+      $thumb = function ($p) use ($h) { return $p['cover'] ? ' style="background-image:url(\'' . $h('api/index.php?r=file&id=' . rawurlencode($p['cover'])) . '\')"' : ''; }; ?>
+      <?php if ($cats): ?><nav class="filter-chips blog-cats mb-2" aria-label="دسته‌ها"><a class="filter-chip <?= $tag === '' ? 'is-active' : '' ?>" href="blog.html">همه</a><?php foreach ($cats as $c): ?><a class="filter-chip <?= $tag === $c ? 'is-active' : '' ?>" href="blog.html?tag=<?= $h(rawurlencode($c)) ?>"><?= $h($c) ?></a><?php endforeach; ?></nav><?php endif; ?>
+      <div class="grid-auto blog-grid"><?php foreach ($list as $i => $p): $feat = $i === 0 && $page === 1 && $tag === ''; ?>
+      <article class="card blog-card<?= $feat ? ' blog-card--feat' : '' ?>" data-reveal style="--d:<?= ($i % 6) * 60 ?>ms">
+        <a href="<?= $h(seo_post_url($p)) ?>" class="blog-thumb"<?= $thumb($p) ?> aria-label="<?= $h($p['title']) ?>"><?= $p['cover'] ? '' : '<svg class="icon"><use href="#i-book"/></svg>' ?></a>
         <div class="blog-body">
           <?php if ($p['category']): ?><a class="badge badge--brand" href="blog.html?tag=<?= $h(rawurlencode($p['category'])) ?>"><?= $h($p['category']) ?></a><?php endif; ?>
           <h2><a href="<?= $h(seo_post_url($p)) ?>"><?= $h($p['title']) ?></a></h2>
-          <p class="muted small lh"><?= $h(seo_cut((string) ($p['excerpt'] ?: $p['body']), 160)) ?></p>
-          <small class="muted"><?= $h(seo_jdate($p['published_at'])) ?> · <?= fa_digits((string) seo_read_min((string) $p['body'])) ?> دقیقه مطالعه</small>
+          <p class="muted small lh blog-ex"><?= $h(seo_cut((string) ($p['excerpt'] ?: $p['body']), 160)) ?></p>
+          <small class="muted blog-meta"><?= $h(seo_jdate($p['published_at'])) ?> · <?= fa_digits((string) seo_read_min((string) $p['body'])) ?> دقیقه مطالعه</small>
         </div>
       </article><?php endforeach; ?></div>
       <?php if ($total > $per): ?><nav class="pager mt-3"><?php for ($i = 1; $i <= (int) ceil($total / $per); $i++): ?><a class="<?= $i === $page ? 'is-active' : '' ?>" href="blog.html?page=<?= $i ?><?= $tag !== '' ? '&tag=' . $h(rawurlencode($tag)) : '' ?>"><?= fa_digits((string) $i) ?></a><?php endfor; ?></nav><?php endif; ?>
@@ -274,20 +278,22 @@ function seo_post_html(array $p): string
     $tags = jdec($p['tags'], []) ?: [];
     $related = rows("SELECT * FROM posts WHERE status = 'published' AND id <> ? AND published_at <= ? ORDER BY (category = ?) DESC, published_at DESC LIMIT 3", [$p['id'], gmdate('Y-m-d H:i:s'), $p['category']]);
     ob_start(); ?>
+  <div class="read-bar" aria-hidden="true"><span></span></div>
   <article class="container post" itemscope itemtype="https://schema.org/BlogPosting">
     <header class="page-hero post-hero" data-reveal>
       <nav class="crumbs" aria-label="مسیر"><a href="index.html">خانه</a><svg class="icon"><use href="#i-chevron-left"/></svg><a href="blog.html">وبلاگ</a><?php if ($p['category']): ?><svg class="icon"><use href="#i-chevron-left"/></svg><a href="blog.html?tag=<?= $h(rawurlencode($p['category'])) ?>"><?= $h($p['category']) ?></a><?php endif; ?></nav>
       <h1 itemprop="headline"><?= $h($p['title']) ?></h1>
       <?php if ($p['excerpt']): ?><p itemprop="description"><?= $h($p['excerpt']) ?></p><?php endif; ?>
-      <small class="muted"><time datetime="<?= $h(gmdate('c', strtotime($p['published_at'] . ' UTC'))) ?>" itemprop="datePublished"><?= $h(seo_jdate($p['published_at'])) ?></time> · <?= fa_digits((string) seo_read_min((string) $p['body'])) ?> دقیقه مطالعه</small>
+      <div class="post-meta"><?php if ($p['category']): ?><a class="badge badge--brand" href="blog.html?tag=<?= $h(rawurlencode($p['category'])) ?>"><?= $h($p['category']) ?></a><?php endif; ?><span><svg class="icon"><use href="#i-calendar"/></svg><time datetime="<?= $h(gmdate('c', strtotime($p['published_at'] . ' UTC'))) ?>" itemprop="datePublished"><?= $h(seo_jdate($p['published_at'])) ?></time></span><span><svg class="icon"><use href="#i-clock"/></svg><?= fa_digits((string) seo_read_min((string) $p['body'])) ?> دقیقه مطالعه</span></div>
     </header>
     <?php if ($p['cover']): ?><img class="post-cover" src="<?= $h('api/index.php?r=file&id=' . rawurlencode($p['cover'])) ?>" alt="<?= $h($p['title']) ?>" itemprop="image"><?php endif; ?>
     <div class="post-body card" itemprop="articleBody"><?= $p['body'] /* sanitized on save */ ?></div>
     <?php if ($tags): ?><div class="post-tags"><?php foreach ($tags as $t): ?><a class="chip" href="blog.html?tag=<?= $h(rawurlencode($t)) ?>">#<?= $h($t) ?></a><?php endforeach; ?></div><?php endif; ?>
     <div class="cta glow mt-3"><h2 class="h2-sm">برای کسب‌وکارتان اجرا کنیم؟</h2><p class="muted lh">مشاوره رایگان بگیرید یا مستقیم سفارش ثبت کنید؛ قیمت را همان لحظه می‌بینید.</p>
       <div class="cta-actions"><a class="btn btn-primary" href="order.html">ثبت سفارش <svg class="icon"><use href="#i-arrow"/></svg></a><a class="btn btn-ghost" href="services.html">همه خدمات</a></div></div>
-    <?php if ($related): ?><section class="mt-3"><h2 class="h2-xs">مطالب مرتبط</h2><div class="grid-auto mt-2"><?php foreach ($related as $r): ?>
-      <a class="card blog-card blog-card--sm" href="<?= $h(seo_post_url($r)) ?>"><div class="blog-body"><h3><?= $h($r['title']) ?></h3><small class="muted"><?= $h(seo_jdate($r['published_at'])) ?></small></div></a><?php endforeach; ?></div></section><?php endif; ?>
+    <?php if ($related): ?><section class="mt-3 post-related"><h2 class="h2-xs">مطالب مرتبط</h2><div class="grid-auto mt-2"><?php foreach ($related as $r): ?>
+      <a class="card blog-card blog-card--sm" href="<?= $h(seo_post_url($r)) ?>"><span class="blog-thumb"<?= $r['cover'] ? ' style="background-image:url(\'' . $h('api/index.php?r=file&id=' . rawurlencode($r['cover'])) . '\')"' : '' ?>><?= $r['cover'] ? '' : '<svg class="icon"><use href="#i-book"/></svg>' ?></span><div class="blog-body"><h3><?= $h($r['title']) ?></h3><small class="muted"><?= $h(seo_jdate($r['published_at'])) ?></small></div></a><?php endforeach; ?></div></section><?php endif; ?>
+    <div class="post-bar" aria-label="اشتراک‌گذاری"><button type="button" data-post-share><svg class="icon"><use href="#i-share"/></svg>اشتراک</button><button type="button" data-post-copy><svg class="icon"><use href="#i-link"/></svg>کپی لینک</button><button type="button" data-post-top aria-label="بالای صفحه"><svg class="icon"><use href="#i-chevron-up"/></svg></button></div>
   </article>
 <?php
     return (string) ob_get_clean();

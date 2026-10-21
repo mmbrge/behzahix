@@ -3,7 +3,7 @@
     "api/lib/chat.php": "4c7a99ccce2641ee0bde993e6092a15d7c3f1e0c2a3da11d7395e508bf957c10",
     "api/lib/core.php": "06b8fe45130f66a8eca17771b284dca0817b1fda04c2181c96b2cb24a969ff9a",
     "api/lib/dash.php": "f570a2c82cd8fc8d31c3fef190189763ac69789e178de35e8bfed26cac385a9e",
-    "api/lib/defaults.php": "bf6e893c5e61d32f56a75d2b461819aa38cc557ceb67b9657ab2cedcbfdbfe17",
+    "api/lib/defaults.php": "3135610f655b7f5753eaac7b73ad621226f0b185c36fffadb5fe0fae65f55d63",
     "api/lib/delivery.php": "d68f6f2d1dfcd49069de783c1d283e8507979716907d7ecdd6348bf84c6f4afa",
     "api/lib/gateways.php": "89e0b219a6712756d8a80edc24c4a6f21dac1603349504f84d04bad738ad3a4b",
     "api/lib/invoice.php": "a04b70be8fa4fd4c40f0a6c599d4ee94dad757b9f51bb1bad6f7109bb2db963c",
@@ -23,11 +23,11 @@
     "api/lib/render/tpl_slides.php": "d617275c81f583e19a1e224e23b37546c4a0096dcd13ed425ebcf8fe777f850c",
     "api/lib/schema.php": "d2b28e59ba34d7c5428b6cd9c9ad6f8c1ab293113e7d260ba4ba405729b3cad4",
     "api/lib/security.php": "648ead02111d1ad9339b7825a8c6d654567831426c5a76c9b2b88e5cb4f0af46",
-    "api/lib/seo.php": "8872a94ab2cdbb46221a5f474288d568a6f3b86e8d5715874d346d3768db9e41",
+    "api/lib/seo.php": "271b77cf04e2f310dc82819c841f0ee55f082a29101fc1036762e09191ba1e4f",
     "api/lib/sms.php": "dff8c908d79de3dc1cee3e84e812fefd629ce83b87c907ea0362edeee74d3bbc",
     "api/lib/studio.php": "5b1d50cbb66a372d7f398d1ba2b5fee8c47c2c757886475162770da04839e845",
     "api/lib/studio_render.php": "bbfa43af196315fad56c52155247ef05fbf880329daa11e68edba2f5559bc8db",
     "api/lib/tools.php": "73bb264de9f23933e8b82def4ab052494ebb7c4ba905bd0a19db7f293ee351a6",
-    "p.php": "ec10a104a90bd0ec5c9ec9de414f5b7f80501081752f227ef359ea0d8f07064a",
+    "p.php": "16407feb4cc68a9547c1d9e36ab052693fa98c9f4c33da257489a224be72e529",
     "seo.php": "a8751ec7e979392e9f255d46286e38e85b8cd6c119aa816a88b062537d5be6f9"
 }

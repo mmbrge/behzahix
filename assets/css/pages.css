@@ -831,6 +831,54 @@ a.service-detail:hover { transform: translateY(-3px); border-color: rgb(255 122 
 .post-body th, .post-body td { border: 1px solid var(--line); padding: 8px 10px; }
 .post-body code { background: var(--inset); padding: 2px 6px; border-radius: 6px; font-size: .9em; }
 .post-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.post-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; font-size: .8rem; color: var(--muted); }
+.post-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.post-meta .icon { width: 15px; height: 15px; color: var(--accent); }
+.post-toc summary { cursor: pointer; font-weight: 800; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+.post-toc summary::-webkit-details-marker { display: none; }
+.post-toc summary::after { content: "+"; font-size: 1.2rem; color: var(--accent); }
+.post-toc[open] summary::after { content: "−"; }
+.read-bar { position: fixed; inset: 0 0 auto; height: 3px; z-index: 60; pointer-events: none; }
+.read-bar span { display: block; height: 100%; width: 100%; transform-origin: right; transform: scaleX(var(--p, 0)); background: linear-gradient(to left, var(--brand), var(--brand-2)); }
+.post-bar { display: none; }
+.blog-card--feat .blog-thumb { aspect-ratio: 16 / 8; }
+@media (min-width: 900px) { .blog-card--feat { grid-column: span 2; } }
+.blog-card--sm .blog-thumb { aspect-ratio: 16 / 7; }
+.blog-card--sm .blog-thumb .icon { width: 28px; height: 28px; }
+/* Blog on phones: featured cover card, compact list, reading tools */
+@media (max-width: 640px) {
+  .blog-cats { margin-inline: -16px; padding-inline: 16px; }
+  .blog-grid { grid-template-columns: 1fr; gap: 10px; }
+  .blog-card:not(.blog-card--feat) { flex-direction: row; align-items: stretch; border-radius: 20px; }
+  .blog-card:not(.blog-card--feat) .blog-thumb { flex: 0 0 104px; aspect-ratio: auto; min-height: 112px; }
+  .blog-card:not(.blog-card--feat) .blog-body { padding: 12px 14px; gap: 5px; min-width: 0; }
+  .blog-card:not(.blog-card--feat) .blog-body h2 { font-size: .92rem; line-height: 1.75; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .blog-card:not(.blog-card--feat) .blog-ex { display: none; }
+  .blog-card:not(.blog-card--feat) .badge { font-size: .62rem; }
+  .blog-meta { font-size: .7rem; }
+  .blog-card--feat { position: relative; border-radius: 26px; min-height: 340px; justify-content: flex-end; }
+  .blog-card--feat .blog-thumb { position: absolute; inset: 0; aspect-ratio: auto; }
+  .blog-card--feat .blog-thumb::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgb(0 0 0 / .88) 10%, rgb(0 0 0 / .25) 60%, transparent); }
+  .blog-card--feat .blog-body { position: relative; padding: 20px; color: #fff; pointer-events: none; }
+  .blog-card--feat .blog-body a, .blog-card--feat .blog-body .badge { pointer-events: auto; }
+  .blog-card--feat .blog-body h2 { font-size: 1.2rem; line-height: 1.8; }
+  .blog-card--feat .blog-body .muted { color: rgb(255 255 255 / .78); }
+  .post-hero { padding-top: 18px; }
+  .post-hero h1 { font-size: 1.45rem; line-height: 1.75; }
+  .post-hero > p { font-size: .92rem; }
+  .post-cover { width: calc(100% + 32px); max-width: none; margin: 4px -16px 16px; border-radius: 0 0 26px 26px; aspect-ratio: 4 / 3; }
+  .post-body { padding: 18px 16px; font-size: 1.02rem; line-height: 2.15; border-radius: 22px; }
+  .post-body h2 { font-size: 1.2rem; }
+  .post-body table { display: block; overflow-x: auto; }
+  .post-body img { border-radius: 14px; }
+  .post-related .grid-auto { display: flex; gap: 10px; overflow-x: auto; margin-inline: -16px; padding: 2px 16px 8px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .post-related .blog-card { flex: 0 0 72%; scroll-snap-align: start; }
+  .post-bar { position: fixed; z-index: 55; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); translate: -50% 0; display: flex; gap: 4px; padding: 5px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 88%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid var(--line); box-shadow: 0 14px 30px -14px rgb(0 0 0 / .6); transition: opacity .25s, transform .25s; }
+  .post-bar.is-hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
+  .post-bar button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 9px 14px; border-radius: 999px; font-size: .78rem; font-weight: 700; color: var(--fg); }
+  .post-bar button .icon { width: 17px; height: 17px; color: var(--accent); }
+  .post-bar button:active { background: var(--hover); }
+}
 @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } .svc-facts div { min-width: 0; flex: 1; padding: 12px; } .svc-facts b { font-size: 1.05rem; } }
 
 /* ---------- In-person delivery picker ---------- */

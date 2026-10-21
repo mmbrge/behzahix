@@ -337,5 +337,6 @@ var tt=document.querySelector("[data-top]");addEventListener("scroll",function()
 var tabs=document.querySelectorAll(".tabs a");if(tabs.length&&"IntersectionObserver"in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){tabs.forEach(function(t){t.classList.toggle("on",t.getAttribute("href")==="#"+e.target.id)});var on=document.querySelector(".tabs a.on"),bar=on&&on.parentElement;if(on)bar.scrollTo({left:on.offsetLeft-(bar.clientWidth-on.offsetWidth)/2,behavior:"smooth"})}})},{rootMargin:"-40% 0px -55% 0px"});document.querySelectorAll(".cat").forEach(function(c){io.observe(c)})}
 </script>
 <?php endif; ?>
+<script>/* visitors: no context menu / view-source / dev-tools shortcuts */document.addEventListener("contextmenu",function(e){if(!e.target.closest("input,textarea"))e.preventDefault()});document.addEventListener("keydown",function(e){var k=(e.key||"").toLowerCase(),m=e.ctrlKey||e.metaKey;if(e.key==="F12"||(m&&(k==="u"||k==="s"))||(m&&e.shiftKey&&"ijck".indexOf(k)>-1)||(e.metaKey&&e.altKey&&"ijcu".indexOf(k)>-1))e.preventDefault()},true);document.addEventListener("dragstart",function(e){if(e.target.tagName==="IMG")e.preventDefault()});</script>
 </body>
 </html>

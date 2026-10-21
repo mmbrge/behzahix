@@ -84,7 +84,9 @@ function default_settings(): array
         // Seller details printed on invoices (empty = taken from site name / contact)
         'invoice' => ['sellerName' => '', 'economicCode' => '', 'nationalId' => '', 'regNo' => '', 'address' => '', 'postalCode' => '', 'phone' => '', 'vatPercent' => 0, 'note' => ''],
         // Security: admin two-step login by SMS, admin login alert, IP blocking after failed sign-ins
-        'security' => ['admin2fa' => false, 'loginAlert' => true, 'maxFails' => 10, 'blockMinutes' => 30, 'trustProxy' => false],
+        'security' => ['admin2fa' => false, 'loginAlert' => true, 'maxFails' => 10, 'blockMinutes' => 30, 'trustProxy' => false,
+            // block right-click, view-source / save / developer-tools shortcuts for visitors (never for admins)
+            'guard' => true],
         // Studio (studio.html): self-service builders, paid per finished file; hosted pages paid per period
         'studio' => [
             'enabled' => true, 'trialDays' => 7, 'off' => [], // tools switched off (STUDIO_TOOLS ids)
@@ -161,6 +163,7 @@ function public_settings(): array
         'uploads' => ['maxMB' => (int) $s['uploads']['maxMB'], 'ext' => $s['uploads']['ext']],
         'shop' => $s['shop'],
         'studio' => $s['studio'],
+        'guard' => (bool) ($s['security']['guard'] ?? true),
         'pro' => ['enabled' => (bool) $s['pro']['enabled'], 'name' => (string) $s['pro']['name'], 'discount' => (int) $s['pro']['discount']],
         'delivery' => ['place' => (string) $s['delivery']['place'], 'note' => (string) $s['delivery']['note'], 'changeHours' => (int) $s['delivery']['changeHours'], 'afterWork' => (bool) $s['delivery']['afterWork'], 'enabled' => (bool) $s['delivery']['enabled']],
         'chat' => ['enabled' => (bool) $s['chat']['enabled'], 'botName' => (string) $s['chat']['botName'], 'greeting' => (string) $s['chat']['greeting']],

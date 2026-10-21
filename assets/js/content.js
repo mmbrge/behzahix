@@ -32,11 +32,38 @@
     if (body) {
       const hs = [...body.querySelectorAll("h2")];
       if (hs.length >= 3) {
-        const toc = document.createElement("nav");
+        // collapsible; open on large screens
+        const toc = document.createElement("details");
         toc.className = "post-toc card";
-        toc.innerHTML = `<b>فهرست مطالب</b><ol>${hs.map((h, i) => { h.id = h.id || `s${i + 1}`; return `<li><a href="#${h.id}">${BX.esc(h.textContent)}</a></li>`; }).join("")}</ol>`;
+        toc.open = window.innerWidth > 640;
+        toc.innerHTML = `<summary>فهرست مطالب</summary><ol>${hs.map((h, i) => { h.id = h.id || `s${i + 1}`; return `<li><a href="#${h.id}">${BX.esc(h.textContent)}</a></li>`; }).join("")}</ol>`;
         body.before(toc);
       }
+      // reading progress and the phone share bar (hidden while scrolling down fast)
+      const bar = root.querySelector(".read-bar span");
+      const tools = root.querySelector(".post-bar");
+      let lastY = scrollY, tick = false;
+      const onScroll = () => {
+        tick = false;
+        const r = body.getBoundingClientRect();
+        const p = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - innerHeight * 0.6)));
+        bar?.style.setProperty("--p", p.toFixed(3));
+        if (tools) tools.classList.toggle("is-hidden", scrollY > lastY + 4 && scrollY > 300);
+        lastY = scrollY;
+      };
+      addEventListener("scroll", () => { if (!tick) { tick = true; requestAnimationFrame(onScroll); } }, { passive: true });
+      onScroll();
+      tools?.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        const url = location.href.split("#")[0];
+        if (b.hasAttribute("data-post-share")) {
+          if (navigator.share) navigator.share({ title: document.title, url }).catch(() => {});
+          else navigator.clipboard?.writeText(url).then(() => BX.toast("لینک مطلب کپی شد.", "ok"));
+        }
+        if (b.hasAttribute("data-post-copy")) navigator.clipboard?.writeText(url).then(() => BX.toast("لینک مطلب کپی شد.", "ok")).catch(() => BX.toast(url));
+        if (b.hasAttribute("data-post-top")) scrollTo({ top: 0, behavior: "smooth" });
+      });
     }
   }).catch(() => {});
 })();

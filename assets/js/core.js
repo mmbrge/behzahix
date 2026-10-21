@@ -102,6 +102,7 @@
     kanban: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7v7M12 7v4M16 7v9"/>',
     lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
+    share: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.2 10.8 7.6-3.6M8.2 13.2l7.6 3.6"/>',
     link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/>',
     send: '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z"/>',
@@ -862,6 +863,31 @@
   Object.assign(BX, { ICONS, icon, faDigits, enDigits, num, toman, date, ago, esc, qs, art, avatar, logoHtml, toast, modal, initReveal });
 
   // Pages that keep working during maintenance (so the admin can sign in)
+  // ---------------------------------------------------------------- Page guard
+  // Visitors cannot open the context menu, view-source, save-page or developer
+  // tools shortcuts (Settings → Security; never for admins). It is only a
+  // deterrent in the page: search engines get the same pages as before.
+  function initGuard() {
+    let on = true; // until the settings arrive
+    BX.ready.then(() => { on = BX.settings.guard !== false && BX.me?.role !== "admin"; }).catch(() => {});
+    const editable = (t) => t && t.closest && t.closest("input, textarea, select, [contenteditable='true']");
+    let told = 0;
+    const tell = () => { if (Date.now() - told > 4000) { told = Date.now(); toast("این بخش از سایت محافظت شده است.", "info"); } };
+    document.addEventListener("contextmenu", (e) => { if (on && !editable(e.target)) { e.preventDefault(); } });
+    document.addEventListener("keydown", (e) => {
+      if (!on) return;
+      const k = (e.key || "").toLowerCase();
+      const mod = e.ctrlKey || e.metaKey;
+      const block = e.key === "F12"
+        || (mod && (k === "u" || k === "s"))                                   // view source, save page
+        || (mod && e.shiftKey && ["i", "j", "c", "k"].includes(k))             // Chrome / Firefox dev tools
+        || (e.metaKey && e.altKey && ["i", "j", "c", "u"].includes(k));        // macOS
+      if (block) { e.preventDefault(); e.stopPropagation(); tell(); }
+    }, true);
+    document.addEventListener("dragstart", (e) => { if (on && e.target.tagName === "IMG") e.preventDefault(); });
+    try { console.log("%cتوقف!", "color:#ff7a1a;font-size:42px;font-weight:900", "\nاین بخش مخصوص توسعه‌دهندگان است. اگر کسی از شما خواسته چیزی اینجا بچسبانید، کلاهبرداری است."); } catch (e) { /* no console */ }
+  }
+
   // ---------------------------------------------------------------- Sideways rows
   // Tab and chip rows wider than their box scroll sideways everywhere: touch swipe
   // (native on phones), mouse drag with a little momentum, the mouse wheel and
@@ -1041,4 +1067,5 @@
   initCodeBg();
   initAnimPause();
   initHScroll();
+  initGuard();
 })();
