@@ -327,7 +327,7 @@ window.BX.ready.then(function () {
       <p class="muted">${user ? `با حساب <b>${esc(user.name)}</b> وارد شده‌اید.` : "با ثبت سفارش، حساب کاربری شما با همین شماره ساخته می‌شود تا سفارش را در پنل پیگیری کنید."}</p>
       <div class="form-grid form-grid-2 mt-3">
         <div class="field"><label class="field-label" for="c-name">نام و نام خانوادگی <span class="req">*</span></label><input class="input" id="c-name" data-contact="name" value="${esc(c.name)}" autocomplete="name"></div>
-        <div class="field"><label class="field-label" for="c-phone">شماره موبایل <span class="req">*</span></label><input class="input" id="c-phone" data-contact="phone" value="${esc(c.phone)}" dir="ltr" inputmode="tel" placeholder="09xxxxxxxxx" autocomplete="tel" ${user ? "readonly" : ""}></div>
+        <div class="field"><label class="field-label" for="c-phone">شماره موبایل <span class="req">*</span></label><input class="input" id="c-phone" data-contact="phone" value="${esc(c.phone)}" dir="ltr" type="tel" inputmode="tel" maxlength="16" placeholder="09xxxxxxxxx" autocomplete="tel">${user ? `<small class="field-hint">شماره حساب شما؛ اگر برای این سفارش شماره دیگری دارید، عوضش کنید.</small>` : ""}</div>
         <div class="field"><label class="field-label" for="c-email">ایمیل</label><input class="input" id="c-email" data-contact="email" value="${esc(c.email)}" dir="ltr" type="email" autocomplete="email"></div>
         <div class="field"><label class="field-label" for="c-biz">نام کسب‌وکار</label><input class="input" id="c-biz" data-contact="business" value="${esc(c.business)}" autocomplete="organization"></div>
         <div class="field span-2">
@@ -363,6 +363,13 @@ window.BX.ready.then(function () {
   const STEP_RENDER = [stepService, stepDetails, stepStyle, stepTime, stepContact, stepReview];
 
   // ---------------------------------------------------------------- Validation
+  // «۰۹۱۲ ۳۴۵ ۶۷۸۹»، «+98912…» or «912…» → 09123456789
+  function normPhone(v) {
+    let p = enDigits(String(v || "")).replace(/\D/g, "");
+    if (p.startsWith("0098")) p = p.slice(4); else if (p.startsWith("98") && p.length === 12) p = p.slice(2);
+    if (p.length === 10 && p[0] === "9") p = "0" + p;
+    return p;
+  }
   function validate(step) {
     const errors = [];
     if (step === 0 && !state.serviceId) errors.push(["service", "لطفاً یک خدمت انتخاب کنید."]);
@@ -376,7 +383,7 @@ window.BX.ready.then(function () {
     if (step === 3 && needsDelivery() && !state.delivery) errors.push(["delivery", "تاریخ و ساعت تحویل حضوری را انتخاب کنید."]);
     if (step === 4) {
       if (state.contact.name.trim().length < 3) errors.push(["c-name", "نام را کامل وارد کنید."]);
-      if (!/^09\d{9}$/.test(enDigits(state.contact.phone).trim())) errors.push(["c-phone", "شماره موبایل معتبر نیست (مثلاً ۰۹۱۲۱۲۳۴۵۶۷)."]);
+      if (!/^09\d{9}$/.test(normPhone(state.contact.phone))) errors.push(["c-phone", "شماره موبایل معتبر نیست (مثلاً ۰۹۱۲۱۲۳۴۵۶۷)."]);
     }
     if (step === 5 && !state.agree) errors.push(["agree", "لطفاً قوانین را بپذیرید."]);
     return errors;
@@ -717,7 +724,7 @@ window.BX.ready.then(function () {
       res = await BX.api("order.submit", {
         serviceId: state.serviceId, details: state.details, desc: state.desc,
         style: { ...state.style, files: undefined }, deadline: state.deadline, addons: state.addons,
-        budget: state.budget, coupon: coupon() ? state.coupon : "", delivery: needsDelivery() ? state.delivery : null, contact: { ...state.contact, phone: enDigits(state.contact.phone).trim() },
+        budget: state.budget, coupon: coupon() ? state.coupon : "", delivery: needsDelivery() ? state.delivery : null, contact: { ...state.contact, phone: normPhone(state.contact.phone) },
       });
     } catch (err) {
       submitting = false;

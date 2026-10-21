@@ -23,6 +23,13 @@ window.BX.ready.then(function () {
 
   const go = () => (location.href = next);
   const phoneOk = (p) => /^09\d{9}$/.test(p);
+  // «۰۹۱۲ ۳۴۵ ۶۷۸۹»، «+98912…» or «912…» → 09123456789
+  const normPhone = (v) => {
+    let p = enDigits(String(v || "")).replace(/\D/g, "");
+    if (p.startsWith("0098")) p = p.slice(4); else if (p.startsWith("98") && p.length === 12) p = p.slice(2);
+    if (p.length === 10 && p[0] === "9") p = "0" + p;
+    return p;
+  };
 
   function shell(inner) {
     box.innerHTML = `
@@ -38,7 +45,7 @@ window.BX.ready.then(function () {
     shell(`
       <form class="form-grid" data-form="login" novalidate>
         <div><h2 class="h2-xs">خوش برگشتید 👋</h2><p class="muted small mt-1">با شماره موبایل وارد شوید.</p></div>
-        <div class="field"><label class="field-label" for="l-phone">شماره موبایل</label><input class="input" id="l-phone" name="phone" dir="ltr" inputmode="tel" placeholder="09xxxxxxxxx" autocomplete="tel" required></div>
+        <div class="field"><label class="field-label" for="l-phone">شماره موبایل</label><input class="input" id="l-phone" name="phone" dir="ltr" type="tel" inputmode="tel" maxlength="16" placeholder="09xxxxxxxxx" autocomplete="tel" required></div>
         <div class="field"><label class="field-label" for="l-pass">رمز عبور</label><input class="input" id="l-pass" name="password" type="password" dir="ltr" autocomplete="current-password" required></div>
         ${smsOn || demo.length ? `<div class="row-between small"><span></span><button type="button" class="brand" data-otp-login>ورود با کد یکبار مصرف</button></div>` : ""}
         <button class="btn btn-primary btn-block" type="submit">${icon("lock")} ورود</button>
@@ -67,7 +74,7 @@ window.BX.ready.then(function () {
         </div>
         <div class="form-grid form-grid-2">
           <div class="field"><label class="field-label" for="r-name">نام و نام خانوادگی <span class="req">*</span></label><input class="input" id="r-name" name="name" autocomplete="name"></div>
-          <div class="field"><label class="field-label" for="r-phone">شماره موبایل <span class="req">*</span></label><input class="input" id="r-phone" name="phone" dir="ltr" inputmode="tel" placeholder="09xxxxxxxxx" autocomplete="tel"></div>
+          <div class="field"><label class="field-label" for="r-phone">شماره موبایل <span class="req">*</span></label><input class="input" id="r-phone" name="phone" dir="ltr" type="tel" inputmode="tel" maxlength="16" placeholder="09xxxxxxxxx" autocomplete="tel"></div>
         </div>
         <div class="field"><label class="field-label" for="r-pass">رمز عبور <span class="req">*</span></label><input class="input" id="r-pass" name="password" type="password" dir="ltr" autocomplete="new-password" placeholder="حداقل ۶ کاراکتر"></div>
         ${extra}
@@ -165,7 +172,7 @@ window.BX.ready.then(function () {
     }
     if (e.target.closest("[data-otp-login]")) {
       const phoneEl = box.querySelector("#l-phone");
-      const phone = enDigits(phoneEl.value).trim();
+      const phone = normPhone(phoneEl.value);
       if (!phoneOk(phone)) return invalid([phoneEl], "ابتدا شماره موبایل معتبر وارد کنید.");
       try {
         const r = await api("auth.otp.send", { phone, purpose: "login" });
@@ -201,7 +208,7 @@ window.BX.ready.then(function () {
       e.preventDefault();
       busy(f, true);
       try {
-        const r = await api("auth.login", { phone: enDigits(f.elements.phone.value), password: f.elements.password.value });
+        const r = await api("auth.login", { phone: normPhone(f.elements.phone.value), password: f.elements.password.value });
         if (r.need2fa) { busy(f, false); return twoStep(r.message); }
         toast(`خوش آمدید ${r.me.name}`, "ok");
         setTimeout(go, 300);
@@ -213,7 +220,7 @@ window.BX.ready.then(function () {
     if (f.dataset.form === "register") {
       e.preventDefault();
       const el = f.elements;
-      const phone = enDigits(el.phone.value).trim();
+      const phone = normPhone(el.phone.value);
       const bad = [];
       if (el.name.value.trim().length < 3) bad.push(el.name);
       if (!phoneOk(phone)) bad.push(el.phone);

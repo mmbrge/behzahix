@@ -63,7 +63,7 @@ function default_settings(): array
             // Staged payment: orders at or above stagedMin can start with a deposit
             'stagedEnabled' => true, 'stagedMin' => 5000000, 'stagedPercent' => 50,
         ],
-        'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس'],
+        'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس', 'testOpen' => false],
         'sms' => ['driver' => 'none', 'apiKey' => '', 'template' => 'verify', 'templateId' => '', 'paramName' => 'CODE', 'adminPhone' => ''],
         // Event SMS: per event on/off and the provider template name (Kavenegar) or id (SMS.ir)
         'sms_events' => array_fill_keys(['order_new', 'order_quote', 'order_paid', 'order_review', 'order_due', 'order_done', 'shop_paid', 'cart_reminder', 'ticket_reply', 'referral_reward', 'designer_assigned', 'revision_requested', 'product_sold', 'payout_paid', 'admin_new_order', 'admin_support', 'delivery_booked', 'delivery_reminder', 'admin_login'], ['on' => false, 'template' => '']),

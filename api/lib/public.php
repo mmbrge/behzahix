@@ -157,6 +157,7 @@ function r_order_submit(): void
         if (!setting('orders', 'guestOrders')) fail('برای ثبت سفارش ابتدا وارد شوید.', 401, 'auth');
         $phone = (function ($p) {
             $p = preg_replace('/\D/', '', en_digits((string) $p));
+            if (strpos($p, '0098') === 0) $p = substr($p, 4); elseif (strpos($p, '98') === 0 && strlen($p) === 12) $p = substr($p, 2);
             if (strlen($p) === 10 && $p[0] === '9') $p = '0' . $p;
             if (!preg_match('/^09\d{9}$/', $p)) fail('شماره موبایل معتبر نیست.', 422);
             return $p;
@@ -172,6 +173,11 @@ function r_order_submit(): void
         $created = $temp;
     }
 
+    // contact number for this order (defaults to the account's number)
+    $cp = preg_replace('/\D/', '', en_digits((string) ($contact['phone'] ?? '')));
+    if (strpos($cp, '98') === 0 && strlen($cp) === 12) $cp = '0' . substr($cp, 2);
+    if (strlen($cp) === 10 && $cp[0] === '9') $cp = '0' . $cp;
+    $contactPhone = preg_match('/^09\d{9}$/', $cp) ? $cp : $u['phone'];
     $est = estimate($svc, $details, $deadline, $addons);
     $coupon = coupon_valid(str_in('coupon', 32));
     if ($coupon && $coupon['owner_id'] !== null) $coupon = null;
@@ -197,7 +203,7 @@ function r_order_submit(): void
                 'code' => $code, 'user_id' => $u['id'], 'service_id' => $svc['id'], 'title' => $svc['title'] . ($business ? " — $business" : ''),
                 'status' => 'new', 'estimate' => $est['total'] - $discount, 'discount' => $discount, 'deadline' => $deadline, 'addons' => jenc($addons),
                 'budget' => mb_substr(str_in('budget', 120), 0, 120), 'details' => jenc($details), 'descr' => str_in('desc', 5000), 'style' => jenc($cleanStyle),
-                'contact' => jenc(['name' => $name, 'phone' => $u['phone'], 'email' => mb_substr((string) ($contact['email'] ?? ''), 0, 190), 'business' => $business,
+                'contact' => jenc(['name' => $name, 'phone' => $contactPhone, 'email' => mb_substr((string) ($contact['email'] ?? ''), 0, 190), 'business' => $business,
                     'way' => in_array($contact['way'] ?? '', ['phone', 'telegram', 'whatsapp', 'panel'], true) ? $contact['way'] : 'phone']),
                 'coupon' => $coupon ? $coupon['code'] : null, 'paid' => 0, 'applicants' => '[]', 'created_at' => now(),
             ]);

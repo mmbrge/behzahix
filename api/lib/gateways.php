@@ -220,13 +220,20 @@ function bnpl_verify(array $pay): array
 // ------------------------------------------------------------------ payments
 // Creates a pending payment and returns the URL the browser should open.
 // $method: '' or 'gateway' = the site's bank gateway; or an installment provider id.
+// The test gateway approves payments without money: only in demo mode, for
+// admins (to try the whole flow), or while the owner explicitly opened it for testing.
+function test_pay_allowed(int $userId): bool
+{
+    if (!empty(setting('general', 'demoMode')) || !empty(setting('payment', 'testOpen'))) return true;
+    return val('SELECT role FROM users WHERE id = ?', [$userId]) === 'admin';
+}
 function payment_start(int $userId, string $purpose, array $ref, int $amount, string $description, string $method = ''): string
 {
     $p = setting('payment');
     $driver = $p['driver'];
     if ($amount < 1000) fail('مبلغ پرداخت معتبر نیست.', 422);
     // The test gateway approves anything — never allow it on a live site
-    if ($driver === 'test' && empty(setting('general', 'demoMode'))) fail('درگاه پرداخت هنوز تنظیم نشده است؛ لطفاً بعداً تلاش کنید.', 503);
+    if ($driver === 'test' && !test_pay_allowed($userId)) fail('پرداخت آنلاین هنوز راه‌اندازی نشده است؛ لطفاً کمی بعد دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.', 503, 'no_gateway');
     if (isset(BNPL_PROVIDERS[$method])) {
         if ($purpose === 'charge') fail('شارژ کیف پول با پرداخت اقساطی ممکن نیست.', 422);
         if (!in_array($method, bnpl_available($amount), true)) fail('این روش پرداخت برای این مبلغ در دسترس نیست.', 422);
@@ -263,8 +270,8 @@ function payment_start(int $userId, string $purpose, array $ref, int $amount, st
         update('payments', ['authority' => (string) $r['trackId']], 'id = ?', [$id]);
         return 'https://gateway.zibal.ir/start/' . $r['trackId'];
     }
-    // Test driver: completes without real money, so it only works while demo mode is on.
-    if (!setting('general', 'demoMode')) fail('درگاه پرداخت هنوز تنظیم نشده است. لطفاً با پشتیبانی تماس بگیرید.', 503);
+    // Test driver: completes without real money (see test_pay_allowed)
+    if (!test_pay_allowed($userId)) fail('پرداخت آنلاین هنوز راه‌اندازی نشده است؛ لطفاً با پشتیبانی تماس بگیرید.', 503, 'no_gateway');
     $auth = 'TEST-' . bin2hex(random_bytes(6));
     update('payments', ['authority' => $auth], 'id = ?', [$id]);
     return $callback . '&Authority=' . $auth . '&Status=OK';
@@ -306,7 +313,7 @@ function payment_callback(): void
     } elseif (isset(BNPL_PROVIDERS[$pay['driver']])) {
         try { [$ok, $refId] = bnpl_verify($pay); } catch (Throwable $e) { $ok = false; }
     } elseif ($pay['driver'] === 'test') {
-        $ok = !empty(setting('general', 'demoMode')) && ($_GET['Status'] ?? '') === 'OK' && hash_equals((string) $pay['authority'], (string) ($_GET['Authority'] ?? ''));
+        $ok = test_pay_allowed((int) $pay['user_id']) && ($_GET['Status'] ?? '') === 'OK' && hash_equals((string) $pay['authority'], (string) ($_GET['Authority'] ?? ''));
         $refId = 'TEST';
     }
     if (!$ok) {
