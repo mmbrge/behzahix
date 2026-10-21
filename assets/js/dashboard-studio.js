@@ -66,7 +66,20 @@
     const total = Object.values(r.byKind).reduce((s, x) => s + x.total, 0);
     const n = Object.values(r.byKind).reduce((s, x) => s + x.n, 0);
     const activePages = r.pages.filter((p) => p.active).length;
-    const tabsHtml = `<div class="tabs-row">${[["", "فروش", "chart"], ["pages", "صفحه‌ها", "globe"], ["docs", "قالب‌های سند", "book"]].map(([id, l, ic]) => `<a class="tab-link ${id === (param || "") ? "is-active" : ""}" href="#studio${id ? `/${id}` : ""}">${icon(ic)}${l}</a>`).join("")}<a class="tab-link" href="#settings/studio">${icon("settings")}قیمت‌ها</a><a class="tab-link" href="studio.html" target="_blank">${icon("external")}مشاهده استودیو</a></div>`;
+    const tabsHtml = `<div class="tabs-row">${[["", "فروش", "chart"], ["pages", "صفحه‌ها", "globe"], ["docs", "قالب‌های سند", "book"], ["check", "بررسی سلامت", "shield"]].map(([id, l, ic]) => `<a class="tab-link ${id === (param || "") ? "is-active" : ""}" href="#studio${id ? `/${id}` : ""}">${icon(ic)}${l}</a>`).join("")}<a class="tab-link" href="#settings/studio">${icon("settings")}قیمت‌ها</a><a class="tab-link" href="studio.html" target="_blank">${icon("external")}مشاهده استودیو</a></div>`;
+    if (param === "check") {
+      el.innerHTML = tabsHtml + `<div class="card skeleton" style="height:320px"></div>`;
+      let c;
+      try { c = await BX.api("a.studio.check"); } catch (e) { el.innerHTML = tabsHtml + box("بررسی سلامت", "shield", `<p class="bad">${esc(e.message)}</p>`); return; }
+      const row = (x, showOk) => `<li class="hc-row ${x.ok ? "is-ok" : "is-bad"}">${icon(x.ok ? "check-circle" : "x-circle")}<span><b>${esc(x.label)}</b>${!x.ok || showOk ? `<small>${esc(x.note)}</small>` : ""}</span></li>`;
+      const bad = [...c.env, ...c.tools].filter((x) => !x.ok).length;
+      el.innerHTML = tabsHtml + `<div class="dash-grid dash-grid-2">
+        ${box("ابزارهای استودیو (ساخت آزمایشی)", "sparkles", `<ul class="hc-list">${c.tools.map((x) => row(x, true)).join("")}</ul>`)}
+        ${box("سرور و هاست", "server", `<ul class="hc-list">${c.env.map((x) => row(x, false)).join("")}</ul>`)}
+      </div>
+      <p class="muted small mt-2">${bad ? `${icon("info")} ${faDigits(bad)} مورد مشکل دارد؛ راه‌حل کنار هر مورد نوشته شده. موارد هاست را از «Select PHP Version» در cPanel یا پشتیبانی هاست درخواست کنید.` : `${icon("check")} همه‌چیز سالم است.`} <button class="btn btn-ghost btn-xs" data-act="studio-recheck">${icon("refresh")} بررسی دوباره</button></p>`;
+      return;
+    }
     if (param === "pages") {
       el.innerHTML = tabsHtml + box("صفحه‌های میزبانی‌شده", "globe", table(["صفحه", "نوع", "صاحب", "بازدید", "وضعیت", ""], r.pages.map((p) => `<tr>
         <td><a class="brand" dir="ltr" href="${esc(p.url)}" target="_blank" rel="noopener">/c/${esc(p.slug)}</a><br><small class="muted">${esc(p.title)}</small></td><td>${esc(p.kindTitle)}</td><td>${esc(p.user)}</td><td>${faDigits(p.views)}</td>
@@ -115,6 +128,7 @@
   BXD.afterRender = (view, id, param) => { if (prevAfter) prevAfter(view, id, param); if (view.querySelector("[data-studio-panel]")) load(); };
   Object.assign(BXD.acts, {
     "studio-dl": (b) => dlModal(b.dataset.id),
+    "studio-recheck": () => load(),
     "studio-copy": (b) => BX.api("a.studio.copy", { id: b.dataset.id }).then((r) => { location.href = `studio.html#${ROUTE[r.kind]}/${r.id}`; }).catch((e) => BX.toast(e.message, "bad")),
     "studio-del": (b) => BXD.ui.confirmBox("حذف پیش‌نویس", "این طرح حذف می‌شود.", () => BX.api("a.studio.delete", { id: b.dataset.id }).then(load), "حذف"),
     "page-del": (b) => BXD.ui.confirmBox("حذف صفحه", "صفحه و آدرسش برای همیشه حذف می‌شود.", () => BX.api("a.page.delete", { id: b.dataset.id }).then(load), "حذف"),

@@ -15,12 +15,34 @@ require __DIR__ . '/lib/studio.php';
 require __DIR__ . '/lib/studio_render.php';
 require __DIR__ . '/lib/pro.php';
 
+// A readable reason for host problems (limits, missing PHP extensions)
+function bx_error_reason(string $m): string
+{
+    if (stripos($m, 'Allowed memory') !== false) return 'حافظه هاست کافی نیست (memory_limit را حداقل 256M کنید).';
+    if (stripos($m, 'Maximum execution time') !== false) return 'زمان اجرای هاست کافی نیست (max_execution_time را حداقل 60 کنید).';
+    if (stripos($m, 'undefined function') !== false) return 'یکی از افزونه‌های PHP روی هاست نصب نیست (' . preg_replace('/^.*undefined function ([^\s(]+).*$/s', '$1', $m) . ')؛ از پشتیبانی هاست بخواهید فعالش کنند.';
+    if (stripos($m, 'not found') !== false && stripos($m, 'Class') !== false) return 'یکی از افزونه‌های PHP روی هاست نصب نیست (' . preg_replace('/^.*Class "?([^"\s]+)"? not found.*$/s', '$1', $m) . ').';
+    return 'خطای سرور رخ داد؛ دوباره تلاش کنید.';
+}
 set_exception_handler(function (Throwable $e) {
     error_log('[BEHIX] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     if (db_in_tx()) db()->rollBack();
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['error' => 'server', 'message' => 'خطای سرور رخ داد؛ دوباره تلاش کنید.'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['error' => 'server', 'message' => bx_error_reason($e->getMessage())], JSON_UNESCAPED_UNICODE);
+});
+// Fatal errors (memory or time limit, missing PHP extension…) cannot be caught above;
+// answer JSON anyway so the page shows a clear message instead of a broken response.
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if (!$e || !in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) return;
+    error_log('[BEHIX] fatal: ' . $e['message'] . ' @ ' . $e['file'] . ':' . $e['line']);
+    if (headers_sent()) return;
+    while (ob_get_level()) ob_end_clean();
+    $why = bx_error_reason($e['message']);
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'server', 'message' => $why], JSON_UNESCAPED_UNICODE);
 });
 function db_in_tx(): bool
 {

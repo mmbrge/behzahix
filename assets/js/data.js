@@ -48,7 +48,12 @@
       throw new ApiError("اتصال به سرور برقرار نشد؛ اینترنت خود را بررسی کنید.", "network", 0);
     }
     let json = null;
-    try { json = await res.json(); } catch (e) { /* non-JSON error page */ }
+    const text = await res.text().catch(() => "");
+    try { json = JSON.parse(text); } catch (e) {
+      // a PHP notice printed before the JSON: use the JSON part
+      const at = text.indexOf('{"');
+      if (at > 0) { try { json = JSON.parse(text.slice(at)); } catch (e2) { /* non-JSON error page */ } }
+    }
     if (res.status === 419 && !retried) {
       await boot(true);
       return call(route, data, files, true);

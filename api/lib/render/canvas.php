@@ -42,7 +42,7 @@ function bx_grad(float $x1, float $y1, float $x2, float $y2, $c1, $c2): array { 
 // reference server files, so a crafted request cannot pull private uploads.
 function bx_image_load(?string $src)
 {
-    if (!$src || !is_string($src) || !str_starts_with($src, 'data:image/')) return null;
+    if (!$src || !is_string($src) || strncmp($src, 'data:image/', 11) !== 0) return null;
     $p = strpos($src, ',');
     if ($p === false || strlen($src) > 6 * 1024 * 1024) return null;
     $bin = base64_decode(substr($src, $p + 1), true);
@@ -99,12 +99,7 @@ final class BxCanvas
     public function qr(string $text, float $x, float $y, float $size, $color = '#000000', $bg = null): self
     {
         if ($text === '') return $this;
-        try {
-            $q = \BaconQrCode\Encoder\Encoder::encode($text, \BaconQrCode\Common\ErrorCorrectionLevel::M(), 'UTF-8');
-        } catch (Throwable $e) { return $this; }
-        $m = $q->getMatrix(); $n = $m->getWidth();
-        $grid = [];
-        for ($j = 0; $j < $n; $j++) for ($i = 0; $i < $n; $i++) $grid[$j][$i] = $m->get($i, $j) === 1;
+        try { $grid = qr_matrix($text); } catch (Throwable $e) { return $this; }
         if ($bg !== null) $this->rect($x - $size * 0.06, $y - $size * 0.06, $size * 1.12, $size * 1.12, $bg, $size * 0.06);
         return $this->op(['qr', $x, $y, $size, $grid, bx_rgba($color)]);
     }

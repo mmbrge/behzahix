@@ -148,3 +148,4 @@ button.st-doc { font: inherit; border: 1px solid var(--line); cursor: pointer; }
   .st-top .btn { padding: 8px 12px; }
   .hide-sm { display: none; }
 }
+.st-card.is-off { opacity: .62; }

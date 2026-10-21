@@ -33,6 +33,10 @@ $d = $p ? (jdec($p['data'], []) ?: []) : [];
 $img = function ($id) use ($base) { return $id ? $base . '/api/index.php?r=file&id=' . rawurlencode((string) $id) : ''; };
 $color = preg_match('/^#[0-9a-f]{6}$/i', (string) ($d['color'] ?? '')) ? $d['color'] : '#ff7a1a';
 $dark = !empty($d['dark']);
+// menu design (theme) picked in the studio
+$theme = in_array($d['theme'] ?? '', ['modern', 'grid', 'classic', 'dark', 'fresh'], true) ? $d['theme'] : 'modern';
+if ($theme === 'dark') $dark = true;
+if ($theme === 'classic') $dark = false;
 
 // ---- vCard download
 if ($p && $active && !$preview && $p['kind'] === 'card' && isset($_GET['vcf'])) {
@@ -119,32 +123,112 @@ a { color: inherit; text-decoration: none; }
 .save { display: flex; gap: 8px; margin-top: 16px; }
 .save a, .save button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: 18px; border: 0; font: inherit; font-weight: 800; cursor: pointer; background: var(--c); color: #fff; }
 .save button { background: var(--card); color: var(--fg); border: 1px solid var(--line); flex: 0 0 auto; padding: 14px 18px; }
-/* menu */
-.mhead { padding: 26px 0 14px; text-align: center; }
-.mlogo { width: 84px; height: 84px; border-radius: 24px; margin: 0 auto 10px; background: var(--c) center/cover; display: grid; place-items: center; color: #fff; font-size: 2rem; font-weight: 900; box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--c) 70%, transparent); }
-.mhead h1 { font-size: 1.5rem; font-weight: 900; }
-.mhead p { color: var(--mut); font-size: .85rem; }
-.minfo { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: .78rem; color: var(--mut); margin-top: 8px; }
-.minfo span, .minfo a { display: inline-flex; align-items: center; gap: 4px; }
+/* menu — five designs: modern, grid (photo gallery), classic (printed café menu), dark (luxury), fresh (playful) */
+.t-classic { --bg: #f6efe2; --card: #fffaf0; --fg: #3a2a1a; --mut: #85705a; --line: rgb(90 60 30 / .14); }
+.t-dark { --bg: #0c0a07; --card: #16130e; --fg: #f6efe4; --mut: #a99d8a; --line: rgb(255 230 190 / .1); }
+.t-fresh { --bg: color-mix(in srgb, var(--c) 7%, <?= $dark ? '#0b0c10' : '#ffffff' ?>); }
+.mwrap { max-width: 640px; margin: 0 auto; padding: 0 16px 90px; }
+.mhero { position: relative; margin: 0 -16px; }
+.mcover { height: 210px; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 45%, #000)) center/cover; position: relative; }
+.mcover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .05), rgb(0 0 0 / .45)); }
+.mbrand { position: relative; margin: -64px 16px 0; padding: 62px 18px 18px; border-radius: 26px; background: var(--card); text-align: center; box-shadow: 0 24px 60px -30px rgb(0 0 0 / .45); border: 1px solid var(--line); }
+.mlogo { position: absolute; top: -50px; left: 50%; translate: -50% 0; width: 100px; height: 100px; border-radius: 30px; border: 5px solid var(--card); background: var(--c) center/cover; display: grid; place-items: center; color: #fff; font-size: 2.3rem; font-weight: 900; box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--c) 80%, transparent); }
+.mbrand h1 { font-size: 1.55rem; font-weight: 900; line-height: 1.6; }
+.mbrand > p { color: var(--mut); font-size: .88rem; }
+.minfo { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: .78rem; color: var(--mut); margin-top: 10px; }
+.minfo span { display: inline-flex; align-items: center; gap: 4px; }
 .minfo .i { width: 15px; height: 15px; color: var(--c); }
-.tabs { position: sticky; top: 0; z-index: 3; display: flex; gap: 6px; overflow-x: auto; padding: 10px 0; background: var(--bg); scrollbar-width: none; }
-.tabs a { flex-shrink: 0; padding: 7px 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: .82rem; font-weight: 700; }
-.tabs a.on { background: var(--c); color: #fff; border-color: var(--c); }
-.msearch { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); margin-bottom: 6px; }
-.msearch input { flex: 1; border: 0; background: none; font: inherit; color: var(--fg); outline: none; }
-.cat { padding-top: 14px; scroll-margin-top: 60px; }
-.cat h2 { font-size: 1.1rem; font-weight: 900; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-.cat h2::before { content: ""; width: 6px; height: 20px; border-radius: 3px; background: var(--c); }
-.item { display: flex; gap: 12px; padding: 12px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); margin-bottom: 8px; }
+.mquick { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+.mquick a { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 14px; background: color-mix(in srgb, var(--c) 13%, transparent); color: var(--c); font-size: .8rem; font-weight: 800; }
+.mquick .i { width: 17px; height: 17px; }
+.tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; overflow-x: auto; margin: 14px -16px 0; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: .82rem; font-weight: 700; transition: background .25s, color .25s, transform .25s; }
+.tabs a.on { background: var(--c); color: #fff; border-color: var(--c); transform: translateY(-1px); box-shadow: 0 8px 18px -10px var(--c); }
+.msearch { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); margin: 6px 0 4px; }
+.msearch .i { color: var(--mut); }
+.msearch input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; color: var(--fg); outline: none; }
+.mfeat { margin-top: 14px; }
+.mfeat h2, .cat h2 { font-size: 1.1rem; font-weight: 900; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.cat h2::before, .mfeat h2::before { content: ""; width: 6px; height: 20px; border-radius: 3px; background: var(--c); }
+.cat h2 .em { font-size: 1.25rem; }
+.cat h2 small { margin-inline-start: auto; color: var(--mut); font-size: .72rem; font-weight: 600; }
+.frow { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 8px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.frow::-webkit-scrollbar { display: none; }
+.fitem { flex: 0 0 150px; scroll-snap-align: start; border-radius: 20px; overflow: hidden; background: var(--card); border: 1px solid var(--line); cursor: pointer; text-align: right; font: inherit; color: inherit; padding: 0; }
+.fitem .ph { display: grid; place-items: center; font-size: 2.4rem; height: 110px; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 50%, #000)) center/cover; }
+.fitem span.t { display: block; padding: 8px 10px 0; font-size: .82rem; font-weight: 800; }
+.fitem span.p { display: block; padding: 0 10px 10px; color: var(--c); font-size: .8rem; font-weight: 900; }
+.cat { padding-top: 16px; scroll-margin-top: 66px; }
+.item { display: flex; gap: 12px; width: 100%; padding: 12px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); margin-bottom: 9px; text-align: right; font: inherit; color: inherit; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+.item:active { transform: scale(.985); }
 .item.off { opacity: .45; }
-.item .ph { width: 76px; height: 76px; border-radius: 14px; background: var(--line) center/cover; flex-shrink: 0; }
-.item .b { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.item b { font-size: .95rem; }
-.item p { color: var(--mut); font-size: .78rem; line-height: 1.7; }
-.item .pr { margin-top: auto; color: var(--c); font-weight: 900; font-size: .95rem; }
-.item .pr small { font-weight: 500; color: var(--mut); font-size: .72rem; }
-.badge { display: inline-block; font-size: .65rem; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--c); margin-right: 4px; vertical-align: 2px; }
-.off-note { color: #dc2626; font-size: .72rem; font-weight: 700; }
+.item .ph { width: 84px; height: 84px; border-radius: 16px; background: var(--line) center/cover; flex-shrink: 0; }
+.item .b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.item b { font-size: .96rem; font-weight: 800; }
+.item .d { display: -webkit-box; color: var(--mut); font-size: .78rem; line-height: 1.75; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.item .pr { margin-top: auto; align-self: flex-start; padding: 3px 12px; border-radius: 999px; background: color-mix(in srgb, var(--c) 12%, transparent); color: var(--c); font-weight: 900; font-size: .9rem; }
+.pr small { font-weight: 500; opacity: .8; font-size: .7rem; }
+.badge { display: inline-block; font-size: .64rem; padding: 1px 8px; border-radius: 999px; background: var(--c); color: #fff; margin-inline-start: 6px; vertical-align: 2px; font-weight: 700; }
+.off-note { color: #dc2626; font-size: .72rem; font-weight: 800; }
+/* grid: photo gallery */
+.t-grid .citems { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.t-grid .item { flex-direction: column; gap: 0; padding: 0; overflow: hidden; margin: 0; }
+.t-grid .item .ph { width: 100%; height: auto; aspect-ratio: 1; border-radius: 0; }
+.t-grid .item .ph.none { background: linear-gradient(135deg, color-mix(in srgb, var(--c) 30%, var(--card)), var(--card)); display: grid; place-items: center; font-size: 2rem; }
+.t-grid .item .b { padding: 10px 12px 12px; }
+.t-grid .item b { font-size: .88rem; }
+.t-grid .item .d { -webkit-line-clamp: 1; }
+.t-grid .item .pr { margin-top: 6px; }
+/* classic: printed café menu with dotted leaders */
+.t-classic .mcover { height: 150px; }
+.t-classic .mbrand { border-radius: 4px; border: 1px solid var(--line); box-shadow: 0 0 0 6px var(--card), 0 0 0 7px var(--line); }
+.t-classic .mlogo { border-radius: 50%; }
+.t-classic .mbrand h1 { letter-spacing: .5px; }
+.t-classic .cat h2 { justify-content: center; font-size: 1.15rem; margin: 10px 0 12px; }
+.t-classic .cat h2::before, .t-classic .cat h2::after { content: ""; flex: 1; max-width: 70px; height: 1px; border-radius: 0; background: linear-gradient(to left, var(--c), transparent); }
+.t-classic .cat h2::after { background: linear-gradient(to right, var(--c), transparent); }
+.t-classic .cat h2 small { display: none; }
+.t-classic .citems { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 16px; }
+.t-classic .item { background: none; border: 0; border-bottom: 1px dashed var(--line); border-radius: 0; padding: 12px 0; margin: 0; }
+.t-classic .item:last-child { border-bottom: 0; }
+.t-classic .item .ph { width: 56px; height: 56px; border-radius: 50%; }
+.t-classic .item .b { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; column-gap: 8px; }
+.t-classic .item .b::after { content: ""; grid-row: 1; grid-column: 2; border-bottom: 2px dotted var(--line); transform: translateY(-4px); }
+.t-classic .item b { grid-column: 1; }
+.t-classic .item .pr { grid-column: 3; grid-row: 1; background: none; padding: 0; color: var(--fg); }
+.t-classic .item .d { grid-column: 1 / -1; grid-row: 2; }
+/* dark: luxury */
+.t-dark .mcover::after { background: linear-gradient(to bottom, rgb(0 0 0 / .2), var(--bg)); }
+.t-dark .mbrand { background: linear-gradient(160deg, color-mix(in srgb, var(--c) 12%, var(--card)), var(--card)); border-color: color-mix(in srgb, var(--c) 30%, transparent); }
+.t-dark .mbrand h1 { background: linear-gradient(90deg, var(--fg), var(--c)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.t-dark .item { background: linear-gradient(135deg, rgb(255 255 255 / .03), transparent), var(--card); }
+.t-dark .item .pr { background: none; padding: 0; color: var(--c); font-size: 1rem; }
+.t-dark .badge { background: none; color: var(--c); border: 1px solid var(--c); }
+/* fresh: playful */
+.t-fresh .mcover { height: 180px; border-radius: 0 0 40px 40px; }
+.t-fresh .mbrand { border-radius: 32px; }
+.t-fresh .mlogo { border-radius: 50%; }
+.t-fresh .cat h2 { padding: 10px 14px; border-radius: 18px; background: color-mix(in srgb, var(--c) 14%, var(--card)); }
+.t-fresh .cat h2::before { display: none; }
+.t-fresh .item { border-radius: 26px; border: 0; box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--c) 70%, #000); }
+.t-fresh .item .ph { border-radius: 50%; }
+.t-fresh .item .pr { background: var(--c); color: #fff; }
+/* item sheet and back-to-top */
+.sheet { position: fixed; inset: 0; z-index: 20; display: grid; align-items: end; background: rgb(0 0 0 / .5); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.sheet.on { opacity: 1; pointer-events: auto; }
+.sheet > div { max-width: 640px; width: 100%; margin: 0 auto; background: var(--card); border-radius: 28px 28px 0 0; padding: 0 0 26px; transform: translateY(40px); transition: transform .3s cubic-bezier(.2,.9,.3,1.2); max-height: 88vh; overflow: auto; }
+.sheet.on > div { transform: none; }
+.sheet .sph { height: 260px; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 45%, #000)) center/cover; border-radius: 28px 28px 0 0; }
+.sheet .sph.none { height: 18px; background: none; }
+.sheet .sb { padding: 18px 20px 0; }
+.sheet h3 { font-size: 1.3rem; font-weight: 900; }
+.sheet p { color: var(--mut); margin-top: 6px; white-space: pre-line; }
+.sheet .pr { display: inline-block; margin-top: 14px; padding: 6px 16px; border-radius: 999px; background: var(--c); color: #fff; font-weight: 900; }
+.sheet .x { position: absolute; margin: 12px; width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgb(0 0 0 / .45); color: #fff; font-size: 1.2rem; cursor: pointer; }
+.totop { position: fixed; left: 16px; bottom: 18px; z-index: 6; width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--c); color: #fff; font-size: 1.2rem; box-shadow: 0 12px 26px -10px var(--c); opacity: 0; transform: translateY(12px); transition: .3s; cursor: pointer; }
+.totop.on { opacity: 1; transform: none; }
+.mempty { text-align: center; color: var(--mut); padding: 30px 0; display: none; }
 /* inactive */
 .na { min-height: 80vh; display: grid; place-items: center; text-align: center; padding: 30px; }
 .na h1 { font-size: 1.3rem; margin-bottom: 8px; }
@@ -152,7 +236,7 @@ a { color: inherit; text-decoration: none; }
 .na a { display: inline-block; margin-top: 16px; padding: 10px 20px; border-radius: 999px; background: var(--c); color: #fff; font-weight: 700; }
 </style>
 </head>
-<body>
+<body class="<?= $p && $p['kind'] === 'menu' ? 't-' . $h($theme) : '' ?>">
 <?php if (!$p || !$active): ?>
 <div class="na"><div><h1><?= $p ? 'این صفحه موقتاً غیرفعال است' : 'صفحه پیدا نشد' ?></h1><p><?= $p ? 'اشتراک این صفحه به پایان رسیده است.' : 'آدرس را بررسی کنید.' ?></p><a href="<?= $h($base) ?>/studio.html">ساخت صفحه اختصاصی در <?= $h($site) ?></a></div></div>
 <?php elseif ($p['kind'] === 'card'):
@@ -189,38 +273,68 @@ a { color: inherit; text-decoration: none; }
 </div>
 <?php else:
     $cats = array_values(array_filter((array) ($d['cats'] ?? []), function ($c) { return !empty($c['title']); }));
+    $unit = $h($d['unit'] ?? 'تومان');
+    $price = function ($it) use ($fa, $unit) { return (string) ($it['price'] ?? '') !== '' ? $fa($it['price']) . ' <small>' . $unit . '</small>' : ''; };
+    $feat = [];
+    foreach ($cats as $c) foreach ((array) ($c['items'] ?? []) as $it) if (!empty($it['name']) && !empty($it['tag']) && empty($it['off'])) $feat[] = $it + ['_icon' => $c['icon'] ?? ''];
+    $attrs = function ($it) use ($h, $img, $fa, $d) {
+        return 'data-n="' . $h(mb_strtolower($it['name'] . ' ' . ($it['desc'] ?? ''))) . '" data-name="' . $h($it['name']) . '" data-desc="' . $h($it['desc'] ?? '') . '" data-tag="' . $h($it['tag'] ?? '')
+            . '" data-price="' . $h((string) ($it['price'] ?? '') !== '' ? $fa($it['price']) . ' ' . ($d['unit'] ?? 'تومان') : '') . '" data-img="' . $h(!empty($it['img']) ? $img($it['img']) : '') . '"';
+    };
+    $mapUrl = !empty($d['map']) ? $safeUrl($d['map']) : (!empty($d['address']) ? 'https://www.google.com/maps/search/' . rawurlencode((string) $d['address']) : '');
 ?>
-<div class="wrap">
-  <header class="mhead">
-    <div class="mlogo" <?= !empty($d['logo']) ? 'style="background-image:url(\'' . $h($img($d['logo'])) . '\')"' : '' ?>><?= empty($d['logo']) ? $h(mb_substr((string) ($d['name'] ?? ''), 0, 1)) : '' ?></div>
-    <h1><?= $h($d['name'] ?? '') ?></h1>
-    <?php if (!empty($d['intro'])): ?><p><?= $h($d['intro']) ?></p><?php endif; ?>
-    <div class="minfo">
-      <?php if (!empty($d['hours'])): ?><span><?= $ic('clock') ?><?= $h($d['hours']) ?></span><?php endif; ?>
-      <?php if (!empty($d['phone'])): ?><a href="tel:<?= $h(en_digits($d['phone'])) ?>"><?= $ic('phone') ?><span dir="ltr"><?= $h(fa_digits($d['phone'])) ?></span></a><?php endif; ?>
-      <?php if (!empty($d['address'])): ?><span><?= $ic('map') ?><?= $h($d['address']) ?></span><?php endif; ?>
-      <?php if (!empty($d['instagram'])): ?><a href="<?= $h($socialUrl('instagram', $d['instagram'])) ?>" target="_blank" rel="noopener"><?= $ic('instagram') ?>اینستاگرام</a><?php endif; ?>
+<div class="mwrap">
+  <header class="mhero">
+    <div class="mcover" <?= !empty($d['cover']) ? 'style="background-image:url(\'' . $h($img($d['cover'])) . '\')"' : '' ?>></div>
+    <div class="mbrand">
+      <div class="mlogo" <?= !empty($d['logo']) ? 'style="background-image:url(\'' . $h($img($d['logo'])) . '\')"' : '' ?>><?= empty($d['logo']) ? $h(mb_substr((string) ($d['name'] ?? ''), 0, 1)) : '' ?></div>
+      <h1><?= $h($d['name'] ?? '') ?></h1>
+      <?php if (!empty($d['intro'])): ?><p><?= $h($d['intro']) ?></p><?php endif; ?>
+      <div class="minfo">
+        <?php if (!empty($d['hours'])): ?><span><?= $ic('clock') ?><?= $h($d['hours']) ?></span><?php endif; ?>
+        <?php if (!empty($d['address'])): ?><span><?= $ic('map') ?><?= $h($d['address']) ?></span><?php endif; ?>
+      </div>
+      <div class="mquick">
+        <?php if (!empty($d['phone'])): ?><a href="tel:<?= $h(en_digits($d['phone'])) ?>"><?= $ic('phone') ?>تماس</a><?php endif; ?>
+        <?php if ($mapUrl): ?><a href="<?= $h($mapUrl) ?>" target="_blank" rel="noopener"><?= $ic('map') ?>مسیر</a><?php endif; ?>
+        <?php if (!empty($d['instagram'])): ?><a href="<?= $h($socialUrl('instagram', $d['instagram'])) ?>" target="_blank" rel="noopener"><?= $ic('instagram') ?>اینستاگرام</a><?php endif; ?>
+      </div>
     </div>
   </header>
-  <?php if (count($cats) > 1): ?><nav class="tabs"><?php foreach ($cats as $i => $c): ?><a href="#c<?= $i ?>" class="<?= $i ? '' : 'on' ?>"><?= $h($c['title']) ?></a><?php endforeach; ?></nav><?php endif; ?>
-  <label class="msearch"><?= $ic('search') ?><input type="search" placeholder="جستجو در منو…" oninput="q(this.value)"></label>
-  <?php foreach ($cats as $i => $c): ?>
-  <section class="cat" id="c<?= $i ?>"><h2><?= $h($c['title']) ?></h2>
-    <?php foreach ((array) ($c['items'] ?? []) as $it): if (empty($it['name'])) continue; $off = !empty($it['off']); ?>
-    <div class="item<?= $off ? ' off' : '' ?>" data-n="<?= $h(mb_strtolower($it['name'] . ' ' . ($it['desc'] ?? ''))) ?>">
-      <?php if (!empty($it['img'])): ?><span class="ph" style="background-image:url('<?= $h($img($it['img'])) ?>')"></span><?php endif; ?>
-      <div class="b"><b><?= $h($it['name']) ?><?php if (!empty($it['tag'])): ?><span class="badge"><?= $h($it['tag']) ?></span><?php endif; ?></b>
-        <?php if (!empty($it['desc'])): ?><p><?= $h($it['desc']) ?></p><?php endif; ?>
-        <span class="pr"><?= $off ? '<span class="off-note">ناموجود</span>' : ((string) ($it['price'] ?? '') !== '' ? $fa($it['price']) . ' <small>' . $h($d['unit'] ?? 'تومان') . '</small>' : '') ?></span></div>
-    </div>
+  <?php if (count($cats) > 1): ?><nav class="tabs"><?php foreach ($cats as $i => $c): ?><a href="#c<?= $i ?>" class="<?= $i ? '' : 'on' ?>"><?= !empty($c['icon']) ? '<span>' . $h($c['icon']) . '</span>' : '' ?><?= $h($c['title']) ?></a><?php endforeach; ?></nav><?php endif; ?>
+  <label class="msearch"><?= $ic('search') ?><input type="search" placeholder="جستجو در منو…" oninput="q(this.value)" aria-label="جستجو در منو"></label>
+  <?php if ($feat && $theme !== 'classic'): ?>
+  <section class="mfeat" data-feat><h2>پیشنهاد ما</h2><div class="frow">
+    <?php foreach (array_slice($feat, 0, 10) as $it): ?><button type="button" class="fitem" <?= $attrs($it) ?>><span class="ph" <?= !empty($it['img']) ? 'style="background-image:url(\'' . $h($img($it['img'])) . '\')"' : '' ?>><?= empty($it['img']) ? $h($it['_icon'] ?: '🍽️') : '' ?></span><span class="t"><?= $h($it['name']) ?></span><span class="p"><?= $price($it) ?></span></button><?php endforeach; ?>
+  </div></section>
+  <?php endif; ?>
+  <?php foreach ($cats as $i => $c): $items = array_values(array_filter((array) ($c['items'] ?? []), function ($it) { return !empty($it['name']); })); ?>
+  <section class="cat" id="c<?= $i ?>"><h2><?= !empty($c['icon']) ? '<span class="em">' . $h($c['icon']) . '</span>' : '' ?><?= $h($c['title']) ?><small><?= fa_digits((string) count($items)) ?> مورد</small></h2>
+    <div class="citems">
+    <?php foreach ($items as $it): $off = !empty($it['off']); ?>
+      <button type="button" class="item<?= $off ? ' off' : '' ?>" <?= $attrs($it) ?>>
+        <?php if (!empty($it['img'])): ?><span class="ph" style="background-image:url('<?= $h($img($it['img'])) ?>')"></span><?php elseif ($theme === 'grid'): ?><span class="ph none"><?= $h($c['icon'] ?? '🍽️') ?: '🍽️' ?></span><?php endif; ?>
+        <span class="b"><b><?= $h($it['name']) ?><?php if (!empty($it['tag'])): ?><span class="badge"><?= $h($it['tag']) ?></span><?php endif; ?></b>
+          <?php if (!empty($it['desc'])): ?><span class="d"><?= $h($it['desc']) ?></span><?php endif; ?>
+          <span class="pr"><?= $off ? '<span class="off-note">ناموجود</span>' : $price($it) ?></span></span>
+      </button>
     <?php endforeach; ?>
+    </div>
   </section>
   <?php endforeach; ?>
+  <p class="mempty" data-empty>موردی پیدا نشد.</p>
   <p class="foot">منوی دیجیتال ساخته‌شده با <a href="<?= $h($base) ?>/studio.html"><?= $h($site) ?></a></p>
 </div>
+<div class="sheet" data-sheet aria-hidden="true"><div role="dialog" aria-modal="true"><button type="button" class="x" data-close aria-label="بستن">×</button><div class="sph" data-sph></div><div class="sb"><h3 data-sn></h3><p data-sd></p><span class="pr" data-sp></span></div></div></div>
+<button type="button" class="totop" data-top aria-label="بالای منو">↑</button>
 <script>
-function q(v){v=v.trim().toLowerCase();document.querySelectorAll(".item").forEach(function(e){e.style.display=!v||e.dataset.n.indexOf(v)>-1?"":"none"});document.querySelectorAll(".cat").forEach(function(c){c.style.display=[].some.call(c.querySelectorAll(".item"),function(e){return e.style.display!=="none"})?"":"none"})}
-var tabs=document.querySelectorAll(".tabs a");if(tabs.length&&"IntersectionObserver"in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){tabs.forEach(function(t){t.classList.toggle("on",t.getAttribute("href")==="#"+e.target.id)});var on=document.querySelector(".tabs a.on");on&&on.scrollIntoView({inline:"center",block:"nearest"})}})},{rootMargin:"-40% 0px -55% 0px"});document.querySelectorAll(".cat").forEach(function(c){io.observe(c)})}
+function q(v){v=v.trim().toLowerCase();var any=false;document.querySelectorAll(".cat .item").forEach(function(e){var on=!v||e.dataset.n.indexOf(v)>-1;e.style.display=on?"":"none";any=any||on});document.querySelectorAll(".cat").forEach(function(c){c.style.display=[].some.call(c.querySelectorAll(".item"),function(e){return e.style.display!=="none"})?"":"none"});var f=document.querySelector("[data-feat]");if(f)f.style.display=v?"none":"";document.querySelector("[data-empty]").style.display=any?"none":"block"}
+var sh=document.querySelector("[data-sheet]");
+document.addEventListener("click",function(e){var it=e.target.closest(".item,.fitem");if(it){var s=it.dataset,ph=sh.querySelector("[data-sph]");ph.className="sph"+(s.img?"":" none");ph.style.backgroundImage=s.img?"url('"+s.img+"')":"";sh.querySelector("[data-sn]").textContent=s.name+(s.tag?" · "+s.tag:"");sh.querySelector("[data-sd]").textContent=s.desc||"";var pr=sh.querySelector("[data-sp]");pr.textContent=it.classList.contains("off")?"ناموجود":s.price;pr.style.display=pr.textContent?"":"none";sh.classList.add("on");sh.setAttribute("aria-hidden","false");return}
+if(e.target===sh||e.target.closest("[data-close]")){sh.classList.remove("on");sh.setAttribute("aria-hidden","true")}});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")sh.classList.remove("on")});
+var tt=document.querySelector("[data-top]");addEventListener("scroll",function(){tt.classList.toggle("on",scrollY>500)},{passive:true});tt.onclick=function(){scrollTo({top:0,behavior:"smooth"})};
+var tabs=document.querySelectorAll(".tabs a");if(tabs.length&&"IntersectionObserver"in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){tabs.forEach(function(t){t.classList.toggle("on",t.getAttribute("href")==="#"+e.target.id)});var on=document.querySelector(".tabs a.on"),bar=on&&on.parentElement;if(on)bar.scrollTo({left:on.offsetLeft-(bar.clientWidth-on.offsetWidth)/2,behavior:"smooth"})}})},{rootMargin:"-40% 0px -55% 0px"});document.querySelectorAll(".cat").forEach(function(c){io.observe(c)})}
 </script>
 <?php endif; ?>
 </body>

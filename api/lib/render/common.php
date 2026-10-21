@@ -12,7 +12,7 @@ function bx_clean($v, int $depth = 0)
 {
     if ($depth > 5) return null;
     if (is_array($v)) { $o = []; foreach (array_slice($v, 0, 80, true) as $k => $x) $o[$k] = bx_clean($x, $depth + 1); return $o; }
-    if (is_string($v)) return str_starts_with($v, 'data:image/') ? $v : mb_substr(trim($v), 0, 2000);
+    if (is_string($v)) return strncmp($v, 'data:image/', 11) === 0 ? $v : mb_substr(trim($v), 0, 2000);
     return is_scalar($v) || $v === null ? $v : null;
 }
 function bx_lines($s): array { return array_values(array_filter(array_map('trim', explode("\n", (string) $s)), 'strlen')); }

@@ -21,6 +21,7 @@
       const r = await BX.api("a.page.image", {}, files);
       return r.id;
     };
+    const MENU_THEMES = [["modern", "مدرن", "#ff7a1a"], ["grid", "گالری عکس", "#0891b2"], ["classic", "کلاسیک کافه", "#b45309"], ["dark", "لوکس تیره", "#ca8a04"], ["fresh", "شاد و رنگی", "#db2777"]];
     const SW = ["#ff7a1a", "#2563eb", "#059669", "#7c3aed", "#db2777", "#0f172a", "#b45309", "#dc2626"];
     const SCHEMA = {
       card: [
@@ -39,22 +40,25 @@
       menu: [
         { title: "آدرس صفحه و ظاهر", icon: "link", fields: [
           { k: "slug", label: `آدرس منو: ${location.host}/c/…`, dir: "ltr", ph: "cafe-nova", help: "فقط حروف انگلیسی کوچک، عدد و خط‌تیره" },
-          { k: "color", type: "color", label: "رنگ", swatches: SW }, { k: "dark", type: "check", label: "حالت تیره" }, { k: "logo", type: "image", label: "لوگو", upload: true },
+          { k: "theme", type: "tpl", label: "طرح منو", options: MENU_THEMES },
+          { k: "color", type: "color", label: "رنگ", swatches: SW }, { k: "dark", type: "check", label: "حالت تیره (طرح‌های مدرن، گالری و شاد)" },
+          { k: "logo", type: "image", label: "لوگو", upload: true }, { k: "cover", type: "image", label: "عکس کاور بالای منو (افقی)", upload: true },
         ] },
-        { title: "اطلاعات مجموعه", icon: "building", fields: [{ k: "name", label: "نام کافه / رستوران" }, { k: "intro", label: "شعار یا توضیح کوتاه" }, { k: "hours", label: "ساعات کاری" }, { k: "phone", label: "تلفن", dir: "ltr" }, { k: "address", label: "آدرس", span: true }, { k: "instagram", label: "اینستاگرام", dir: "ltr" }, { k: "unit", type: "select", label: "واحد قیمت", options: [["تومان", "تومان"], ["هزار تومان", "هزار تومان"]] }] },
+        { title: "اطلاعات مجموعه", icon: "building", fields: [{ k: "name", label: "نام کافه / رستوران" }, { k: "intro", label: "شعار یا توضیح کوتاه" }, { k: "hours", label: "ساعات کاری" }, { k: "phone", label: "تلفن", dir: "ltr" }, { k: "address", label: "آدرس", span: true }, { k: "map", label: "لینک نقشه (گوگل/نشان/بلد)", dir: "ltr" }, { k: "instagram", label: "اینستاگرام", dir: "ltr" }, { k: "unit", type: "select", label: "واحد قیمت", options: [["تومان", "تومان"], ["هزار تومان", "هزار تومان"]] }] },
         { title: "دسته‌ها و آیتم‌ها", icon: "list", fields: [{ k: "cats", type: "list", label: "دسته‌ها", add: "افزودن دسته", max: 30, fields: [
-          { k: "title", label: "نام دسته (مثلاً نوشیدنی گرم)", span: true },
+          { k: "title", label: "نام دسته (مثلاً نوشیدنی گرم)" }, { k: "icon", label: "ایموجی دسته (مثلاً ☕)", ph: "☕" },
           { k: "items", type: "list", label: "آیتم‌ها", add: "افزودن آیتم", max: 60, fields: [
-            { k: "name", label: "نام" }, { k: "price", label: "قیمت", dir: "ltr" }, { k: "desc", label: "توضیح کوتاه", span: true }, { k: "tag", label: "برچسب (پیشنهاد سرآشپز، جدید…)" }, { k: "off", type: "check", label: "ناموجود" }, { k: "img", type: "image", label: "عکس", upload: true },
+            { k: "name", label: "نام" }, { k: "price", label: "قیمت", dir: "ltr" }, { k: "desc", label: "توضیح کوتاه", span: true }, { k: "tag", label: "برچسب (پیشنهاد سرآشپز، جدید…) — در «پیشنهاد ما» هم نمایش داده می‌شود" }, { k: "off", type: "check", label: "ناموجود" }, { k: "img", type: "image", label: "عکس", upload: true },
           ] },
         ] }] },
       ],
     };
     const DEFAULTS = {
       card: () => ({ slug: "", color: "#ff7a1a", dark: false, avatar: "", name: BX.me?.name || "", title: "", company: "", bio: "", phone: BX.me?.phone || "", phone2: "", whatsapp: "", email: "", website: "", instagram: "", telegram: "", bale: "", linkedin: "", map: "", address: "", links: [] }),
-      menu: () => ({ slug: "", color: "#b45309", dark: false, logo: "", name: "", intro: "", hours: "", phone: "", address: "", instagram: "", unit: "تومان",
-        cats: [{ title: "نوشیدنی گرم", items: [{ name: "اسپرسو", price: "85000", desc: "", tag: "", off: false, img: "" }, { name: "کاپوچینو", price: "120000", desc: "", tag: "محبوب", off: false, img: "" }] },
-          { title: "کیک و دسر", items: [{ name: "چیزکیک", price: "150000", desc: "", tag: "", off: false, img: "" }] }] }),
+      menu: () => ({ slug: "", theme: "modern", color: "#b45309", dark: false, logo: "", cover: "", name: "کافه نوا", intro: "قهوه تازه‌دم و دسرهای خانگی", hours: "هر روز ۸ صبح تا ۱۲ شب", phone: "", address: "", map: "", instagram: "", unit: "تومان",
+        cats: [{ title: "نوشیدنی گرم", icon: "☕", items: [{ name: "اسپرسو", price: "85000", desc: "دو شات عربیکا با کرمای غلیظ", tag: "", off: false, img: "" }, { name: "کاپوچینو", price: "120000", desc: "اسپرسو، شیر بخارداده و فوم ابریشمی", tag: "محبوب", off: false, img: "" }, { name: "لاته کارامل", price: "135000", desc: "لاته با سس کارامل خانگی", tag: "", off: false, img: "" }] },
+          { title: "نوشیدنی سرد", icon: "🧊", items: [{ name: "آیس آمریکانو", price: "95000", desc: "", tag: "", off: false, img: "" }, { name: "موهیتو", price: "140000", desc: "لیمو، نعناع تازه و سودا", tag: "جدید", off: false, img: "" }] },
+          { title: "کیک و دسر", icon: "🍰", items: [{ name: "چیزکیک", price: "150000", desc: "چیزکیک نیویورکی با سس توت‌فرنگی", tag: "پیشنهاد سرآشپز", off: false, img: "" }, { name: "براونی", price: "110000", desc: "", tag: "", off: true, img: "" }] }] }),
     };
     const TITLE = { card: "کارت ویزیت دیجیتال", menu: "منوی QR کافه و رستوران" };
 

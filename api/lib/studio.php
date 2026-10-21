@@ -8,6 +8,22 @@ if (!defined('BX')) { http_response_code(403); exit; }
 
 const STUDIO_KINDS = ['resume' => 'رزومه', 'card' => 'کارت ویزیت', 'post' => 'پست و پوستر', 'doc' => 'سند و قرارداد', 'slides' => 'پاورپوینت'];
 const PAGE_KINDS = ['card' => 'کارت ویزیت دیجیتال', 'menu' => 'منوی دیجیتال QR'];
+// Every studio tool, as listed on the hub; each one can be switched off in Settings → Studio
+const STUDIO_TOOLS = ['resume' => 'رزومه‌ساز', 'card' => 'کارت ویزیت چاپی', 'post' => 'پست، استوری و پوستر', 'doc' => 'قرارداد و نامه رسمی', 'slides' => 'پاورپوینت‌ساز',
+    'page-card' => 'کارت ویزیت دیجیتال', 'page-menu' => 'منوی QR کافه و رستوران', 'names' => 'ایده نام برند', 'seo' => 'بررسی سئوی سایت'];
+function studio_tool_on(string $id): bool
+{
+    $s = setting('studio');
+    return !empty($s['enabled']) && !in_array($id, (array) ($s['off'] ?? []), true);
+}
+// Admins can still open switched-off tools to test them
+function studio_require_on(string $id): void
+{
+    if (studio_tool_on($id)) return;
+    $u = me();
+    if ($u && $u['role'] === 'admin') return;
+    fail('این ابزار استودیو فعلاً غیرفعال است.', 403, 'tool_off');
+}
 const PAGE_RESERVED = ['admin', 'api', 'www', 'behix', 'login', 'dashboard', 'shop', 'blog', 'test', 'support'];
 
 function studio_price(string $kind, ?array $item = null): int
@@ -217,7 +233,7 @@ function r_studio_info(): void
         return ['id' => (int) $d['id'], 'title' => $d['title'], 'category' => $d['category'], 'desc' => $d['descr'], 'body' => $d['body'], 'price' => $d['price'] !== null ? (int) $d['price'] : (int) $s['doc']];
     }, rows('SELECT * FROM doc_templates WHERE active = 1 ORDER BY sort, id'));
     out(['enabled' => !empty($s['enabled']), 'prices' => array_intersect_key($s, array_flip(['resume', 'card', 'post', 'doc', 'slides', 'pageCardMonth', 'pageCardYear', 'pageMenuMonth', 'pageMenuYear'])),
-        'trialDays' => (int) $s['trialDays'], 'docs' => $docs, 'formats' => STUDIO_FORMATS]);
+        'trialDays' => (int) $s['trialDays'], 'docs' => $docs, 'formats' => STUDIO_FORMATS, 'off' => array_values((array) ($s['off'] ?? []))]);
 }
 
 // ------------------------------------------------------------------ user: designs
@@ -227,6 +243,7 @@ function a_studio_save(): void
     rate_limit('studio-save', 60, 600);
     $kind = str_in('kind', 20);
     if (!isset(STUDIO_KINDS[$kind])) fail('نوع طرح نامعتبر است.', 422);
+    studio_require_on($kind);
     $data = in('data', []);
     if (!is_array($data)) fail('اطلاعات طرح نامعتبر است.', 422);
     $json = jenc($data);
@@ -288,6 +305,7 @@ function a_studio_buy(): void
     $it = row('SELECT * FROM studio_items WHERE id = ? AND user_id = ?', [int_in('id'), $u['id']]);
     if (!$it) fail('ابتدا طرح را ذخیره کنید.', 404);
     if ($it['paid']) out(['done' => true]);
+    studio_require_on($it['kind']);
     $price = studio_price($it['kind'], $it);
     if ($price <= 0) { studio_mark_paid((int) $it['id'], 0); out(['done' => true]); }
     $wallet = (int) val('SELECT wallet FROM users WHERE id = ?', [$u['id']]);
@@ -358,6 +376,7 @@ function a_page_save(): void
     rate_limit('page-save', 60, 600);
     $kind = str_in('kind', 12);
     if (!isset(PAGE_KINDS[$kind])) fail('نوع صفحه نامعتبر است.', 422);
+    studio_require_on('page-' . $kind);
     $data = in('data', []);
     if (!is_array($data)) fail('اطلاعات نامعتبر است.', 422);
     $json = jenc($data);
@@ -392,6 +411,7 @@ function a_page_buy(): void
     $u = require_user();
     $p = row('SELECT * FROM pages WHERE id = ? AND user_id = ?', [int_in('id'), $u['id']]);
     if (!$p) fail('صفحه پیدا نشد.', 404);
+    studio_require_on('page-' . $p['kind']);
     $plan = str_in('plan', 8) === 'year' ? 'year' : 'month';
     $price = page_plan_price($p['kind'], $plan);
     $wallet = (int) val('SELECT wallet FROM users WHERE id = ?', [$u['id']]);
@@ -463,6 +483,7 @@ function a_doctpl_delete(): void
 // ------------------------------------------------------------------ SEO audit (free tool → lead for the SEO service)
 function r_studio_seo(): void
 {
+    studio_require_on('seo');
     rate_limit('seo-audit', 8, 600);
     ip_limit('seo-audit', 15, 3600);
     // weekly allowance is checked now and counted only after a successful audit
@@ -555,6 +576,7 @@ const NAME_BANK = [
 ];
 function r_studio_names(): void
 {
+    studio_require_on('names');
     rate_limit('names', 30, 600);
     tool_use('names');
     $ind = str_in('industry', 20);

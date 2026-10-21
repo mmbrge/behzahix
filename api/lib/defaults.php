@@ -87,7 +87,7 @@ function default_settings(): array
         'security' => ['admin2fa' => false, 'loginAlert' => true, 'maxFails' => 10, 'blockMinutes' => 30, 'trustProxy' => false],
         // Studio (studio.html): self-service builders, paid per finished file; hosted pages paid per period
         'studio' => [
-            'enabled' => true, 'trialDays' => 7,
+            'enabled' => true, 'trialDays' => 7, 'off' => [], // tools switched off (STUDIO_TOOLS ids)
             // Oct 2026 market check, then +50% at the owner's request
             'resume' => 69000, 'card' => 135000, 'post' => 69000, 'doc' => 75000, 'slides' => 195000,
             'pageCardMonth' => 45000, 'pageCardYear' => 399000, 'pageMenuMonth' => 255000, 'pageMenuYear' => 2550000,

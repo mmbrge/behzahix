@@ -148,12 +148,23 @@
       actions: [{ label: "بعداً" }, { label: "ورود / ثبت‌نام", primary: true, onClick: () => { location.href = `auth.html?next=${encodeURIComponent(`studio.html#${kind}`)}`; } }],
     });
   }
+  // The server answers JSON; a host error page or PHP notice in front of it becomes a readable message
+  STUDIO.readJson = async function (res) {
+    const t = await res.text();
+    try { return JSON.parse(t); } catch (e) {
+      const at = t.indexOf('{"');
+      if (at > 0) { try { return JSON.parse(t.slice(at)); } catch (e2) { /* fall through */ } }
+      console.error("studio: non-JSON response", res.status, t.slice(0, 500));
+      const why = /Composer|PHP version/i.test(t) ? "نسخه PHP هاست قدیمی است" : res.status === 403 ? "فایروال هاست درخواست را رد کرد" : res.status >= 500 || !t ? "خطای سرور یا کمبود حافظه/زمان اجرا" : "پاسخ نامعتبر از سرور";
+      return { error: "server", message: `پیش‌نمایش ساخته نشد (${why}). مدیر سایت: پنل ← استودیو ← «بررسی سلامت» را بزنید.` };
+    }
+  };
   // Final files come only from the server, after the purchase check
   STUDIO.fetchFile = async function (route, body) {
     const res = await fetch(`api/index.php?r=${route}`, { method: "POST", credentials: "same-origin", headers: { "X-CSRF": BX.csrf(), "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const type = res.headers.get("Content-Type") || "";
     if (!res.ok || type.includes("application/json")) {
-      let j = null; try { j = await res.json(); } catch (e) { /* not json */ }
+      const j = await STUDIO.readJson(res);
       const err = new Error(j?.message || "دریافت فایل ناموفق بود؛ دوباره تلاش کنید.");
       err.code = j?.error; throw err;
     }
@@ -174,7 +185,7 @@
       busy.hidden = false;
       try {
         const res = await fetch("api/index.php?r=studio.preview", { method: "POST", credentials: "same-origin", signal: ctl.signal, headers: { "X-CSRF": BX.csrf(), "Content-Type": "application/json" }, body: JSON.stringify({ kind, data }) });
-        const j = await res.json();
+        const j = await STUDIO.readJson(res);
         if (my !== seq) return;
         if (!res.ok || j.error) throw new Error(j.message || "پیش‌نمایش ساخته نشد.");
         const labels = layout === "card" ? ["رو", "پشت"] : null;
@@ -335,15 +346,19 @@
     ["names", "ایده نام برند", "sparkles", "ده‌ها نام فارسی و انگلیسی با امتیاز خوش‌آوایی — چند بار در هفته رایگان", "free", 190],
     ["seo", "بررسی سئوی سایت", "search", "۱۸ مورد مهم سئو و سرعت سایت در چند ثانیه — چند بار در هفته رایگان", "free", 140],
   ];
+  // tools the admin switched off (Settings → Studio); admins still see them
+  const isOff = (id) => (S.info?.off || []).includes(id);
+  const isAdmin = () => BX.me?.role === "admin";
   function hub(view) {
     const p = S.info?.prices || {};
     const priceTag = (k) => k === "free" ? "رایگان" : k === "pageCard" ? `از ${BX.toman(p.pageCardMonth || 0)} در ماه` : k === "pageMenu" ? `از ${BX.toman(p.pageMenuMonth || 0)} در ماه` : (p[k] ? `فایل نهایی ${BX.toman(p[k])}` : "رایگان");
-    view.innerHTML = `<div class="studio-grid">${CARDS.map(([id, t, ic, d, pk, hue], i) => `
-      <a class="card st-card" href="#${id}" style="--h:${hue};--d:${i * 50}ms" data-reveal>
+    const list = CARDS.filter(([id]) => !isOff(id) || isAdmin());
+    view.innerHTML = `<div class="studio-grid">${list.map(([id, t, ic, d, pk, hue], i) => `
+      <a class="card st-card ${isOff(id) ? "is-off" : ""}" href="#${id}" style="--h:${hue};--d:${i * 50}ms" data-reveal>
         <span class="st-card-ic">${BX.icon(ic)}</span>
         <h2>${t}</h2><p class="muted small lh">${d}</p>
-        <div class="row-between"><span class="badge ${pk === "free" ? "badge--ok" : "badge--brand"}">${priceTag(pk)}</span><span class="st-go">شروع ${BX.icon("arrow")}</span></div>
-      </a>`).join("")}</div>
+        <div class="row-between"><span class="badge ${pk === "free" ? "badge--ok" : "badge--brand"}">${priceTag(pk)}</span>${isOff(id) ? '<span class="badge badge--bad">خاموش برای کاربران</span>' : `<span class="st-go">شروع ${BX.icon("arrow")}</span>`}</div>
+      </a>`).join("") || `<div class="card empty">${BX.icon("info")}<p>فعلاً ابزاری فعال نیست.</p></div>`}</div>
       <div class="card st-how mt-3" data-reveal>
         <div><b>۱</b><span>قالب را انتخاب کنید و فرم را پر کنید</span></div>
         <div><b>۲</b><span>پیش‌نمایش زنده را ببینید و تا دلتان خواست تغییر دهید</span></div>
@@ -362,6 +377,7 @@
     const v = view();
     if (!v) return;
     document.querySelector(".studio-hero")?.toggleAttribute("hidden", !!id && !!builders[id]);
+    if (id && builders[id] && isOff(id) && !isAdmin()) { v.innerHTML = `<div class="card empty">${BX.icon("info")}<p>این ابزار فعلاً غیرفعال است.</p><a class="btn btn-ghost btn-sm" href="#">بازگشت به استودیو</a></div>`; return; }
     if (!id || !builders[id]) { hub(v); document.title = "استودیو آنلاین | " + (BX.settings.general?.siteNameFa || "بهیکس"); return; }
     window.scrollTo({ top: 0 });
     v.innerHTML = `<div class="card skeleton" style="height:480px"></div>`;

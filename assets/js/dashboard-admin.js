@@ -471,12 +471,13 @@
     studio: { title: "استودیو", icon: "sparkles", groups: [
       ["studio", [
         ["enabled", "استودیو (studio.html) برای کاربران فعال باشد", "switch"],
+        ["off", "روشن و خاموش کردن هر ابزار (خاموش = از استودیو برداشته می‌شود؛ شما به‌عنوان مدیر همچنان می‌بینید)", "onlist", [["resume", "رزومه‌ساز"], ["card", "کارت ویزیت چاپی"], ["post", "پست، استوری و پوستر"], ["doc", "قرارداد و نامه رسمی"], ["slides", "پاورپوینت‌ساز"], ["page-card", "کارت ویزیت دیجیتال"], ["page-menu", "منوی QR رستوران"], ["names", "ایده نام برند"], ["seo", "بررسی سئوی سایت"]]],
         ["resume", "قیمت فایل رزومه (تومان، ۰ = رایگان)", "number"], ["card", "قیمت کارت ویزیت چاپی", "number"], ["post", "قیمت هر پست / استوری / پوستر", "number"],
         ["doc", "قیمت پیش‌فرض هر سند و قرارداد", "number"], ["slides", "قیمت فایل پاورپوینت", "number"],
         ["pageCardMonth", "کارت ویزیت دیجیتال — ماهانه", "number"], ["pageCardYear", "کارت ویزیت دیجیتال — سالانه", "number"],
         ["pageMenuMonth", "منوی QR — ماهانه", "number"], ["pageMenuYear", "منوی QR — سالانه", "number"],
         ["trialDays", "روزهای آزمایش رایگان صفحه‌ها (۰ = بدون آزمایش)", "number"],
-      ], "همه محصولات استودیو کاملاً خودکار و بدون سرویس خارجی ساخته و تحویل می‌شوند. پیش‌نمایش رایگان است و فایل نهایی بعد از پرداخت (کیف پول یا درگاه) دانلود می‌شود. قالب‌های قرارداد را در «استودیو ← قالب‌های سند» اضافه کنید."],
+      ], "همه محصولات استودیو کاملاً خودکار و بدون سرویس خارجی ساخته و تحویل می‌شوند. پیش‌نمایش رایگان است و فایل نهایی بعد از پرداخت (کیف پول یا درگاه) دانلود می‌شود. قالب‌های قرارداد را در «استودیو ← قالب‌های سند» اضافه کنید. اگر ابزاری خطا داد، «پنل ← استودیو ← بررسی سلامت» را بزنید تا علت (نسخه PHP، کتابخانه GD و…) مشخص شود."],
     ] },
     delivery: { title: "تحویل حضوری", icon: "calendar", groups: [
       ["delivery", [
@@ -584,6 +585,8 @@
     const name = `${group}.${k}`;
     if (type === "switch") return `<label class="switch span-2"><input type="checkbox" name="${name}" ${value ? "checked" : ""}><span class="track"></span>${label}</label>`;
     if (type === "sep") return `<h3 class="span-2 form-sep">${label}</h3>`;
+    // switches per option; the setting stores the options turned OFF
+    if (type === "onlist") return `<div class="field span-2"><span class="field-label">${label}</span><div class="checks-grid" data-onlist="${name}">${extra.map(([v, l]) => `<label class="switch"><input type="checkbox" value="${v}" ${(value || []).includes(v) ? "" : "checked"}><span class="track"></span>${l}</label>`).join("")}</div></div>`;
     if (type === "select") return `<div class="field"><label class="field-label">${label}</label><select class="select" name="${name}">${extra.map(([v, l]) => `<option value="${v}" ${String(v) === String(value) ? "selected" : ""}>${l}</option>`).join("")}</select></div>`;
     if (type === "color") return `<div class="field"><label class="field-label">${label}</label><div class="row"><input type="color" name="${name}" value="${val(value)}" class="color-input"><code dir="ltr">${val(value)}</code></div></div>`;
     if (type === "number") return `<div class="field"><label class="field-label">${label}</label><input class="input" name="${name}" dir="ltr" inputmode="decimal" value="${k === "minPayout" ? num(value || 0) : faDigits(value ?? "")}"></div>`;
@@ -702,6 +705,7 @@
       if (type === "switch") out[k] = el.checked;
       else if (type === "number") out[k] = Number(BX.enDigits(el.value).replace(/[^\d.]/g, "")) || 0;
       else if (type === "lines") out[k] = el.value.split("\n").map((x) => x.trim()).filter(Boolean);
+      else if (type === "onlist") out[k] = [...form.querySelectorAll(`[data-onlist="${name}"] input:not(:checked)`)].map((x) => x.value);
       else if (type === "weekdays") out[k] = [...form.querySelectorAll(`[data-weekdays="${name}"] input:checked`)].map((x) => Number(x.value));
       else if (type === "slots") {
         out[k] = [...form.querySelectorAll(`[data-rows="${name}"] [data-row]`)].map((row, i) => {

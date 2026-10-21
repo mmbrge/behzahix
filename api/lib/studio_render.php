@@ -11,8 +11,7 @@ function studio_render_boot(): void
     $done = true;
     @ini_set('memory_limit', '384M');
     @set_time_limit(60);
-    require_once dirname(__DIR__) . '/vendor/autoload.php';
-    foreach (['canvas', 'common', 'tpl_card', 'tpl_post', 'tpl_resume', 'tpl_doc', 'tpl_slides', 'office'] as $f) require_once __DIR__ . "/render/$f.php";
+    foreach (['qr', 'canvas', 'common', 'tpl_card', 'tpl_post', 'tpl_resume', 'tpl_doc', 'tpl_slides', 'office'] as $f) require_once __DIR__ . "/render/$f.php";
 }
 function studio_doc_tpl(array $data): array
 {
@@ -55,6 +54,7 @@ function r_studio_preview(): void
     rate_limit('studio-preview', 240, 600);
     $kind = str_in('kind', 20);
     if (!isset(STUDIO_KINDS[$kind])) fail('نوع طرح نامعتبر است.', 422);
+    studio_require_on($kind);
     $data = in('data', []);
     if (!is_array($data) || strlen(jenc($data)) > 4 * 1024 * 1024) fail('اطلاعات طرح نامعتبر یا خیلی حجیم است.', 422);
     studio_render_boot();
@@ -228,4 +228,57 @@ function seed_shop_templates(): void
         $cover = store_bytes($cv->png(0, $W, 2), 'cover.png', 'cover', $pid, $admin, 'image/png');
         update('products', ['image' => (string) $cover], 'id = ?', [$pid]);
     }
+}
+
+// ------------------------------------------------------------------ admin: server health check
+// What the host must provide for the studio, plus a real test render of every tool.
+function a_studio_check(): void
+{
+    require_active('admin');
+    studio_render_boot();
+    $gd = function_exists('gd_info') ? gd_info() : [];
+    $mb = function ($v) { $v = trim((string) $v); if ($v === '' || $v === '-1') return -1; $n = (float) $v; $u = strtolower(substr($v, -1)); return (int) ($u === 'g' ? $n * 1024 : ($u === 'k' ? $n / 1024 : ($u === 'm' ? $n : $n / 1048576))); };
+    $mem = $mb(ini_get('memory_limit'));
+    $time = (int) ini_get('max_execution_time');
+    $font = dirname(__DIR__) . '/fonts/Vazirmatn-Regular.ttf';
+    $env = [
+        ['PHP ' . PHP_VERSION, PHP_VERSION_ID >= 70400, 'نسخه ۷٫۴ یا بالاتر لازم است (۸٫۱+ پیشنهاد می‌شود).'],
+        ['کتابخانه تصویر GD', !empty($gd), 'از پنل هاست (Select PHP Version → Extensions) افزونه gd را فعال کنید.'],
+        ['فونت‌ها در GD (FreeType)', !empty($gd['FreeType Support']) && function_exists('imagettftext'), 'GD باید با FreeType باشد؛ از پشتیبانی هاست بخواهید.'],
+        ['JPEG و PNG در GD', !empty($gd['JPEG Support']) && !empty($gd['PNG Support']), 'GD باید از JPEG و PNG پشتیبانی کند.'],
+        ['mbstring', function_exists('mb_substr'), 'افزونه mbstring را فعال کنید.'],
+        ['ZipArchive (Word، پاورپوینت، zip)', class_exists('ZipArchive'), 'افزونه zip را فعال کنید.'],
+        ['cURL (بررسی سئو، درگاه، پیامک)', function_exists('curl_init'), 'افزونه curl را فعال کنید.'],
+        ['فایل فونت‌ها', is_readable($font), 'پوشه api/fonts را کامل آپلود کنید.'],
+        ['حافظه (memory_limit): ' . ($mem < 0 ? 'نامحدود' : $mem . 'M'), $mem < 0 || $mem >= 192, 'memory_limit را در تنظیمات PHP هاست حداقل 256M کنید.'],
+        ['زمان اجرا: ' . ($time ?: 'نامحدود') . ' ثانیه', $time === 0 || $time >= 30, 'max_execution_time را حداقل 60 کنید.'],
+        ['حجم درخواست (post_max_size): ' . ini_get('post_max_size'), $mb(ini_get('post_max_size')) < 0 || $mb(ini_get('post_max_size')) >= 8, 'post_max_size را حداقل 16M کنید (برای لوگو و عکس).'],
+    ];
+    $tpl = row('SELECT id FROM doc_templates WHERE active = 1 ORDER BY sort, id LIMIT 1');
+    $samples = [
+        'resume' => ['tpl' => 'modern', 'color' => '#2563eb', 'name' => 'سارا محمدی', 'role' => 'طراح', 'phone' => '09121234567', 'email' => 'a@b.ir', 'city' => 'تهران', 'summary' => 'آزمایش', 'jobs' => [['role' => 'طراح', 'company' => 'بهیکس', 'from' => '۱۴۰۰', 'to' => 'اکنون', 'desc' => 'آزمایش']], 'edu' => [], 'skills' => [['name' => 'فتوشاپ', 'level' => '4']], 'langs' => []],
+        'card' => ['tpl' => 'band', 'color' => '#ff7a1a', 'name' => 'سارا محمدی', 'title' => 'طراح', 'company' => 'بهیکس', 'phone' => '09121234567', 'web' => 'behix.ir', 'backQr' => true],
+        'post' => ['tpl' => 'bold', 'size' => 'post', 'color' => '#ff7a1a', 'title' => 'آزمایش', 'text' => 'متن آزمایشی'],
+        'doc' => ['templateId' => $tpl ? (int) $tpl['id'] : 0, 'values' => []],
+        'slides' => ['theme' => 'modern', 'title' => 'آزمایش', 'slides' => [['title' => 'اسلاید', 'body' => "مورد اول\nمورد دوم"]]],
+    ];
+    $tools = [];
+    foreach (STUDIO_KINDS as $k => $label) {
+        $t0 = microtime(true);
+        try {
+            if ($k === 'doc' && !$tpl) throw new RuntimeException('هیچ قالب سند فعالی نیست.');
+            $c = studio_canvas($k, $samples[$k], true, true);
+            studio_preview_images($c, $k, 1);
+            $tools[] = [$label, true, 'سالم — ' . round((microtime(true) - $t0) * 1000) . ' میلی‌ثانیه'];
+        } catch (Throwable $e) {
+            error_log('[BEHIX] studio check ' . $k . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            $tools[] = [$label, false, function_exists('bx_error_reason') && bx_error_reason($e->getMessage()) !== 'خطای سرور رخ داد؛ دوباره تلاش کنید.' ? bx_error_reason($e->getMessage()) : mb_substr($e->getMessage(), 0, 200)];
+        }
+    }
+    try { $ok = count(qr_matrix('https://behix.ir')) === 25; } catch (Throwable $e) { $ok = false; }
+    $tools[] = ['ساخت QR', $ok, $ok ? 'سالم' : 'ساخت QR ناموفق بود.'];
+    $pg = (bool) val("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pages'");
+    $tools[] = ['کارت ویزیت دیجیتال و منوی QR', $pg, $pg ? 'سالم' : 'یک بار پنل را رفرش کنید تا جدول‌ها ساخته شوند.'];
+    $out = fn ($r) => ['label' => $r[0], 'ok' => (bool) $r[1], 'note' => $r[2]];
+    out(['env' => array_map($out, $env), 'tools' => array_map($out, $tools), 'memoryUsedMb' => round(memory_get_peak_usage(true) / 1048576)]);
 }
