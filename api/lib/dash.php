@@ -717,9 +717,10 @@ function a_user_save(): void
     $name = str_in('name', 120);
     if (mb_strlen($name) < 2) fail('نام را وارد کنید.', 422);
     $phone = phone_in();
-    $dup = row('SELECT id FROM users WHERE phone = ? AND id <> ?', [$phone, $id]);
-    if ($dup) fail('این شماره برای کاربر دیگری ثبت شده است.', 422);
     $role = str_in('role', 16);
+    // one phone may own several account types, but only one of each
+    $dup = row('SELECT id FROM users WHERE phone = ? AND role = ? AND id <> ?', [$phone, $role, $id]);
+    if ($dup) fail('این شماره قبلاً حسابی از همین نوع دارد.', 422);
     $status = str_in('status', 16);
     if (!in_array($role, ROLES, true) || !in_array($status, USER_STATUSES, true)) fail('نقش یا وضعیت نامعتبر است.', 422);
     if ($id === (int) $admin['id'] && ($role !== 'admin' || $status !== 'active')) fail('نمی‌توانید نقش یا وضعیت حساب خودتان را تغییر دهید.', 422);
@@ -1200,7 +1201,7 @@ function a_bnpl_test(): void
 function a_sms_test(): void
 {
     $u = require_active('admin');
-    if (!sms_enabled()) fail('ابتدا سرویس پیامک و کلید API را ذخیره کنید.', 422);
+    if (!otp_enabled()) fail('ابتدا سرویس پیامک (یا توکن api.ir) را ذخیره کنید.', 422);
     if (!sms_send_code($u['phone'], '12345')) fail('ارسال ناموفق بود؛ کلید، الگو و اعتبار پنل پیامک را بررسی کنید.', 502);
     done('پیامک آزمایشی به شماره شما ارسال شد.');
 }

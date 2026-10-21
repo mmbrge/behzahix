@@ -162,7 +162,7 @@ function r_order_submit(): void
             if (!preg_match('/^09\d{9}$/', $p)) fail('شماره موبایل معتبر نیست.', 422);
             return $p;
         })($contact['phone'] ?? '');
-        if (row('SELECT id FROM users WHERE phone = ?', [$phone])) fail('این شماره قبلاً ثبت‌نام کرده است؛ لطفاً ابتدا وارد شوید. بریف شما ذخیره شده است.', 409, 'exists');
+        if (row('SELECT id FROM users WHERE phone = ? LIMIT 1', [$phone])) fail('این شماره قبلاً ثبت‌نام کرده است؛ لطفاً ابتدا وارد شوید. بریف شما ذخیره شده است.', 409, 'exists');
         $temp = (string) random_int(100000, 999999);
         $uid = insert('users', ['name' => $name, 'phone' => $phone, 'email' => mb_substr((string) ($contact['email'] ?? ''), 0, 190) ?: null,
             'password_hash' => password_hash($temp, PASSWORD_DEFAULT), 'role' => 'customer', 'status' => 'active',
@@ -309,18 +309,52 @@ function r_file(): void
 }
 
 // ------------------------------------------------------------------ auth
-function r_auth_login(): void
+// One phone number can own several account types; the visitor picks one.
+const ROLE_TITLES = ['customer' => 'مشتری', 'seller' => 'فروشنده', 'designer' => 'طراح', 'admin' => 'مدیر'];
+function phone_accounts(string $phone): array
 {
-    rate_limit('login', 8, 600);
-    ip_limit('login', 30, 900);
+    return rows("SELECT * FROM users WHERE phone = ? ORDER BY FIELD(role, 'customer', 'seller', 'designer', 'admin'), id", [$phone]);
+}
+// Accounts a visitor may see for a number: the admin account is never listed
+function visible_accounts(array $all): array
+{
+    return array_values(array_filter($all, fn ($u) => $u['role'] !== 'admin'));
+}
+function accounts_out(array $list): array
+{
+    // no names: anyone can look a number up
+    return array_map(fn ($u) => ['role' => $u['role'], 'title' => ROLE_TITLES[$u['role']] ?? $u['role'], 'status' => $u['status']], $list);
+}
+// Phone-first sign-in: does this number have accounts, and which kinds?
+function r_auth_lookup(): void
+{
+    rate_limit('lookup', 20, 600);
+    ip_limit('lookup', 60, 900);
     $phone = phone_in();
-    $u = row('SELECT * FROM users WHERE phone = ?', [$phone]);
-    if (!$u || !password_verify((string) in('password', ''), $u['password_hash'])) { login_failed($phone, 'رمز'); fail('شماره موبایل یا رمز عبور اشتباه است.', 422); }
+    $all = phone_accounts($phone);
+    out(['phone' => $phone, 'exists' => (bool) $all, 'accounts' => accounts_out(visible_accounts($all)),
+        'otp' => otp_enabled() || !empty(setting('general', 'demoMode')), 'otpDefault' => !empty(setting('sms', 'loginOtpDefault'))]);
+}
+function finish_login(array $u): void
+{
     if ($u['status'] === 'blocked') fail('حساب کاربری شما مسدود شده است.', 403);
     if (admin_2fa_needed($u)) admin_2fa_start($u);
     login_as((int) $u['id']);
     login_succeeded($u);
     out(['me' => user_out(row('SELECT * FROM users WHERE id = ?', [$u['id']]), true)]);
+}
+function r_auth_login(): void
+{
+    rate_limit('login', 8, 600);
+    ip_limit('login', 30, 900);
+    $phone = phone_in();
+    $pass = (string) in('password', '');
+    $role = str_in('role', 16);
+    // a chosen account type, else whichever account the password opens
+    $hit = array_values(array_filter(phone_accounts($phone), fn ($u) => ($role === '' || $u['role'] === $role) && password_verify($pass, $u['password_hash'])));
+    if (!$hit) { login_failed($phone, 'رمز'); fail('شماره موبایل یا رمز عبور اشتباه است.', 422); }
+    if (count($hit) > 1) out(['chooseRole' => true, 'accounts' => accounts_out($hit)]);
+    finish_login($hit[0]);
 }
 
 function r_auth_otp_send(): void
@@ -329,15 +363,17 @@ function r_auth_otp_send(): void
     ip_limit('otp', 12, 3600);
     $phone = phone_in();
     $purpose = str_in('purpose', 16) === 'register' ? 'register' : 'login';
-    $exists = (bool) row('SELECT id FROM users WHERE phone = ?', [$phone]);
+    $exists = (bool) row('SELECT id FROM users WHERE phone = ? LIMIT 1', [$phone]);
     if ($purpose === 'login' && !$exists) fail('حسابی با این شماره پیدا نشد؛ ثبت‌نام کنید.', 404);
-    if ($purpose === 'register' && $exists) fail('این شماره قبلاً ثبت‌نام کرده است؛ وارد شوید.', 409);
+    // a new account type for an existing number is fine; the same type twice is not
+    $role = str_in('role', 16);
+    if ($purpose === 'register' && $role !== '' && row('SELECT id FROM users WHERE phone = ? AND role = ?', [$phone, $role])) fail('این شماره قبلاً با همین نوع حساب ثبت‌نام کرده است؛ وارد شوید.', 409);
     $last = row('SELECT sent_at FROM otps WHERE phone = ?', [$phone]);
     if ($last && strtotime($last['sent_at'] . ' UTC') > time() - 60) fail('کد قبلی هنوز معتبر است؛ یک دقیقه صبر کنید.', 429);
     $code = (string) random_int(10000, 99999);
     q('REPLACE INTO otps (phone, code_hash, purpose, attempts, expires_at, sent_at) VALUES (?,?,?,0,?,?)',
         [$phone, password_hash($code, PASSWORD_DEFAULT), $purpose, gmdate('Y-m-d H:i:s', time() + 300), now()]);
-    if (sms_enabled()) {
+    if (otp_enabled()) {
         if (!sms_send_code($phone, $code)) fail('ارسال پیامک ناموفق بود؛ دوباره تلاش کنید.', 502);
         out(['sent' => true]);
     }
@@ -363,13 +399,33 @@ function otp_verify(string $phone, string $purpose): void
 function r_auth_otp_login(): void
 {
     $phone = phone_in();
+    $role = str_in('role', 16);
+    // choose the account first (the code stays valid), then verify the code
+    $all = phone_accounts($phone);
+    if (!$all) fail('حسابی با این شماره پیدا نشد.', 404);
+    $u = null;
+    foreach ($all as $x) if ($role !== '' && $x['role'] === $role) $u = $x;
+    $list = visible_accounts($all) ?: $all;
+    if (!$u && $role === '' && count($list) === 1) $u = $list[0];
+    if (!$u && $role === '') out(['chooseRole' => true, 'accounts' => accounts_out($list)]);
+    if (!$u) fail('حسابی از این نوع با این شماره پیدا نشد.', 404);
     otp_verify($phone, 'login');
-    $u = row('SELECT * FROM users WHERE phone = ?', [$phone]);
-    if (!$u || $u['status'] === 'blocked') fail('حساب کاربری فعال نیست.', 403);
-    if (admin_2fa_needed($u)) admin_2fa_start($u);
-    login_as((int) $u['id']);
-    login_succeeded($u);
-    out(['me' => user_out($u, true)]);
+    finish_login($u);
+}
+
+// Signed-in users switch to another account type that shares their phone number
+function a_account_switch(): void
+{
+    $u = require_user();
+    if (!empty($_SESSION['impersonator'])) fail('هنگام مشاهده پنل کاربر نمی‌توانید حساب را عوض کنید.', 403);
+    $role = str_in('role', 16);
+    $t = row('SELECT * FROM users WHERE phone = ? AND role = ?', [$u['phone'], $role]);
+    if (!$t) fail('حسابی از این نوع ندارید.', 404);
+    // the admin account always goes through the full sign-in (and its 2FA)
+    if ($t['role'] === 'admin') fail('برای ورود به حساب مدیر، خارج شوید و با رمز عبور وارد شوید.', 403);
+    if ($t['status'] === 'blocked') fail('این حساب مسدود است.', 403);
+    login_as((int) $t['id']);
+    out(['me' => user_out($t, true)]);
 }
 
 function r_auth_register(): void
@@ -383,8 +439,16 @@ function r_auth_register(): void
     $pass = (string) in('password', '');
     if (mb_strlen($name) < 3) fail('نام را کامل وارد کنید.', 422);
     if (strlen($pass) < 6) fail('رمز عبور باید حداقل ۶ کاراکتر باشد.', 422);
-    if (row('SELECT id FROM users WHERE phone = ?', [$phone])) fail('این شماره قبلاً ثبت‌نام کرده است؛ وارد شوید.', 409);
-    if (sms_enabled() || in('code') !== null) otp_verify($phone, 'register');
+    if (row('SELECT id FROM users WHERE phone = ? AND role = ?', [$phone, $role])) fail('این شماره قبلاً با همین نوع حساب ثبت‌نام کرده است؛ وارد شوید.', 409);
+    $others = phone_accounts($phone);
+    $me = me();
+    if (otp_enabled() || in('code') !== null) otp_verify($phone, 'register');
+    elseif ($others && !($me && $me['phone'] === $phone)) {
+        // no SMS: prove the number is yours with the password of your existing account
+        $okPass = false;
+        foreach ($others as $o) if (password_verify($pass, $o['password_hash'])) $okPass = true;
+        if (!$okPass) fail('این شماره قبلاً حساب دارد؛ برای ساخت نوع حساب جدید، رمز عبور حساب فعلی خود را وارد کنید.', 422, 'need_owner_pass');
+    }
     $data = ['name' => $name, 'phone' => $phone, 'password_hash' => password_hash($pass, PASSWORD_DEFAULT), 'role' => $role,
         'status' => $role === 'customer' ? 'active' : 'pending', 'hue' => random_int(0, 359), 'created_at' => now()];
     if ($role === 'designer') {

@@ -68,7 +68,7 @@ $public = [
     'products.list' => 'r_products_list', 'designers.list' => 'r_designers_list', 'contact.send' => 'r_contact_send',
     'newsletter' => 'r_newsletter', 'coupon.check' => 'r_coupon_check', 'order.submit' => 'r_order_submit', 'order.attach' => 'r_order_attach',
     'auth.login' => 'r_auth_login', 'auth.otp.send' => 'r_auth_otp_send', 'auth.otp.login' => 'r_auth_otp_login',
-    'auth.register' => 'r_auth_register', 'auth.2fa' => 'r_auth_2fa', 'auth.logout' => 'r_auth_logout', 'auth.demo' => 'r_auth_demo',
+    'auth.register' => 'r_auth_register', 'auth.lookup' => 'r_auth_lookup', 'auth.2fa' => 'r_auth_2fa', 'auth.logout' => 'r_auth_logout', 'auth.demo' => 'r_auth_demo',
     'fav.toggle' => 'r_fav_toggle', 'shop.checkout' => 'r_shop_checkout', 'shop.quote' => 'r_shop_quote',
     'cart.sync' => 'r_cart_sync',
     'chat.open' => 'r_chat_open', 'chat.send' => 'r_chat_send', 'chat.poll' => 'r_chat_poll', 'chat.escalate' => 'r_chat_escalate', 'chat.feedback' => 'r_chat_feedback',

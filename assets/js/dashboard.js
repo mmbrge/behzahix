@@ -776,6 +776,7 @@
             }).join("")}
           </nav>
           <div class="side-foot">
+            ${!S.impersonating && me.accounts?.length ? me.accounts.map((a) => `<button class="side-link" data-act="account-switch" data-role="${esc(a.role)}" style="width:100%">${icon("refresh")}رفتن به حساب ${ROLE_LABEL[a.role] || esc(a.role)}${a.status === "pending" ? '<span class="count">در انتظار</span>' : ""}</button>`).join("") : ""}
             <a class="side-link" href="index.html">${icon("globe")}مشاهده سایت</a>
             <button class="side-link" data-act="logout" style="width:100%">${icon("logout")}خروج از حساب</button>
           </div>
@@ -918,6 +919,15 @@
         document.querySelectorAll(".side-scrim").forEach((s) => s.remove());
       },
       logout: async () => { await BX.auth.logout(); location.href = "index.html"; },
+      // same phone, another account type (customer ↔ seller ↔ designer)
+      "account-switch": async (el) => {
+        try {
+          const r = await api("a.account.switch", { role: el.dataset.role });
+          toast(`وارد حساب ${ROLE_LABEL[r.me.role] || ""} شدید.`, "ok");
+          location.hash = "overview";
+          location.reload();
+        } catch (err) { toast(err.message, "bad"); }
+      },
       unimpersonate: async () => {
         try {
           await api("a.unimpersonate");

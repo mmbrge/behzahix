@@ -525,9 +525,16 @@
     ] },
     sms: { title: "پیامک", icon: "chat", groups: [
       ["sms", [
+        ["-", "سرویس پیامک (اطلاع‌رسانی‌ها و قالب‌های رویداد)", "sep"],
         ["driver", "سرویس پیامک", "select", [["none", "غیرفعال (فقط ورود با رمز)"], ["kavenegar", "کاوه‌نگار"], ["smsir", "اس‌ام‌اس دات آی‌آر"]]],
         ["apiKey", "کلید API", "ltr"], ["adminPhone", "شماره موبایل مدیر برای پیامک‌های مدیریتی", "ltr"], ["template", "نام الگوی تأیید (کاوه‌نگار)", "ltr"], ["templateId", "شناسه قالب (SMS.ir)", "ltr"], ["paramName", "نام پارامتر کد در قالب (SMS.ir)", "ltr"],
-      ], "در پنل پیامک یک الگوی «کد تأیید» بسازید که متغیر %token% (کاوه‌نگار) یا #CODE# (SMS.ir) را داشته باشد."],
+        ["-", "کد ورود و ثبت‌نام (OTP)", "sep"],
+        ["otpProvider", "کد یکبار مصرف با کدام سرویس ارسال شود؟", "select", [["sms", "همان سرویس پیامک بالا (با همان تنظیمات)"], ["apiir", "وب‌سرویس OTP سایت api.ir"]]],
+        ["apiirToken", "توکن api.ir (Bearer Token از پنل api.ir)", "ltr"],
+        ["apiirTemplate", "متن پیامک api.ir", "select", [["0", "«کد: …»"], ["1", "«کد ورود: …»"], ["2", "«کد تایید: …»"], ["3", "«رمز: …»"], ["4", "«رمز ورود: …»"]]],
+        ["apiirCall", "اگر پیامک api.ir نرسید، کد با تماس صوتی گفته شود (CallOTP)", "switch"],
+        ["loginOtpDefault", "در صفحه ورود، «ورود با کد پیامکی» پیش‌فرض باشد (در غیر این صورت ورود با رمز عبور پیش‌فرض است)", "switch"],
+      ], "سرویس پیامک بالا برای پیامک‌های رویداد (ثبت سفارش، پرداخت و…) است. کد ورود/ثبت‌نام را می‌توانید با همان سرویس یا جداگانه با api.ir بفرستید: در api.ir وب‌سرویس «SmsOTP» را فعال کنید، توکن را اینجا بگذارید و ذخیره کنید، سپس دکمه «ارسال کد تأیید آزمایشی» را بزنید. کاربران همیشه می‌توانند با رمز عبور هم وارد شوند."],
     ] },
     smsTpl: { title: "قالب‌های پیامک", icon: "send", groups: [] },
     theme: { title: "ظاهر", icon: "palette", groups: [
@@ -576,7 +583,8 @@
     const { icon, faDigits, esc, num } = h();
     const name = `${group}.${k}`;
     if (type === "switch") return `<label class="switch span-2"><input type="checkbox" name="${name}" ${value ? "checked" : ""}><span class="track"></span>${label}</label>`;
-    if (type === "select") return `<div class="field"><label class="field-label">${label}</label><select class="select" name="${name}">${extra.map(([v, l]) => `<option value="${v}" ${v === value ? "selected" : ""}>${l}</option>`).join("")}</select></div>`;
+    if (type === "sep") return `<h3 class="span-2 form-sep">${label}</h3>`;
+    if (type === "select") return `<div class="field"><label class="field-label">${label}</label><select class="select" name="${name}">${extra.map(([v, l]) => `<option value="${v}" ${String(v) === String(value) ? "selected" : ""}>${l}</option>`).join("")}</select></div>`;
     if (type === "color") return `<div class="field"><label class="field-label">${label}</label><div class="row"><input type="color" name="${name}" value="${val(value)}" class="color-input"><code dir="ltr">${val(value)}</code></div></div>`;
     if (type === "number") return `<div class="field"><label class="field-label">${label}</label><input class="input" name="${name}" dir="ltr" inputmode="decimal" value="${k === "minPayout" ? num(value || 0) : faDigits(value ?? "")}"></div>`;
     if (type === "textarea") return `<div class="field span-2"><label class="field-label">${label}</label><textarea class="textarea" name="${name}">${esc(value || "")}</textarea></div>`;
@@ -688,6 +696,7 @@
     const spec = Object.values(SETTINGS).flatMap((t) => t.groups).find(([g]) => g === group)[1];
     const out = {};
     for (const [k, , type] of spec) {
+      if (type === "sep") continue;
       const name = `${group}.${k}`;
       const el = form.elements[name];
       if (type === "switch") out[k] = el.checked;

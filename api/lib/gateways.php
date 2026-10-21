@@ -377,10 +377,33 @@ function sms_enabled(): bool
     return setting('sms', 'driver') !== 'none' && setting('sms', 'apiKey') !== '';
 }
 
+// One-time codes (login, sign-up, admin 2FA) can use api.ir instead of the SMS panel
+function otp_enabled(): bool
+{
+    $s = setting('sms');
+    if (($s['otpProvider'] ?? 'sms') === 'apiir') return trim((string) ($s['apiirToken'] ?? '')) !== '';
+    return sms_enabled();
+}
+// api.ir OTP web service — https://s.api.ir/api/sw1/SmsOTP (Bearer token); CallOTP reads the code by phone
+function apiir_send(string $phone, string $code, bool $call = false): bool
+{
+    $s = setting('sms');
+    $hdr = ['Authorization: Bearer ' . trim((string) $s['apiirToken'])];
+    $r = $call
+        ? http_json('POST', 'https://s.api.ir/api/sw1/CallOTP', ['code' => $code, 'number' => $phone], $hdr)
+        : http_json('POST', 'https://s.api.ir/api/sw1/SmsOTP', ['code' => $code, 'mobile' => $phone, 'template' => (int) ($s['apiirTemplate'] ?? 1)], $hdr);
+    $ok = !empty($r['success']) && ($r['data'] ?? true) !== false;
+    if (!$ok) error_log('[BEHIX] api.ir OTP failed: ' . mb_substr(json_encode($r, JSON_UNESCAPED_UNICODE), 0, 300));
+    return $ok;
+}
 // Sends a one-time code. Returns true on success.
 function sms_send_code(string $phone, string $code): bool
 {
     $s = setting('sms');
+    if (($s['otpProvider'] ?? 'sms') === 'apiir') {
+        if (apiir_send($phone, $code)) return true;
+        return !empty($s['apiirCall']) && apiir_send($phone, $code, true); // voice call as a backup
+    }
     if ($s['driver'] === 'kavenegar') {
         $url = 'https://api.kavenegar.com/v1/' . rawurlencode($s['apiKey']) . '/verify/lookup.json?' . http_build_query(['receptor' => $phone, 'token' => $code, 'template' => $s['template']]);
         $r = http_json('GET', $url);

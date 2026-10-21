@@ -87,7 +87,7 @@ function session_mark(int $uid): void
 // ------------------------------------------------------------------ admin two-step login
 function admin_2fa_needed(array $u): bool
 {
-    return $u['role'] === 'admin' && !empty(setting('security', 'admin2fa')) && function_exists('sms_enabled') && sms_enabled();
+    return $u['role'] === 'admin' && !empty(setting('security', 'admin2fa')) && function_exists('otp_enabled') && otp_enabled();
 }
 function admin_2fa_start(array $u): void
 {
@@ -160,12 +160,12 @@ function security_checks(): array
         ['demo', 'حالت نمایشی خاموش', empty(setting('general', 'demoMode')), 'high', 'از «تنظیمات ← داده‌های نمایشی» حالت نمایشی را خاموش و داده‌های نمونه را حذف کنید.'],
         ['paytest', 'درگاه واقعی (نه تست)', $pay['driver'] !== 'test', 'critical', 'درگاه «تست» فقط برای آزمایش است؛ از «تنظیمات ← درگاه پرداخت» زرین‌پال یا زیبال را تنظیم کنید.'],
         ['payopen', 'درگاه تست برای مشتری‌ها بسته', $pay['driver'] !== 'test' || empty($pay['testOpen']), 'critical', 'گزینه «درگاه تست برای همه باز باشد» روشن است و هر کسی بدون پرداخت خرید می‌کند؛ بعد از پایان آزمایش آن را خاموش کنید.'],
-        ['2fa', 'ورود دومرحله‌ای مدیر', !empty(setting('security', 'admin2fa')) && sms_enabled(), 'high', 'سرویس پیامک را تنظیم و «ورود دومرحله‌ای مدیر» را در همین بخش روشن کنید.'],
+        ['2fa', 'ورود دومرحله‌ای مدیر', !empty(setting('security', 'admin2fa')) && otp_enabled(), 'high', 'سرویس پیامک را تنظیم و «ورود دومرحله‌ای مدیر» را در همین بخش روشن کنید.'],
         ['admins', 'تعداد مدیران کم', count($admins) <= 2, 'medium', 'تعداد حساب‌های مدیر ' . count($admins) . ' است؛ مدیرهای اضافه را به نقش دیگری تغییر دهید.'],
         ['integrity', 'سالم بودن فایل‌های هسته', $integrity['manifest'] && !$integrity['changed'] && !$integrity['missing'], 'high', $integrity['changed'] ? 'فایل‌های تغییرکرده: ' . implode('، ', $integrity['changed']) . ' — اگر خودتان تغییر نداده‌اید، فایل‌ها را از نسخه اصلی جایگزین کنید.' : 'فهرست اثرانگشت فایل‌ها پیدا نشد.'],
         ['shells', 'نبود فایل اجرایی مشکوک', !$integrity['suspicious'], 'critical', 'فایل‌های مشکوک: ' . implode('، ', $integrity['suspicious']) . ' — فوراً حذف و رمزهای هاست و مدیر را عوض کنید.'],
         ['backup', 'پشتیبان‌گیری در ۷ روز اخیر', (int) val('SELECT v FROM settings WHERE k = ?', ['last_backup']) > time() - 7 * 86400, 'medium', 'از دکمه «دانلود پشتیبان کامل» نسخه پشتیبان بگیرید و جای امنی نگه دارید (cPanel هم بخش Backup دارد).'],
-        ['sms', 'سرویس پیامک فعال (برای کد ورود)', sms_enabled(), 'low', 'سرویس پیامک را تنظیم کنید تا ورود با کد یک‌بارمصرف و هشدارها کار کند.'],
+        ['sms', 'سرویس پیامک فعال (برای کد ورود)', otp_enabled(), 'low', 'سرویس پیامک را تنظیم کنید تا ورود با کد یک‌بارمصرف و هشدارها کار کند.'],
     ];
     $weights = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
     $total = array_sum(array_map(function ($c) use ($weights) { return $weights[$c[3]]; }, $checks));

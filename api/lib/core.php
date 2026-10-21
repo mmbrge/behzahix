@@ -402,6 +402,9 @@ function user_out(?array $u, bool $private = false): ?array
             'portfolioUrl' => $u['portfolio_url'], 'prefs' => jdec($u['prefs'], ['email' => true, 'sms' => true]), 'isDemo' => (bool) $u['is_demo'],
             'proUntil' => !empty($u['pro_until']) ? ms($u['pro_until']) : null];
         if (in_array($u['role'], ['designer', 'seller'], true)) $o['effectiveCommission'] = commission_for($u);
+        // other account types on the same phone number (account switcher)
+        $o['accounts'] = array_map(fn ($a) => ['role' => $a['role'], 'status' => $a['status']],
+            rows("SELECT role, status FROM users WHERE phone = ? AND id <> ? AND role <> 'admin' ORDER BY FIELD(role, 'customer', 'seller', 'designer'), id", [$u['phone'], $u['id']]));
     }
     return $o;
 }

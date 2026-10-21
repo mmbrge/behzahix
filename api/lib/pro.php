@@ -147,7 +147,7 @@ function a_pro_grant(): void
 {
     require_user('admin');
     $id = int_in('userId');
-    if (!$id && str_in('phone', 20) !== '') $id = (int) val('SELECT id FROM users WHERE phone = ?', [phone_in('phone')]);
+    if (!$id && str_in('phone', 20) !== '') $id = (int) val("SELECT id FROM users WHERE phone = ? ORDER BY role = 'customer' DESC, id LIMIT 1", [phone_in('phone')]);
     if (!$id || !row('SELECT id FROM users WHERE id = ?', [$id])) fail('کاربری با این مشخصات پیدا نشد.', 404);
     $months = int_in('months');
     if ($months <= 0) { update('users', ['pro_until' => null, 'pro_biz' => 0], 'id = ?', [$id]); done('اشتراک کاربر لغو شد.'); }

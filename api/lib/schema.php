@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 12;
+const BX_SCHEMA_VERSION = 13;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -47,6 +47,15 @@ function bx_migrate(int $from): void
             q("UPDATE settings SET v = ? WHERE k = 'studio'", [jenc($st)]);
         }
         q('UPDATE doc_templates SET price = NULL WHERE price = 150000');
+    }
+    if ($from < 13) {
+        // one phone number may own several account types (customer, seller, designer…)
+        $idx = rows("SELECT INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND NON_UNIQUE = 0 AND COLUMN_NAME = 'phone' AND SEQ_IN_INDEX = 1");
+        foreach ($idx as $x) {
+            $cols = (int) val("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND INDEX_NAME = ?", [$x['INDEX_NAME']]);
+            if ($cols === 1) db()->exec('ALTER TABLE users DROP INDEX `' . str_replace('`', '', $x['INDEX_NAME']) . '`');
+        }
+        if (!(int) val("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND INDEX_NAME = 'phone_role'")) db()->exec('ALTER TABLE users ADD UNIQUE KEY phone_role (phone, role)');
     }
     if ($from < 12) {
         // +50% on everything except corporate and shop sites; new office services, packages and shop categories
@@ -93,7 +102,7 @@ function bx_schema(): array
         "CREATE TABLE IF NOT EXISTS users (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(120) NOT NULL,
-            phone VARCHAR(15) NOT NULL UNIQUE,
+            phone VARCHAR(15) NOT NULL,
             email VARCHAR(190) NULL,
             password_hash VARCHAR(255) NOT NULL,
             role VARCHAR(16) NOT NULL DEFAULT 'customer',
@@ -113,7 +122,8 @@ function bx_schema(): array
             prefs LONGTEXT NULL,
             is_demo TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL,
-            INDEX (role), INDEX (status)
+            INDEX (role), INDEX (status),
+            UNIQUE KEY phone_role (phone, role)
         ) $t",
         "CREATE TABLE IF NOT EXISTS categories (
             id VARCHAR(40) NOT NULL PRIMARY KEY,
