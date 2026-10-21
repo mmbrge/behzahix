@@ -862,6 +862,155 @@
   Object.assign(BX, { ICONS, icon, faDigits, enDigits, num, toman, date, ago, esc, qs, art, avatar, logoHtml, toast, modal, initReveal });
 
   // Pages that keep working during maintenance (so the admin can sign in)
+  // ---------------------------------------------------------------- Sideways rows
+  // Tab and chip rows wider than their box scroll sideways everywhere: touch swipe
+  // (native on phones), mouse drag with a little momentum, the mouse wheel and
+  // arrow buttons on desktop. The edges fade where more items are hidden and the
+  // selected item is kept in view. Rows are picked up as pages render.
+  const HS_SEL = ".tabs-row, .steps, .filter-chips, .seg, .seg-tabs, .svc-tabs, .svx-rail, .tree-tabs, .svc-nav > div, .legal-nav, .sup-chips, .sp-quick, .dlv-days, .gal-strip, .flow, [data-hscroll]";
+  const HS_ACTIVE = ".is-active, .is-on, .is-current, [aria-selected='true']";
+  function initHScroll() {
+    const rows = new Set();
+    const fine = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const ro = "ResizeObserver" in window ? new ResizeObserver((en) => en.forEach((x) => update(x.target))) : null;
+    const max = (el) => el.scrollWidth - el.clientWidth;
+    const pos = (el) => Math.abs(el.scrollLeft); // 0 at the start edge in RTL and LTR
+    const scrollable = (el) => { const o = getComputedStyle(el).overflowX; return o === "auto" || o === "scroll"; };
+    let hover = null;
+
+    // floating arrows, shared by all rows (no change to the rows' own layout)
+    const mk = (cls, label) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = `hs-arrow ${cls}`; b.tabIndex = -1; b.setAttribute("aria-label", label);
+      b.innerHTML = icon("chevron-left");
+      document.body.appendChild(b);
+      return b;
+    };
+    const prev = mk("hs-prev", "قبلی"), next = mk("hs-next", "بعدی");
+    function hideArrows() { hover = null; prev.classList.remove("is-on"); next.classList.remove("is-on"); }
+    function placeArrows() {
+      if (!hover || !hover.isConnected || !hover.classList.contains("hs-on") || !fine.matches) return hideArrows();
+      const r = hover.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight) return hideArrows();
+      const rtl = !hover.classList.contains("hs-ltr");
+      const y = r.top + r.height / 2 - 16;
+      // RTL: the start edge (previous items) is on the right
+      const startX = rtl ? r.right - 36 : r.left + 4, endX = rtl ? r.left + 4 : r.right - 36;
+      prev.style.cssText = `top:${y}px;left:${startX}px`;
+      next.style.cssText = `top:${y}px;left:${endX}px`;
+      prev.classList.toggle("is-on", hover.classList.contains("hs-more-start"));
+      next.classList.toggle("is-on", hover.classList.contains("hs-more-end"));
+      prev.classList.toggle("hs-flip", rtl); next.classList.toggle("hs-flip", !rtl);
+    }
+    const step = (dir) => {
+      if (!hover) return;
+      const sign = hover.classList.contains("hs-ltr") ? 1 : -1;
+      hover.scrollBy({ left: sign * dir * Math.max(120, hover.clientWidth * 0.7), behavior: "smooth" });
+    };
+    prev.addEventListener("click", () => step(-1));
+    next.addEventListener("click", () => step(1));
+    [prev, next].forEach((b) => b.addEventListener("mouseleave", (e) => { if (!hover || !hover.contains(e.relatedTarget)) hideArrows(); }));
+
+    function update(el) {
+      if (!el.isConnected) return;
+      const m = max(el);
+      const on = m > 2 && scrollable(el);
+      const p = pos(el);
+      el.classList.toggle("hs-on", on);
+      el.classList.toggle("hs-more-start", on && p > 2);
+      el.classList.toggle("hs-more-end", on && p < m - 2);
+      if (hover === el) placeArrows();
+    }
+    // bring the selected tab into view when it is (partly) hidden
+    function showActive(el, smooth) {
+      const a = el.querySelector(HS_ACTIVE);
+      if (!a || a === el._hsActive) return;
+      el._hsActive = a;
+      if (!el.classList.contains("hs-on")) return;
+      const r = el.getBoundingClientRect(), ar = a.getBoundingClientRect();
+      if (ar.left >= r.left + 30 && ar.right <= r.right - 30) return;
+      el.scrollBy({ left: ar.left + ar.width / 2 - (r.left + r.width / 2), behavior: smooth ? "smooth" : "auto" });
+    }
+
+    function enhance(el) {
+      if (el._hs) return;
+      el._hs = true;
+      rows.add(el);
+      if (getComputedStyle(el).direction !== "rtl") el.classList.add("hs-ltr");
+      update(el);
+      showActive(el, false);
+      ro && ro.observe(el);
+      // the selected tab changed in place (no re-render)
+      new MutationObserver(() => showActive(el, true)).observe(el, { subtree: true, attributes: true, attributeFilter: ["class", "aria-selected"] });
+      el.addEventListener("scroll", () => update(el), { passive: true });
+      el.addEventListener("mouseenter", () => { hover = el; placeArrows(); });
+      el.addEventListener("mouseleave", (e) => { const t = e.relatedTarget; if (hover === el && !(t && (prev.contains(t) || next.contains(t)))) hideArrows(); });
+      // vertical wheel → sideways, until the row reaches its end (then the page scrolls)
+      el.addEventListener("wheel", (e) => {
+        if (!el.classList.contains("hs-on") || e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+        const fwd = e.deltaY > 0, p = pos(el);
+        if ((fwd && p >= max(el) - 1) || (!fwd && p <= 1)) return;
+        e.preventDefault();
+        const d = e.deltaMode === 1 ? e.deltaY * 32 : e.deltaY;
+        el.scrollBy({ left: (el.classList.contains("hs-ltr") ? 1 : -1) * d, behavior: Math.abs(d) >= 50 ? "smooth" : "auto" });
+      }, { passive: false });
+      el.addEventListener("pointerdown", (e) => {
+        if (e.pointerType !== "mouse" || e.button !== 0 || !el.classList.contains("hs-on")) return;
+        if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+        cancelAnimationFrame(el._hsGlide);
+        drag = { el, x: e.clientX, sl: el.scrollLeft, moved: false, lx: e.clientX, lt: performance.now(), v: 0 };
+      });
+      el.addEventListener("dragstart", (e) => { if (el.classList.contains("hs-on")) e.preventDefault(); });
+      // a drag is not a click on the tab under the mouse
+      el.addEventListener("click", (e) => { if (performance.now() - (el._hsUp || 0) < 120) { e.preventDefault(); e.stopPropagation(); } }, true);
+    }
+
+    let drag = null;
+    window.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x;
+      if (!drag.moved) {
+        if (Math.abs(dx) < 6) return;
+        drag.moved = true;
+        drag.el.classList.add("hs-drag");
+      }
+      drag.el.scrollLeft = drag.sl - dx;
+      const now = performance.now();
+      drag.v = (e.clientX - drag.lx) / Math.max(1, now - drag.lt);
+      drag.lx = e.clientX; drag.lt = now;
+    });
+    const endDrag = () => {
+      if (!drag) return;
+      const d = drag; drag = null;
+      if (!d.moved) return;
+      d.el._hsUp = performance.now();
+      // keep gliding a little after a quick flick
+      let v = performance.now() - d.lt < 80 ? d.v * 16 : 0;
+      const glide = () => {
+        if (Math.abs(v) < 0.6) { d.el.classList.remove("hs-drag"); return; }
+        d.el.scrollLeft -= v; v *= 0.92;
+        d.el._hsGlide = requestAnimationFrame(glide);
+      };
+      glide();
+    };
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    window.addEventListener("scroll", () => hover && placeArrows(), { passive: true });
+    window.addEventListener("resize", () => rows.forEach(update));
+
+    let queued = false;
+    const scan = () => {
+      queued = false;
+      rows.forEach((el) => { if (!el.isConnected) { rows.delete(el); ro && ro.unobserve(el); } else { update(el); showActive(el, true); } });
+      document.querySelectorAll(HS_SEL).forEach(enhance);
+      if (hover && !hover.isConnected) hideArrows();
+    };
+    const queue = () => { if (!queued) { queued = true; requestAnimationFrame(scan); } };
+    new MutationObserver((list) => { if (list.some((m) => [...m.addedNodes].some((n) => n.nodeType === 1))) queue(); })
+      .observe(document.body, { childList: true, subtree: true });
+    queue();
+  }
+
   const ALWAYS_OPEN = ["auth", "dashboard"];
 
   BX.ready
@@ -891,4 +1040,5 @@
   initScrollFx();
   initCodeBg();
   initAnimPause();
+  initHScroll();
 })();

@@ -80,7 +80,7 @@
     // small delay so sweeping the mouse across the list does not rebuild every category
     let hoverT;
     tabs.forEach((t) => {
-      t.addEventListener("pointerenter", () => { if (!fine.matches) return; clearTimeout(hoverT); hoverT = setTimeout(() => show(Number(t.dataset.i)), 160); });
+      t.addEventListener("pointerenter", () => { if (!fine.matches || t.parentElement.classList.contains("hs-drag")) return; clearTimeout(hoverT); hoverT = setTimeout(() => show(Number(t.dataset.i)), 160); });
       t.addEventListener("pointerleave", () => clearTimeout(hoverT));
     });
     root.querySelector(".svx-rail").addEventListener("keydown", (e) => {

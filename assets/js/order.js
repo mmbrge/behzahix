@@ -447,16 +447,7 @@ window.BX.ready.then(function () {
     const bar = root.querySelector("[data-steps]");
     const cur = bar.querySelector(".is-current");
     if (cur && bar.scrollWidth > bar.clientWidth) bar.scrollTo({ left: cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2, behavior: "smooth" });
-    // mouse drag-to-scroll when the bar is narrower than its steps
-    if (!bar.dataset.drag) {
-      bar.dataset.drag = "1";
-      let sx = 0, sl = 0, down = false, moved = false;
-      bar.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") return; down = true; moved = false; sx = e.clientX; sl = bar.scrollLeft; });
-      window.addEventListener("pointermove", (e) => { if (!down) return; const d = e.clientX - sx; if (Math.abs(d) > 4) moved = true; bar.scrollLeft = sl - d; });
-      window.addEventListener("pointerup", () => { down = false; });
-      bar.addEventListener("click", (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
-      bar.addEventListener("wheel", (e) => { if (bar.scrollWidth > bar.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { bar.scrollLeft -= e.deltaY; e.preventDefault(); } }, { passive: false });
-    }
+    // dragging and wheel scrolling come from the shared sideways-row helper (core.js)
   }
 
   function renderAll() {

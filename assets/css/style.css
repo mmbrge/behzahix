@@ -609,3 +609,26 @@ a.logo:hover .logo-a { animation-duration: 1.6s; }
 .pro-badge { display: inline-flex; align-items: center; gap: 3px; font-size: .68rem; font-weight: 900; letter-spacing: .05em; padding: 2px 7px; border-radius: 999px; color: #1a1205; background: linear-gradient(120deg, #fde68a, #f59e0b); vertical-align: middle; }
 /* services menu open: stop decorative loops underneath it */
 .mega-open body *:not(.mega, .mega *), .mega-open .logo::after { animation-play-state: paused !important; }
+
+/* ---------- Sideways rows (tabs, chips, steps): drag, wheel, arrows, edge fade ---------- */
+@property --hs-s { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --hs-e { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.hs-on { cursor: grab; overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(to left, transparent, #000 var(--hs-s), #000 calc(100% - var(--hs-e)), transparent);
+          mask-image: linear-gradient(to left, transparent, #000 var(--hs-s), #000 calc(100% - var(--hs-e)), transparent); }
+.hs-on.hs-ltr { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--hs-s), #000 calc(100% - var(--hs-e)), transparent);
+                        mask-image: linear-gradient(to right, transparent, #000 var(--hs-s), #000 calc(100% - var(--hs-e)), transparent); }
+.hs-more-start { --hs-s: 34px; }
+.hs-more-end { --hs-e: 34px; }
+/* boxed rows keep their border and background: arrows only */
+.svx-rail.hs-on, .seg-tabs.hs-on, .legal-nav.hs-on { -webkit-mask-image: none; mask-image: none; }
+.hs-drag, .hs-drag * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+.hs-drag { scroll-snap-type: none !important; scroll-behavior: auto !important; }
+.hs-arrow { position: fixed; z-index: 250; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--line-strong); background: var(--surface, #15171f); color: var(--fg); box-shadow: 0 6px 18px -6px rgb(0 0 0 / .5);
+  opacity: 0; pointer-events: none; transform: scale(.8); transition: opacity .2s, transform .25s var(--ease-spring, ease), background-color .2s, color .2s; }
+.hs-arrow .icon { width: 18px; height: 18px; }
+.hs-arrow.is-on { opacity: 1; pointer-events: auto; transform: none; }
+.hs-arrow.hs-flip .icon { transform: scaleX(-1); }
+.hs-arrow:hover { background: var(--brand); color: var(--on-brand, #fff); border-color: transparent; }
+@media (hover: none), (pointer: coarse) { .hs-arrow { display: none; } }
