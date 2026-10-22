@@ -123,7 +123,7 @@
     });
   }
   const el = () => document.querySelector("[data-studio-panel]");
-  const load = () => { const box = el(); if (!box) return; const param = decodeURIComponent(location.hash.slice(1)).split("/")[1] || ""; (BXD.me.role === "admin" ? admin(box, param) : mine(box)).catch((e) => { box.innerHTML = `<div class="card empty">${icon("info")}<p>${esc(e.message)}</p></div>`; }); };
+  const load = () => { const box = el(); if (!box) return; const param = decodeURIComponent(location.hash.slice(1)).split("/")[1] || ""; (BXD.can("studio") ? admin(box, param) : mine(box)).catch((e) => { box.innerHTML = `<div class="card empty">${icon("info")}<p>${esc(e.message)}</p></div>`; }); };
   const prevAfter = BXD.afterRender;
   BXD.afterRender = (view, id, param) => { if (prevAfter) prevAfter(view, id, param); if (view.querySelector("[data-studio-panel]")) load(); };
   Object.assign(BXD.acts, {

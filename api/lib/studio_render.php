@@ -102,14 +102,14 @@ function a_studio_export(): void
     $u = require_user();
     rate_limit('studio-export', 40, 600);
     $it = row('SELECT * FROM studio_items WHERE id = ?', [int_in('id')]);
-    if (!$it || ((int) $it['user_id'] !== (int) $u['id'] && $u['role'] !== 'admin')) fail('طرح پیدا نشد.', 404);
+    if (!$it || ((int) $it['user_id'] !== (int) $u['id'] && !staff_can($u, 'studio'))) fail('طرح پیدا نشد.', 404);
     $kind = $it['kind'];
     $fmt = str_in('format', 8);
     if (!isset(STUDIO_FORMATS[$kind][$fmt])) $fmt = array_key_first(STUDIO_FORMATS[$kind]);
     if (!$it['paid']) {
         require_once __DIR__ . '/pro.php';
         if (!pro_active($u)) fail('برای دریافت فایل نهایی ابتدا طرح را خریداری کنید.', 402, 'unpaid');
-        if ($u['role'] !== 'admin') {
+        if (!staff_can($u, 'studio')) {
             if (pro_studio_left($u) <= 0) fail('سهمیه فایل این ماه اشتراک شما تمام شده است؛ می‌توانید همین طرح را جداگانه بخرید.', 402, 'quota');
             usage_add('studio-file', (int) $u['id']);
         }
@@ -234,7 +234,7 @@ function seed_shop_templates(): void
 // What the host must provide for the studio, plus a real test render of every tool.
 function a_studio_check(): void
 {
-    require_active('admin');
+    require_staff('studio');
     studio_render_boot();
     $gd = function_exists('gd_info') ? gd_info() : [];
     $mb = function ($v) { $v = trim((string) $v); if ($v === '' || $v === '-1') return -1; $n = (float) $v; $u = strtolower(substr($v, -1)); return (int) ($u === 'g' ? $n * 1024 : ($u === 'k' ? $n / 1024 : ($u === 'm' ? $n : $n / 1048576))); };

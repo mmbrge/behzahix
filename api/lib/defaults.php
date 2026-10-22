@@ -84,6 +84,11 @@ function default_settings(): array
         // Seller details printed on invoices (empty = taken from site name / contact)
         'invoice' => ['sellerName' => '', 'economicCode' => '', 'nationalId' => '', 'regNo' => '', 'address' => '', 'postalCode' => '', 'phone' => '', 'vatPercent' => 0, 'note' => ''],
         // Security: admin two-step login by SMS, admin login alert, IP blocking after failed sign-ins
+        // What accountant and partner accounts may open (STAFF_SECTIONS keys); settings and security are admin-only
+        'roles' => [
+            'partner' => ['overview', 'orders', 'delivery', 'support', 'tickets', 'coupons', 'studio'],
+            'accountant' => ['overview', 'orders', 'finance'],
+        ],
         'security' => ['admin2fa' => false, 'loginAlert' => true, 'maxFails' => 10, 'blockMinutes' => 30, 'trustProxy' => false,
             // block right-click, view-source / save / developer-tools shortcuts for visitors (never for admins)
             'guard' => true],

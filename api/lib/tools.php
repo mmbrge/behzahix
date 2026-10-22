@@ -72,7 +72,7 @@ function short_out(array $l, bool $withUrl = true): array
 function can_see_link(array $l): bool
 {
     $u = me();
-    if ($u && ($u['role'] === 'admin' || (int) $l['user_id'] === (int) $u['id'])) return true;
+    if ($u && (staff_can($u, 'tools') || (int) $l['user_id'] === (int) $u['id'])) return true;
     return in_array((int) $l['id'], $_SESSION['my_links'] ?? [], true);
 }
 function link_stats(array $l): array
@@ -184,7 +184,7 @@ function r_short_go(): void
 // ------------------------------------------------------------------ admin
 function a_tools_stats(): void
 {
-    require_active('admin');
+    require_staff('tools');
     $since7 = date('Y-m-d H:i:s', strtotime('-7 days'));
     $today = date('Y-m-d 00:00:00');
     $per = [];
@@ -211,7 +211,7 @@ function a_tools_stats(): void
 
 function a_tools_events(): void
 {
-    require_active('admin');
+    require_staff('tools');
     $tool = str_in('tool', 32);
     $page = max(0, int_in('page'));
     $where = $tool !== '' && isset(BX_TOOLS[$tool]) ? 'WHERE e.tool = ?' : '';
@@ -225,7 +225,7 @@ function a_tools_events(): void
 
 function a_short_list(): void
 {
-    require_active('admin');
+    require_staff('tools');
     $term = str_in('q', 100);
     $where = $term !== '' ? 'WHERE l.code LIKE ? OR l.url LIKE ?' : '';
     $p = $term !== '' ? ["%$term%", "%$term%"] : [];
@@ -234,20 +234,20 @@ function a_short_list(): void
 }
 function a_short_stats(): void
 {
-    require_active('admin');
+    require_staff('tools');
     $l = row('SELECT * FROM short_links WHERE id = ?', [int_in('id')]);
     if (!$l) fail('لینک پیدا نشد.', 404);
     out(link_stats($l));
 }
 function a_short_toggle(): void
 {
-    require_active('admin');
+    require_staff('tools');
     q('UPDATE short_links SET active = 1 - active WHERE id = ?', [int_in('id')]);
     out(['ok' => true]);
 }
 function a_short_delete(): void
 {
-    require_active('admin');
+    require_staff('tools');
     $id = int_in('id');
     q('DELETE FROM short_clicks WHERE link_id = ?', [$id]);
     q('DELETE FROM short_links WHERE id = ?', [$id]);

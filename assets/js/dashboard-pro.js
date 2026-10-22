@@ -109,7 +109,7 @@
     <button type="button" class="icon-btn icon-btn-sm" data-act="pro-plan-del" aria-label="حذف">${icon("trash")}</button></div>`;
 
   const box = () => document.querySelector("[data-pro-panel]");
-  const load = () => { const el = box(); if (!el) return; (BXD.me.role === "admin" ? adminView(el) : userView(el)).catch((e) => { el.innerHTML = `<div class="card empty">${icon("info")}<p>${esc(e.message)}</p></div>`; }); };
+  const load = () => { const el = box(); if (!el) return; (BXD.can("pro") ? adminView(el) : userView(el)).catch((e) => { el.innerHTML = `<div class="card empty">${icon("info")}<p>${esc(e.message)}</p></div>`; }); };
   const prevAfter = BXD.afterRender;
   BXD.afterRender = (view, id, param) => { if (prevAfter) prevAfter(view, id, param); if (view.querySelector("[data-pro-panel]")) load(); };
   Object.assign(BXD.acts, {

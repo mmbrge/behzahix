@@ -18,15 +18,29 @@
     return `<div class="icon-picker" role="radiogroup" aria-label="آیکن">${ICON_NAMES().map((n) => `
       <label title="${n}"><input type="radio" name="${name}" value="${n}" ${n === current ? "checked" : ""}><span>${icon(n)}</span></label>`).join("")}</div>`;
   }
+  const STAFF_SECTIONS = [["overview", "داشبورد و آمار فروش"], ["orders", "سفارش‌ها (مشاهده و مدیریت)"], ["delivery", "تقویم تحویل حضوری"], ["support", "پشتیبانی آنلاین (چت)"], ["users", "کاربران (مشتری، طراح، فروشنده)"], ["catalog", "خدمات، محصولات و نظرات"], ["finance", "مالی، تراکنش‌ها، بازگشت وجه و تسویه"], ["tickets", "تیکت‌ها"], ["coupons", "کدهای تخفیف"], ["studio", "استودیو"], ["pro", "اشتراک X PRO"], ["blog", "وبلاگ"], ["tools", "ابزارها و لینک‌های کوتاه"]];
   const tabs = (base, items, active) => `<div class="tabs-row">${items.map(([id, label, ic]) => `<a class="tab-link ${id === active ? "is-active" : ""}" href="#${base}${id ? `/${id}` : ""}">${ic ? BX.icon(ic) : ""}${label}</a>`).join("")}</div>`;
 
   // ============================================================ USERS
+  const ROLE_META = {
+    customer: ["user", "سفارش و خرید از سایت"], designer: ["pen", "انجام پروژه‌ها"], seller: ["store", "فروش فایل در فروشگاه"],
+    partner: ["briefcase", "سفارش‌ها و فروش؛ بدون تنظیمات"], accountant: ["wallet", "امور مالی و تسویه‌ها"], admin: ["crown", "دسترسی کامل به همه‌چیز"],
+  };
+  const STAFF_ROLES = ["admin", "accountant", "partner"];
+  const isAdminMe = () => BXD.me.role === "admin";
   BXD.routes.users = function () {
-    const { S, me, box, table, seg, segState, pill, money, faDigits, esc, icon, userCell, date, ROLE_LABEL, USER_STATUS } = h();
+    const { S, me, box, table, seg, segState, pill, money, faDigits, esc, icon, userCell, date, ago, tile, ROLE_LABEL, USER_STATUS } = h();
     const f = segState.users || "all";
-    const term = (segState["users-q"] || "").trim();
-    const pending = S.users.filter((u) => u.status === "pending");
-    const list = S.users.filter((u) => (f === "all" || (f === "pending" ? u.status === "pending" : u.role === f)) && (!term || u.name.includes(term) || (u.phone || "").includes(BX.enDigits(term))));
+    const st = segState["users-st"] || "all";
+    const sort = segState["users-sort"] || "new";
+    const term = BX.enDigits((segState["users-q"] || "").trim()).toLowerCase();
+    const pending = S.users.filter((u) => u.status === "pending" && ["designer", "seller"].includes(u.role));
+    const monthAgo = Date.now() - 30 * 864e5;
+    const match = (u) => !term || [u.name, u.phone, u.email, u.shopName, u.business].some((x) => String(x || "").toLowerCase().includes(term));
+    let list = S.users.filter((u) => (f === "all" || (f === "staff" ? STAFF_ROLES.includes(u.role) : u.role === f)) && (st === "all" || u.status === st) && match(u));
+    const by = { new: (a, b) => b.createdAt - a.createdAt, login: (a, b) => (b.lastLogin || 0) - (a.lastLogin || 0), wallet: (a, b) => (b.wallet || 0) - (a.wallet || 0), name: (a, b) => a.name.localeCompare(b.name, "fa") }[sort];
+    list = [...list].sort(by);
+    const count = (r) => S.users.filter((u) => u.role === r).length;
     const applicants = pending.length ? box("درخواست‌های همکاری (طراح و فروشنده)", "shield", `<div class="grid-auto">${pending.map((u) => `
       <article class="card job">
         <div class="row">${BX.avatar(u, "avatar-lg")}<div><b>${esc(u.name)}</b> <span class="badge badge--brand">${ROLE_LABEL[u.role]}</span><br><small class="muted" dir="ltr">${faDigits(u.phone || "")}</small><br><small class="muted">${BX.ago(u.createdAt)}</small></div></div>
@@ -35,67 +49,145 @@
           : `<p class="small"><b>${esc(u.shopName || "")}</b></p><p class="small muted">${(u.cats || []).map((c) => esc(BX.PRODUCT_CATEGORIES.find((x) => x.id === c)?.title || c)).join("، ")}</p>`}
         <div class="row-between"><button class="btn btn-primary btn-sm" data-act="user-status" data-id="${u.id}" data-v="active">${icon("check")} تأیید</button><button class="btn btn-ghost btn-sm" data-act="user-status" data-id="${u.id}" data-v="rejected">رد درخواست</button></div>
       </article>`).join("")}</div>`) : "";
-    return `<div class="dash-grid">${applicants}
+    const canTouch = (u) => isAdminMe() || !STAFF_ROLES.includes(u.role);
+    const addRoles = Object.keys(ROLE_META).filter((r) => isAdminMe() || !STAFF_ROLES.includes(r));
+    return `<div class="dash-grid">
+      <div class="tiles">
+        ${tile("همه کاربران", faDigits(S.users.length), "users", `${faDigits(S.users.filter((u) => u.createdAt > monthAgo).length)} عضو جدید در ۳۰ روز`)}
+        ${tile("مشتری‌ها", faDigits(count("customer")), "user", `${faDigits(S.users.filter((u) => u.role === "customer" && (u.wallet || 0) > 0).length)} نفر با موجودی کیف پول`)}
+        ${tile("طراح و فروشنده", faDigits(count("designer") + count("seller")), "pen", `${faDigits(count("designer"))} طراح · ${faDigits(count("seller"))} فروشنده`)}
+        ${tile("تیم مدیریت", faDigits(S.users.filter((u) => STAFF_ROLES.includes(u.role)).length), "shield", `${faDigits(count("partner"))} شریک · ${faDigits(count("accountant"))} حسابدار`)}
+      </div>
+      ${applicants}
+      ${box("افزودن کاربر", "plus", `<div class="role-add">${addRoles.map((r) => `<button type="button" class="role-add-btn" data-act="user-new" data-role="${r}"><span class="opt-icon">${icon(ROLE_META[r][0])}</span><b>${ROLE_LABEL[r]}</b><small>${ROLE_META[r][1]}</small></button>`).join("")}</div>
+        ${isAdminMe() ? `<p class="field-hint mt-2">${icon("info")} دسترسی «شریک» و «حسابدار» را در <a class="brand" href="#settings/roles">تنظیمات ← نقش‌ها و دسترسی</a> تعیین کنید.</p>` : ""}`)}
       ${box("کاربران", "users", `
-        <div class="row-between">${seg("users", [["all", "همه", S.users.length], ...Object.entries(ROLE_LABEL).map(([k, l]) => [k, l, S.users.filter((u) => u.role === k).length]), ["pending", "در انتظار", pending.length]], f)}
-          <label class="search">${icon("search")}<input class="input" data-change="users-q" value="${esc(term)}" placeholder="نام یا موبایل"></label></div>
-        <div class="mt-2">${table(["کاربر", "نقش", "وضعیت", "عضویت", "کیف پول", "کارمزد", ""], list.map((u) => `
-          <tr><td>${userCell(u)}</td>
-            <td><span class="badge">${ROLE_LABEL[u.role]}</span>${u.isDemo ? ' <span class="badge badge--info">نمونه</span>' : ""}</td>
+        <div class="row-between users-filters">${seg("users", [["all", "همه", S.users.length], ...["customer", "designer", "seller"].map((k) => [k, ROLE_LABEL[k], count(k)]), ["staff", "تیم مدیریت", S.users.filter((u) => STAFF_ROLES.includes(u.role)).length]], f)}
+          <label class="search">${icon("search")}<input class="input" data-change="users-q" value="${esc(segState["users-q"] || "")}" placeholder="نام، موبایل، ایمیل یا فروشگاه"></label></div>
+        <div class="row-between mt-2">${seg("users-st", [["all", "همه وضعیت‌ها"], ...Object.entries(USER_STATUS).map(([k, [l]]) => [k, l, S.users.filter((u) => u.status === k).length])], st)}
+          ${seg("users-sort", [["new", "جدیدترین"], ["login", "آخرین ورود"], ["wallet", "بیشترین موجودی"], ["name", "الفبا"]], sort)}</div>
+        <p class="muted small mt-2">${faDigits(list.length)} کاربر</p>
+        <div class="mt-1">${table(["کاربر", "نقش", "وضعیت", "عضویت", "آخرین ورود", "کیف پول", ""], list.map((u) => `
+          <tr data-user-row="${u.id}"><td>${userCell(u)}<small class="muted d-block" dir="ltr">${faDigits(u.phone || "")}</small></td>
+            <td><span class="badge ${STAFF_ROLES.includes(u.role) ? "badge--brand" : ""}">${icon(ROLE_META[u.role]?.[0] || "user")} ${ROLE_LABEL[u.role] || u.role}</span>${u.isDemo ? ' <span class="badge badge--info">نمونه</span>' : ""}${u.pro ? ' <span class="badge badge--warn">PRO</span>' : ""}</td>
             <td>${pill(USER_STATUS[u.status] || USER_STATUS.active)}</td>
             <td class="muted">${date(u.createdAt)}</td>
+            <td class="muted">${u.lastLogin ? ago(u.lastLogin) : "—"}</td>
             <td>${money(u.wallet)}</td>
-            <td>${["designer", "seller"].includes(u.role) ? `${faDigits(u.effectiveCommission ?? "")}٪${u.commission != null ? ' <span class="badge badge--brand">اختصاصی</span>' : ""}` : "—"}</td>
             <td><div class="actions">
-              <button class="icon-btn icon-btn-sm" data-act="user-edit" data-id="${u.id}" title="ویرایش" aria-label="ویرایش">${icon("edit")}</button>
-              ${u.id !== me.id ? `
-                <button class="icon-btn icon-btn-sm" data-act="impersonate" data-id="${u.id}" title="ورود به پنل این کاربر" aria-label="ورود به‌جای کاربر">${icon("eye")}</button>
+              <button class="btn btn-ghost btn-xs" data-act="user-view" data-id="${u.id}">${icon("eye")} جزئیات</button>
+              ${canTouch(u) ? `<button class="icon-btn icon-btn-sm" data-act="user-edit" data-id="${u.id}" title="ویرایش" aria-label="ویرایش">${icon("edit")}</button>` : ""}
+              ${u.id !== me.id && canTouch(u) ? `
                 ${u.status === "blocked" ? `<button class="btn btn-ghost btn-xs" data-act="user-status" data-id="${u.id}" data-v="active">رفع مسدودی</button>` : `<button class="btn btn-ghost btn-xs" data-act="user-status" data-id="${u.id}" data-v="blocked">مسدود</button>`}
-                <button class="icon-btn icon-btn-sm" data-act="user-delete" data-id="${u.id}" title="حذف" aria-label="حذف">${icon("trash")}</button>` : ""}
-            </div></td></tr>`), "کاربری پیدا نشد.")}</div>`, `<button class="btn btn-primary btn-sm" data-act="user-edit">${icon("plus")} کاربر جدید</button>`)}
+                ${isAdminMe() ? `<button class="icon-btn icon-btn-sm" data-act="impersonate" data-id="${u.id}" title="ورود به پنل این کاربر" aria-label="ورود به‌جای کاربر">${icon("eye")}</button><button class="icon-btn icon-btn-sm" data-act="user-delete" data-id="${u.id}" title="حذف" aria-label="حذف">${icon("trash")}</button>` : ""}` : ""}
+            </div></td></tr>`), "کاربری پیدا نشد.")}</div>`, `<button class="btn btn-primary btn-sm" data-act="user-new" data-role="customer">${icon("plus")} کاربر جدید</button>`)}
     </div>`;
   };
 
-  function userModal(u) {
+  // Detail card: profile, numbers, other accounts on the same phone, recent orders and money
+  async function userView(id) {
+    const { modal, esc, faDigits, icon, money, date, ago, ROLE_LABEL, USER_STATUS, pill, statusBadge } = h();
+    let r;
+    try { r = await BX.api("a.user.detail", { id }); } catch (e) { BX.toast(e.message, "bad"); return; }
+    const u = r.user, s = r.stats;
+    const stat = (l, v, ic) => v == null ? "" : `<div class="ud-stat">${icon(ic)}<b>${typeof v === "number" ? faDigits(v) : v}</b><span>${l}</span></div>`;
+    const canTouch = isAdminMe() || !STAFF_ROLES.includes(u.role);
+    modal({
+      title: "جزئیات کاربر", wide: true,
+      body: `<div class="ud">
+        <header class="ud-head">${BX.avatar(u, "avatar-lg")}<div class="grow"><h3>${esc(u.name)}</h3>
+          <div class="row" style="flex-wrap:wrap;gap:6px"><span class="badge badge--brand">${ROLE_LABEL[u.role] || u.role}</span>${pill(USER_STATUS[u.status] || USER_STATUS.active)}${u.pro ? '<span class="badge badge--warn">X PRO</span>' : ""}${u.isDemo ? '<span class="badge badge--info">نمونه</span>' : ""}</div></div></header>
+        <div class="ud-info">
+          <a href="tel:${esc(u.phone)}">${icon("phone")}<span dir="ltr">${faDigits(u.phone || "")}</span></a>
+          ${u.email ? `<a href="mailto:${esc(u.email)}">${icon("mail")}<span dir="ltr">${esc(u.email)}</span></a>` : ""}
+          <span>${icon("calendar")} عضویت ${date(u.createdAt)}</span>
+          <span>${icon("clock")} آخرین ورود ${u.lastLogin ? `${ago(u.lastLogin)}${u.lastIp ? ` · <span dir="ltr">${esc(u.lastIp)}</span>` : ""}` : "ثبت نشده"}</span>
+          ${u.business ? `<span>${icon("building")} ${esc(u.business)}</span>` : ""}${u.shopName ? `<span>${icon("store")} ${esc(u.shopName)}</span>` : ""}
+          ${r.referrer ? `<span>${icon("users")} معرف: ${esc(r.referrer)}</span>` : ""}
+          ${u.card ? `<span>${icon("wallet")} <span dir="ltr">${esc(u.card)}</span></span>` : ""}
+        </div>
+        <div class="ud-stats">
+          ${stat("کیف پول", money(u.wallet), "wallet")}${stat("سفارش ثبت‌شده", s.orders, "list")}${stat("سفارش تحویل‌شده", s.ordersDone, "check-circle")}
+          ${u.role === "designer" ? stat("پروژه انجام‌شده", s.jobs, "pen") : ""}${stat("خرید فایل", s.purchases, "download")}${u.role === "seller" ? stat("محصول", s.products, "box") : ""}
+          ${stat("تیکت", s.tickets, "ticket")}${stat("دعوت‌شده", s.invited, "users")}
+          ${s.spent != null ? stat("مجموع پرداخت", money(s.spent), "trend") : ""}${s.earned ? stat("درآمد", money(s.earned), "trend") : ""}
+        </div>
+        ${r.accounts.length ? `<div class="ud-sec"><b>حساب‌های دیگر با همین شماره</b><div class="row mt-1" style="flex-wrap:wrap;gap:6px">${r.accounts.map((a) => `<button type="button" class="chip" data-ud-open="${a.id}">${ROLE_LABEL[a.role] || a.role} · ${(USER_STATUS[a.status] || [""])[0]}</button>`).join("")}</div></div>` : ""}
+        ${u.perms ? `<div class="ud-sec"><b>دسترسی‌های این حساب</b><p class="muted small mt-1">${u.role === "admin" ? "همه بخش‌ها" : u.perms.filter((p) => p !== "notifications").map((p) => esc(SECTION_LABEL[p] || p)).join("، ") || "—"}</p></div>` : ""}
+        <div class="ud-sec"><b>آخرین سفارش‌ها</b>${r.orders.length ? `<ul class="ud-list">${r.orders.slice(0, 8).map((o) => `<li><a href="#orders/${o.id}" data-ud-go><b dir="ltr">${esc(o.code)}</b> ${esc(o.title)}</a>${statusBadge ? statusBadge(o.status) : esc(o.status)}<span class="muted small">${money(o.price)} · ${date(o.at)}</span></li>`).join("")}</ul>` : '<p class="muted small mt-1">سفارشی ندارد.</p>'}</div>
+        ${r.transactions.length ? `<div class="ud-sec"><b>آخرین تراکنش‌ها</b><ul class="ud-list">${r.transactions.slice(0, 8).map((t) => `<li><span>${esc(t.note || t.type)}</span><b class="${t.amount < 0 ? "bad" : "ok"}" dir="ltr">${money(t.amount)}</b><span class="muted small">${date(t.at)}</span></li>`).join("")}</ul></div>` : ""}
+        ${canTouch ? `<div class="ud-sec"><label class="field-label" for="ud-note">یادداشت داخلی (فقط تیم مدیریت می‌بیند)</label><textarea class="textarea" id="ud-note" rows="3" placeholder="مثلاً مشتری VIP، ترجیح تماس عصرها…">${esc(u.note || "")}</textarea></div>` : ""}
+      </div>`,
+      onOpen: (w) => w.addEventListener("click", (e) => {
+        const o = e.target.closest("[data-ud-open]");
+        if (o) { w.querySelector("[data-close]")?.click(); setTimeout(() => userView(o.dataset.udOpen), 250); }
+        if (e.target.closest("[data-ud-go]")) w.querySelector("[data-close]")?.click();
+      }),
+      actions: [
+        { label: "بستن" },
+        ...(canTouch ? [{ label: "ویرایش", onClick: () => { setTimeout(() => userModal(BXD.S.users.find((x) => x.id === u.id) || u), 250); } }] : []),
+        ...(canTouch ? [{ label: "ذخیره یادداشت", primary: true, onClick: (w) => { BX.api("a.user.note", { id: u.id, note: w.querySelector("#ud-note").value }).then((x) => BX.toast(x.message, "ok")).catch((e) => BX.toast(e.message, "bad")); } }] : []),
+      ],
+    });
+  }
+  const SECTION_LABEL = { overview: "داشبورد و آمار فروش", orders: "سفارش‌ها", delivery: "تقویم تحویل", support: "پشتیبانی آنلاین", users: "کاربران", catalog: "خدمات و محصولات", finance: "مالی و تسویه", tickets: "تیکت‌ها", coupons: "کدهای تخفیف", studio: "استودیو", pro: "X PRO", blog: "وبلاگ", tools: "ابزارها", settings: "تنظیمات", security: "امنیت" };
+
+  function userModal(u, newRole) {
     const { S, me, modal, esc, num, faDigits, icon, ROLE_LABEL, USER_STATUS, toast } = h();
     const isNew = !u;
-    u = u || { role: "customer", status: "active", skills: [] };
+    u = u || { role: newRole || "customer", status: "active", skills: [] };
     const c = S.settings.commission || {};
+    const roles = Object.keys(ROLE_META).filter((r) => isAdminMe() || !STAFF_ROLES.includes(r));
+    const self = u.id === me.id;
     modal({
-      title: isNew ? "کاربر جدید" : `ویرایش ${u.name}`, wide: true,
+      title: isNew ? `افزودن ${ROLE_LABEL[u.role] || "کاربر"}` : `ویرایش ${u.name}`, wide: true,
       body: `<form class="form-grid form-grid-2" id="user-form" autocomplete="off">
+        <div class="field span-2"><span class="field-label">نقش</span><div class="role-pick" role="radiogroup">${roles.map((r) => `<label class="opt-card"><input type="radio" name="role" value="${r}" ${r === u.role ? "checked" : ""} ${self ? "disabled" : ""}><span class="opt-icon">${icon(ROLE_META[r][0])}</span><b>${ROLE_LABEL[r]}</b><small>${ROLE_META[r][1]}</small></label>`).join("")}</div>
+          <span class="field-hint" data-role-hint></span></div>
         <div class="field"><label class="field-label" for="uf-name">نام و نام خانوادگی</label><input class="input" id="uf-name" name="name" value="${val(u.name)}"></div>
-        <div class="field"><label class="field-label" for="uf-phone">موبایل (نام کاربری)</label><input class="input" id="uf-phone" name="phone" dir="ltr" value="${val(u.phone)}"></div>
+        <div class="field"><label class="field-label" for="uf-phone">موبایل (نام کاربری ورود)</label><input class="input" id="uf-phone" name="phone" dir="ltr" type="tel" value="${val(u.phone)}" placeholder="09xxxxxxxxx"></div>
+        <div class="field"><label class="field-label" for="uf-pass">${isNew ? "رمز عبور" : "رمز جدید (خالی = بدون تغییر)"}</label><input class="input" id="uf-pass" name="password" type="text" dir="ltr" autocomplete="new-password" placeholder="حداقل ۶ کاراکتر"></div>
+        <div class="field"><label class="field-label" for="uf-status">وضعیت</label><select class="select" id="uf-status" name="status" ${self ? "disabled" : ""}>${Object.entries(USER_STATUS).map(([k, [l]]) => `<option value="${k}" ${k === u.status ? "selected" : ""}>${l}</option>`).join("")}</select></div>
         <div class="field"><label class="field-label" for="uf-email">ایمیل</label><input class="input" id="uf-email" name="email" dir="ltr" value="${val(u.email)}"></div>
-        <div class="field"><label class="field-label" for="uf-pass">${isNew ? "رمز عبور" : "رمز جدید (خالی = بدون تغییر)"}</label><input class="input" id="uf-pass" name="password" type="text" dir="ltr" autocomplete="new-password"></div>
-        <div class="field"><label class="field-label" for="uf-role">نقش</label><select class="select" id="uf-role" name="role" ${u.id === me.id ? "disabled" : ""}>${Object.entries(ROLE_LABEL).map(([k, l]) => `<option value="${k}" ${k === u.role ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-        <div class="field"><label class="field-label" for="uf-status">وضعیت</label><select class="select" id="uf-status" name="status" ${u.id === me.id ? "disabled" : ""}>${Object.entries(USER_STATUS).map(([k, [l]]) => `<option value="${k}" ${k === u.status ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-        <div class="field"><label class="field-label" for="uf-biz">نام کسب‌وکار (مشتری)</label><input class="input" id="uf-biz" name="business" value="${val(u.business)}"></div>
-        <div class="field"><label class="field-label" for="uf-shop">نام فروشگاه (فروشنده)</label><input class="input" id="uf-shop" name="shopName" value="${val(u.shopName)}"></div>
-        <div class="field"><label class="field-label" for="uf-level">سطح / عنوان (طراح)</label><input class="input" id="uf-level" name="level" value="${val(u.level)}" placeholder="مثلاً طراح ارشد"></div>
-        <div class="field"><label class="field-label" for="uf-card">شماره شبا</label><input class="input" id="uf-card" name="card" dir="ltr" value="${val(u.card)}"></div>
-        <div class="field span-2"><label class="field-label" for="uf-bio">معرفی</label><textarea class="textarea" id="uf-bio" name="bio">${esc(u.bio || "")}</textarea></div>
-        <div class="field"><label class="field-label" for="uf-com">کارمزد اختصاصی (٪)</label><input class="input" id="uf-com" name="commission" dir="ltr" inputmode="decimal" value="${u.commission != null ? faDigits(u.commission) : ""}" placeholder="خالی = طبق تنظیمات (${faDigits(c.percent)}٪)">
-          <span class="field-hint">برای طراح/فروشنده. اگر خالی باشد، کارمزد تازه‌واردها (${faDigits(c.newcomerPercent)}٪ تا ${faDigits(c.newcomerUntil)} مورد اول) و سپس کارمزد عمومی اعمال می‌شود.</span></div>
-        <div class="field"><label class="field-label" for="uf-wallet">اصلاح موجودی کیف پول (تومان)</label><input class="input" id="uf-wallet" name="walletAdjust" dir="ltr" placeholder="مثلاً 500000 یا -200000">
-          <span class="field-hint">موجودی فعلی: ${BX.toman(u.wallet || 0)}</span></div>
-        <div class="field span-2" data-skills ${u.role === "designer" ? "" : "hidden"}><span class="field-label">تخصص‌ها (طراح)</span>
+        <div class="field" data-for="customer"><label class="field-label" for="uf-biz">نام کسب‌وکار</label><input class="input" id="uf-biz" name="business" value="${val(u.business)}"></div>
+        <div class="field" data-for="seller"><label class="field-label" for="uf-shop">نام فروشگاه</label><input class="input" id="uf-shop" name="shopName" value="${val(u.shopName)}"></div>
+        <div class="field" data-for="designer"><label class="field-label" for="uf-level">سطح / عنوان</label><input class="input" id="uf-level" name="level" value="${val(u.level)}" placeholder="مثلاً طراح ارشد"></div>
+        <div class="field" data-for="designer seller accountant partner"><label class="field-label" for="uf-card">شماره شبا (برای تسویه)</label><input class="input" id="uf-card" name="card" dir="ltr" value="${val(u.card)}"></div>
+        <div class="field span-2" data-for="designer seller partner"><label class="field-label" for="uf-bio">معرفی</label><textarea class="textarea" id="uf-bio" name="bio">${esc(u.bio || "")}</textarea></div>
+        <div class="field" data-for="designer seller"><label class="field-label" for="uf-com">کارمزد اختصاصی (٪)</label><input class="input" id="uf-com" name="commission" dir="ltr" inputmode="decimal" value="${u.commission != null ? faDigits(u.commission) : ""}" placeholder="خالی = طبق تنظیمات (${faDigits(c.percent)}٪)">
+          <span class="field-hint">اگر خالی باشد، کارمزد تازه‌واردها (${faDigits(c.newcomerPercent)}٪ تا ${faDigits(c.newcomerUntil)} مورد اول) و سپس کارمزد عمومی اعمال می‌شود.</span></div>
+        ${BXD.can("finance") ? `<div class="field"><label class="field-label" for="uf-wallet">اصلاح موجودی کیف پول (تومان)</label><input class="input" id="uf-wallet" name="walletAdjust" dir="ltr" placeholder="مثلاً 500000 یا -200000">
+          <span class="field-hint">موجودی فعلی: ${BX.toman(u.wallet || 0)}</span></div>` : ""}
+        <div class="field span-2" data-for="designer"><span class="field-label">تخصص‌ها</span>
           <div class="chips">${BX.services.map((s) => `<label class="chip"><input type="checkbox" name="skills" value="${esc(s.id)}" ${(u.skills || []).includes(s.id) ? "checked" : ""}><span class="chip-check">${icon("check")}</span>${esc(s.title)}</label>`).join("")}</div></div>
+        <div class="field span-2"><label class="field-label" for="uf-note">یادداشت داخلی</label><textarea class="textarea" id="uf-note" name="note" rows="2" placeholder="فقط تیم مدیریت می‌بیند">${esc(u.note || "")}</textarea></div>
       </form>`,
       onOpen: (wrap) => {
-        wrap.querySelector("#uf-role").addEventListener("change", (e) => (wrap.querySelector("[data-skills]").hidden = e.target.value !== "designer"));
+        const sync = () => {
+          const r = wrap.querySelector("[name=role]:checked")?.value || u.role;
+          wrap.querySelectorAll("[data-for]").forEach((el) => (el.hidden = !el.dataset.for.split(" ").includes(r)));
+          const hint = { partner: "شریک: سفارش‌ها و فروش را می‌بیند و مدیریت می‌کند؛ به تنظیمات و امنیت دسترسی ندارد.", accountant: "حسابدار: امور مالی، تراکنش‌ها و تسویه‌ها.", admin: "مدیر کل: دسترسی کامل. فقط به افراد کاملاً مورد اعتماد بدهید." }[r];
+          wrap.querySelector("[data-role-hint]").innerHTML = hint ? `${icon("info")} ${hint}${r !== "admin" ? ' جزئیات در «تنظیمات ← نقش‌ها و دسترسی».' : ""}` : "";
+        };
+        wrap.addEventListener("change", (e) => { if (e.target.name === "role") sync(); });
+        sync();
+        if (!isNew && u.id && u.note === undefined) BX.api("a.user.detail", { id: u.id }).then((r) => { const n = wrap.querySelector("#uf-note"); if (n && !n.value) n.value = r.user.note || ""; }).catch(() => {});
       },
       actions: [{ label: "انصراف" }, {
-        label: "ذخیره", primary: true, onClick: (wrap) => {
+        label: isNew ? "ساخت حساب" : "ذخیره", primary: true, onClick: (wrap) => {
           const f = wrap.querySelector("#user-form");
           const e = f.elements;
-          if (isNew && !e.password.value) { toast("برای کاربر جدید رمز عبور تعیین کنید.", "bad"); return false; }
+          const role = self ? u.role : (f.querySelector("[name=role]:checked")?.value || u.role);
+          const phone = BX.enDigits(e.phone.value).replace(/\D/g, "").replace(/^98(?=9\d{9}$)/, "").replace(/^(?=9\d{9}$)/, "0");
+          if (e.name.value.trim().length < 2) { toast("نام را وارد کنید.", "bad"); return false; }
+          if (!/^09\d{9}$/.test(phone)) { toast("شماره موبایل معتبر وارد کنید.", "bad"); return false; }
+          if (isNew && e.password.value.length < 6) { toast("برای کاربر جدید رمز عبور (حداقل ۶ کاراکتر) تعیین کنید.", "bad"); return false; }
           const data = {
-            id: u.id || 0, name: e.name.value, phone: BX.enDigits(e.phone.value), email: e.email.value, password: e.password.value,
-            role: u.id === me.id ? "admin" : e.role.value, status: u.id === me.id ? "active" : e.status.value,
+            id: u.id || 0, name: e.name.value, phone, email: e.email.value, password: e.password.value,
+            role, status: self ? "active" : e.status.value,
             business: e.business.value, shopName: e.shopName.value, level: e.level.value, card: e.card.value, bio: e.bio.value,
-            commission: BX.enDigits(e.commission.value), walletAdjust: BX.enDigits(e.walletAdjust.value).replace(/[^\d-]/g, ""),
-            skills: [...f.querySelectorAll("[name=skills]:checked")].map((x) => x.value),
+            commission: BX.enDigits(e.commission.value), walletAdjust: e.walletAdjust ? BX.enDigits(e.walletAdjust.value).replace(/[^\d-]/g, "") : "",
+            skills: [...f.querySelectorAll("[name=skills]:checked")].map((x) => x.value), note: e.note.value,
           };
           BXD.quiet(BXD.act("user.save", data));
         },
@@ -105,6 +197,8 @@
 
   Object.assign(BXD.acts, {
     "user-edit": (el) => userModal(el.dataset.id ? BXD.S.users.find((u) => u.id === el.dataset.id) : null),
+    "user-new": (el) => userModal(null, el.dataset.role),
+    "user-view": (el) => userView(el.dataset.id),
     "user-status": (el) => BXD.quiet(BXD.act("user.status", { id: el.dataset.id, status: el.dataset.v })),
     "user-delete": (el) => {
       const u = BXD.S.users.find((x) => x.id === el.dataset.id);
@@ -577,6 +671,12 @@
         ["shortGuestDaily", "سقف ساخت لینک کوتاه برای مهمان در هر روز", "number"], ["blockedDomains", "دامنه‌های ممنوع برای کوتاه‌سازی (هر خط یک دامنه، مثلاً example.com)", "lines"],
       ], "روشن یا خاموش کردن هر ابزار از بخش «ابزارها و لینک‌ها» انجام می‌شود."],
     ] },
+    roles: { title: "نقش‌ها و دسترسی", icon: "shield", groups: [
+      ["roles", [
+        ["partner", "«شریک» به این بخش‌ها دسترسی دارد", "checks", STAFF_SECTIONS],
+        ["accountant", "«حسابدار» به این بخش‌ها دسترسی دارد", "checks", STAFF_SECTIONS],
+      ], "تنظیمات سایت، امنیت، ساخت و ویرایش حساب‌های مدیریتی، حذف کاربر و سفارش و «ورود به‌جای کاربر» همیشه فقط برای مدیر کل است. حساب شریک یا حسابدار را از «کاربران ← افزودن کاربر» بسازید؛ آن‌ها با شماره و رمز خودشان وارد می‌شوند و فقط بخش‌های تیک‌خورده را در پنل می‌بینند."],
+    ] },
     demo: { title: "داده‌های نمایشی", icon: "refresh", groups: [] },
   };
 
@@ -586,6 +686,7 @@
     if (type === "switch") return `<label class="switch span-2"><input type="checkbox" name="${name}" ${value ? "checked" : ""}><span class="track"></span>${label}</label>`;
     if (type === "sep") return `<h3 class="span-2 form-sep">${label}</h3>`;
     // switches per option; the setting stores the options turned OFF
+    if (type === "checks") return `<div class="field span-2"><span class="field-label">${label}</span><div class="checks-grid" data-checks="${name}">${extra.map(([v, l]) => `<label class="switch"><input type="checkbox" value="${v}" ${(value || []).includes(v) ? "checked" : ""}><span class="track"></span>${l}</label>`).join("")}</div></div>`;
     if (type === "onlist") return `<div class="field span-2"><span class="field-label">${label}</span><div class="checks-grid" data-onlist="${name}">${extra.map(([v, l]) => `<label class="switch"><input type="checkbox" value="${v}" ${(value || []).includes(v) ? "" : "checked"}><span class="track"></span>${l}</label>`).join("")}</div></div>`;
     if (type === "select") return `<div class="field"><label class="field-label">${label}</label><select class="select" name="${name}">${extra.map(([v, l]) => `<option value="${v}" ${String(v) === String(value) ? "selected" : ""}>${l}</option>`).join("")}</select></div>`;
     if (type === "color") return `<div class="field"><label class="field-label">${label}</label><div class="row"><input type="color" name="${name}" value="${val(value)}" class="color-input"><code dir="ltr">${val(value)}</code></div></div>`;
@@ -642,7 +743,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">
@@ -705,6 +806,7 @@
       if (type === "switch") out[k] = el.checked;
       else if (type === "number") out[k] = Number(BX.enDigits(el.value).replace(/[^\d.]/g, "")) || 0;
       else if (type === "lines") out[k] = el.value.split("\n").map((x) => x.trim()).filter(Boolean);
+      else if (type === "checks") out[k] = [...form.querySelectorAll(`[data-checks="${name}"] input:checked`)].map((x) => x.value);
       else if (type === "onlist") out[k] = [...form.querySelectorAll(`[data-onlist="${name}"] input:not(:checked)`)].map((x) => x.value);
       else if (type === "weekdays") out[k] = [...form.querySelectorAll(`[data-weekdays="${name}"] input:checked`)].map((x) => Number(x.value));
       else if (type === "slots") {

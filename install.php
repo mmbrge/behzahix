@@ -64,9 +64,9 @@ if (!$locked && $_SERVER['REQUEST_METHOD'] === 'POST') {
         // core db() reads config.php; load it now so helpers work
         if (!$manualConfig) {
             seed_catalog();
-            if (row('SELECT id FROM users WHERE phone = ?', [$adminPhone])) {
-                update('users', ['name' => $adminName, 'password_hash' => password_hash($adminPass, PASSWORD_DEFAULT), 'role' => 'admin', 'status' => 'active'], 'phone = ?', [$adminPhone]);
-                $adminId = (int) val('SELECT id FROM users WHERE phone = ?', [$adminPhone]);
+            if (row("SELECT id FROM users WHERE phone = ? AND role = 'admin'", [$adminPhone])) {
+                update('users', ['name' => $adminName, 'password_hash' => password_hash($adminPass, PASSWORD_DEFAULT), 'status' => 'active'], "phone = ? AND role = 'admin'", [$adminPhone]);
+                $adminId = (int) val("SELECT id FROM users WHERE phone = ? AND role = 'admin'", [$adminPhone]);
             } else {
                 $adminId = insert('users', ['name' => $adminName, 'phone' => $adminPhone, 'password_hash' => password_hash($adminPass, PASSWORD_DEFAULT),
                     'role' => 'admin', 'status' => 'active', 'hue' => 25, 'created_at' => now()]);

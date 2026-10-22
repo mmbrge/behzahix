@@ -5,7 +5,13 @@ if (!defined('BX')) { http_response_code(403); exit; }
 
 date_default_timezone_set('UTC');
 
-const ROLES = ['customer', 'designer', 'seller', 'admin'];
+const ROLES = ['customer', 'designer', 'seller', 'admin', 'accountant', 'partner'];
+// Staff accounts run the site with the owner; what accountant and partner may open is set
+// in Settings → «دسترسی نقش‌ها». Settings, security and staff management stay with the admin.
+const STAFF_ROLES = ['admin', 'accountant', 'partner'];
+const STAFF_SECTIONS = ['overview' => 'داشبورد و آمار فروش', 'orders' => 'سفارش‌ها', 'delivery' => 'تقویم تحویل حضوری', 'support' => 'پشتیبانی آنلاین (چت)',
+    'users' => 'کاربران (مشتری، طراح، فروشنده)', 'catalog' => 'خدمات، محصولات و نظرات', 'finance' => 'مالی، تراکنش‌ها و تسویه', 'tickets' => 'تیکت‌ها',
+    'coupons' => 'کدهای تخفیف', 'studio' => 'استودیو (فروش و قالب‌ها)', 'pro' => 'اشتراک X PRO', 'blog' => 'وبلاگ', 'tools' => 'ابزارها و لینک‌های کوتاه'];
 const USER_STATUSES = ['active', 'pending', 'blocked', 'rejected'];
 const ORDER_STATUSES = ['new', 'review', 'in_progress', 'awaiting', 'revision', 'done', 'cancelled'];
 const ORDER_LABELS = [
@@ -241,6 +247,28 @@ function require_user(string ...$roles): array
     if ($roles && !in_array($u['role'], $roles, true)) fail('دسترسی ندارید.', 403, 'forbidden');
     return $u;
 }
+function is_staff(?array $u): bool
+{
+    return $u && in_array($u['role'], STAFF_ROLES, true);
+}
+// Sections a staff account may open (admin: everything, including settings and security)
+function staff_perms(?array $u): array
+{
+    if (!is_staff($u) || $u['status'] !== 'active') return [];
+    if ($u['role'] === 'admin') return array_merge(array_keys(STAFF_SECTIONS), ['settings', 'security', 'notifications']);
+    $p = (array) (setting('roles', $u['role']) ?? []);
+    return array_values(array_merge(array_intersect($p, array_keys(STAFF_SECTIONS)), ['notifications']));
+}
+function staff_can(?array $u, string $section): bool
+{
+    return in_array($section, staff_perms($u), true);
+}
+function require_staff(string $section): array
+{
+    $u = require_active();
+    if (!staff_can($u, $section)) fail('به این بخش دسترسی ندارید.', 403, 'forbidden');
+    return $u;
+}
 function require_active(string ...$roles): array
 {
     $u = require_user(...$roles);
@@ -252,6 +280,10 @@ function login_as(int $id): void
     session_regenerate_id(true);
     $_SESSION['uid'] = $id;
     if (function_exists('session_mark')) session_mark($id);
+    // an admin viewing someone's panel is not their sign-in
+    if (empty($_SESSION['impersonator'])) {
+        try { q('UPDATE users SET last_login_at = ?, last_ip = ? WHERE id = ?', [now(), function_exists('client_ip') ? client_ip() : ($_SERVER['REMOTE_ADDR'] ?? ''), $id]); } catch (Throwable $e) { /* column added on the next migration */ }
+    }
 }
 
 // ------------------------------------------------------------------ settings
@@ -298,9 +330,14 @@ function notify(int $userId, string $text, ?string $link = null): void
 {
     insert('notifications', ['user_id' => $userId, 'text' => mb_substr($text, 0, 250), 'link' => $link, 'is_read' => 0, 'created_at' => now()]);
 }
+// Admins, plus accountant/partner accounts that can open the linked section
 function notify_admins(string $text, ?string $link = null): void
 {
-    foreach (rows("SELECT id FROM users WHERE role = 'admin' AND status = 'active'") as $a) notify((int) $a['id'], $text, $link);
+    $sec = explode('/', (string) $link)[0];
+    $sec = ['designers' => 'users', 'sellers' => 'users', 'products' => 'catalog', 'payouts' => 'finance'][$sec] ?? $sec;
+    foreach (rows("SELECT * FROM users WHERE role IN ('admin', 'accountant', 'partner') AND status = 'active'") as $a) {
+        if ($a['role'] === 'admin' || staff_can($a, $sec)) notify((int) $a['id'], $text, $link);
+    }
 }
 function tx(int $userId, string $type, int $amount, string $note): void
 {
@@ -402,9 +439,11 @@ function user_out(?array $u, bool $private = false): ?array
             'portfolioUrl' => $u['portfolio_url'], 'prefs' => jdec($u['prefs'], ['email' => true, 'sms' => true]), 'isDemo' => (bool) $u['is_demo'],
             'proUntil' => !empty($u['pro_until']) ? ms($u['pro_until']) : null];
         if (in_array($u['role'], ['designer', 'seller'], true)) $o['effectiveCommission'] = commission_for($u);
+        if (is_staff($u)) $o['perms'] = staff_perms($u);
+        $o['lastLogin'] = !empty($u['last_login_at']) ? ms($u['last_login_at']) : null;
         // other account types on the same phone number (account switcher)
         $o['accounts'] = array_map(fn ($a) => ['role' => $a['role'], 'status' => $a['status']],
-            rows("SELECT role, status FROM users WHERE phone = ? AND id <> ? AND role <> 'admin' ORDER BY FIELD(role, 'customer', 'seller', 'designer'), id", [$u['phone'], $u['id']]));
+            rows("SELECT role, status FROM users WHERE phone = ? AND id <> ? AND role NOT IN ('admin', 'accountant', 'partner') ORDER BY FIELD(role, 'customer', 'seller', 'designer'), id", [$u['phone'], $u['id']]));
     }
     return $o;
 }

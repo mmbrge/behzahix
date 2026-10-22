@@ -28,7 +28,11 @@
       location.replace(`auth.html?next=${encodeURIComponent(`dashboard.html${location.hash}`)}`);
       return;
     }
-    const ROLE_LABEL = { customer: "مشتری", designer: "طراح", seller: "فروشنده", admin: "مدیر کل" };
+    const ROLE_LABEL = { customer: "مشتری", designer: "طراح", seller: "فروشنده", admin: "مدیر کل", accountant: "حسابدار", partner: "شریک" };
+    // Staff (admin, accountant, partner) share the site-wide panel; each sees only the sections it may open
+    const STAFF = ["admin", "accountant", "partner"];
+    const isStaff = () => STAFF.includes(me?.role);
+    const can = (sec) => (me?.perms || []).includes(sec);
     const PRODUCT_STATUS = { pending: ["در انتظار تأیید", "warn"], active: ["فعال", "ok"], hidden: ["مخفی", "info"], rejected: ["رد شده", "bad"] };
     const USER_STATUS = { active: ["فعال", "ok"], pending: ["در انتظار تأیید", "warn"], blocked: ["مسدود", "bad"], rejected: ["رد شده", "bad"] };
     const fileUrl = (id) => `api/index.php?r=file&id=${encodeURIComponent(id)}`;
@@ -213,7 +217,7 @@
       const s = findService(o.serviceId) || { fields: [], title: o.serviceId, icon: "sparkle" };
       const cust = userById(o.userId);
       const des = o.designerId && userById(o.designerId);
-      const role = me.role;
+      const role = isStaff() && can("orders") ? "admin" : me.role;
       const idx = o.status === "revision" ? 2 : ORDER_FLOW.indexOf(o.status);
       const flow = o.status === "cancelled"
         ? `<div class="banner banner--bad">${icon("x-circle")}<span>این سفارش لغو شده است.</span></div>`
@@ -294,8 +298,8 @@
               <div class="row"><select class="select" name="status">${Object.entries(ORDER_STATUS).map(([k, v]) => `<option value="${k}" ${k === o.status ? "selected" : ""}>${v.label}</option>`).join("")}</select><button class="btn btn-ghost btn-sm" type="submit">ثبت</button></div></div>
           </form>
           <div class="row mt-2" style="flex-wrap:wrap">
-            ${!o.paid ? `<button class="btn btn-ghost btn-xs" data-act="mark-paid" data-id="${o.id}">${icon("check")} پرداخت‌شده</button>` : `<button class="btn btn-ghost btn-xs" data-act="refund" data-id="${o.id}">${icon("refresh")} بازگشت وجه</button>`}
-            <button class="btn btn-ghost btn-xs danger-text" data-act="delete-order" data-id="${o.id}">${icon("trash")} حذف سفارش</button>
+            ${!o.paid ? `<button class="btn btn-ghost btn-xs" data-act="mark-paid" data-id="${o.id}">${icon("check")} پرداخت‌شده</button>` : (can("finance") ? `<button class="btn btn-ghost btn-xs" data-act="refund" data-id="${o.id}">${icon("refresh")} بازگشت وجه</button>` : "")}
+            ${me.role === "admin" ? `<button class="btn btn-ghost btn-xs danger-text" data-act="delete-order" data-id="${o.id}">${icon("trash")} حذف سفارش</button>` : ""}
           </div>`;
       }
 
@@ -703,16 +707,16 @@
       const quick = [
         ["#orders", "inbox", "سفارش جدید", fresh], ["#users", "shield", "در انتظار تأیید", pending],
         ["#support", "chat", "گفتگوی منتظر", S.supportWaiting || 0], ["#notifications", "bell", "اعلان خوانده‌نشده", S.notifications.filter((n) => !n.read).length],
-      ];
+      ].filter(([href]) => can(href.slice(1)));
       return `<div class="dash-grid">
         <section class="admin-hero">
           <div class="admin-hero-t">
-            <span class="admin-hero-badge">${icon("crown")} پنل مدیر کل</span>
+            <span class="admin-hero-badge">${icon(me.role === "admin" ? "crown" : "shield")} پنل ${ROLE_LABEL[me.role]}</span>
             <h2>${hello}، ${esc(me.name.split(" ")[0])} 👋</h2>
             <p>${todayFa()} · ${faDigits(S.orders.length)} سفارش و ${faDigits(S.users.length)} کاربر در سایت شما</p>
           </div>
           <div class="admin-quick">${quick.map(([href, ic, l, n]) => `<a href="${href}" class="${n ? "has-n" : ""}">${icon(ic)}<b>${faDigits(n)}</b><span>${l}</span></a>`).join("")}</div>
-          <div class="admin-hero-links"><a href="#settings">${icon("settings")} تنظیمات</a><a href="#studio">${icon("sparkles")} استودیو</a><a href="#security">${icon("shield")} امنیت</a><a href="index.html" target="_blank">${icon("globe")} مشاهده سایت</a></div>
+          <div class="admin-hero-links">${[["settings", "settings", "تنظیمات"], ["finance", "wallet", "مالی"], ["studio", "sparkles", "استودیو"], ["security", "shield", "امنیت"]].filter(([id]) => can(id)).map(([id, ic, l]) => `<a href="#${id}">${icon(ic)} ${l}</a>`).join("")}<a href="index.html" target="_blank">${icon("globe")} مشاهده سایت</a></div>
         </section>
         ${demo ? `<div class="banner">${icon("info")}<span>سایت در <b>حالت نمایشی</b> است: ${faDigits(S.demoUsers || 0)} حساب نمونه وجود دارد و درگاه «تست» بدون پول کار می‌کند. پیش از راه‌اندازی، از <a class="brand" href="#settings/demo">تنظیمات ← داده‌های نمایشی</a> آن‌ها را حذف و درگاه واقعی را تنظیم کنید.</span></div>` : ""}
         <div class="tiles">
@@ -763,7 +767,7 @@
     }
 
     // ============================================================ layout
-    const NAVS = { customer: CUSTOMER, designer: DESIGNER, seller: SELLER, admin: ADMIN };
+    const NAVS = { customer: CUSTOMER, designer: DESIGNER, seller: SELLER, admin: ADMIN, accountant: ADMIN, partner: ADMIN };
     const PENDING_NAV = [
       { id: "overview", label: "وضعیت حساب", icon: "home", render: pendingOverview },
       { id: "profile", label: "پروفایل", icon: "settings", render: profileView },
@@ -782,7 +786,8 @@
           <li class="list-row"><span class="cell-icon">${icon("zap")}</span><div class="grow">فعال شدن پنل ${ROLE_LABEL[me.role]}</div></li></ul>`)}
       </div>`;
     }
-    const navFor = () => (me.role !== "customer" && me.role !== "admin" && me.status !== "active" ? PENDING_NAV : NAVS[me.role]);
+    const navFor = () => (me.role !== "customer" && me.role !== "admin" && me.status !== "active" ? PENDING_NAV
+      : isStaff() ? ADMIN.filter((n) => can(n.id)) : NAVS[me.role]);
 
     function shell() {
       const nav = navFor();
@@ -871,7 +876,7 @@
     // ============================================================ actions
     function productForm(p = {}) {
       const cats = S.productCategories || BX.PRODUCT_CATEGORIES;
-      const isAdmin = me.role === "admin";
+      const isAdmin = can("catalog");
       const sellers = isAdmin ? S.users.filter((u) => ["seller", "admin"].includes(u.role)) : [];
       modal({
         title: p.id ? "ویرایش محصول" : "محصول جدید", wide: true,
@@ -983,9 +988,9 @@
         app.querySelector("#ch-amount").value = num(Number(el.dataset.v));
         app.querySelectorAll(".amount-chips button").forEach((b) => b.classList.toggle("is-active", b === el));
       },
-      "dlv-change": (el) => BX.deliveryModal({ title: "تغییر زمان تحویل", value: (findOrder(el.dataset.order) || {}).delivery, days: me.role === "admin" ? 0 : (findOrder(el.dataset.order) || {}).readyIn || 0,
+      "dlv-change": (el) => BX.deliveryModal({ title: "تغییر زمان تحویل", value: (findOrder(el.dataset.order) || {}).delivery, days: can("delivery") ? 0 : (findOrder(el.dataset.order) || {}).readyIn || 0,
         onSave: (v) => quiet(act("booking.change", { id: el.dataset.id, date: v.date, slot: v.slot })) }),
-      "dlv-pick": (el) => BX.deliveryModal({ title: "انتخاب زمان تحویل", days: me.role === "admin" ? 0 : (findOrder(el.dataset.order) || {}).readyIn || 0,
+      "dlv-pick": (el) => BX.deliveryModal({ title: "انتخاب زمان تحویل", days: can("delivery") ? 0 : (findOrder(el.dataset.order) || {}).readyIn || 0,
         onSave: (v) => quiet(act("booking.create", { orderId: el.dataset.order, date: v.date, slot: v.slot })) }),
       "ref-copy": (el) => navigator.clipboard?.writeText(el.dataset.link).then(() => toast("لینک دعوت کپی شد.", "ok")),
       "ref-share": (el) => navigator.share?.({ title: BX.settings.general?.siteNameFa || "بهیکس", text: "با این لینک در بهیکس ثبت‌نام کن و هدیه بگیر:", url: el.dataset.link }).catch(() => {}),
@@ -1059,7 +1064,7 @@
       }, "حذف"),
       apply: (el) => quiet(act("order.apply", { id: el.dataset.id })),
       "add-work": () => {
-        const skills = me.role === "admin" ? BX.services : (me.skills || []).map(findService).filter(Boolean);
+        const skills = isStaff() ? BX.services : (me.skills || []).map(findService).filter(Boolean);
         modal({
           title: "افزودن نمونه‌کار",
           body: `<form class="form-grid" id="work-form">
@@ -1089,13 +1094,13 @@
         modal({
           title: t.subject, wide: true,
           body: `<div class="chat" style="height:auto;max-height:60vh"><div class="chat-log">
-            <div class="msg ${t.userId === me.id ? "me" : "them"}"><span class="who">${esc(t.name)}${me.role === "admin" && t.phone ? ` · <span dir="ltr">${faDigits(t.phone)}</span>` : ""}</span>${esc(t.message)}<small>${ago(t.at)}</small></div>
+            <div class="msg ${t.userId === me.id ? "me" : "them"}"><span class="who">${esc(t.name)}${can("tickets") && t.phone ? ` · <span dir="ltr">${faDigits(t.phone)}</span>` : ""}</span>${esc(t.message)}<small>${ago(t.at)}</small></div>
             ${t.replies.map((r) => `<div class="msg ${r.from === me.id ? "me" : "them"}"><span class="who">${esc(r.name || "")}</span>${esc(r.text)}<small>${ago(r.at)}</small></div>`).join("")}
             </div></div>
             ${t.status !== "closed" ? `<textarea class="textarea mt-2" id="tk-reply" placeholder="پاسخ…"></textarea>` : '<p class="muted small mt-2">این تیکت بسته شده است.</p>'}`,
           actions: [
-            ...(me.role === "admin" ? [{ label: "حذف", onClick: () => quiet(act("ticket.delete", { id: t.id })) }] : []),
-            ...(me.role === "admin" && t.status !== "closed" ? [{ label: "بستن تیکت", onClick: () => quiet(act("ticket.close", { id: t.id })) }] : []),
+            ...(can("tickets") ? [{ label: "حذف", onClick: () => quiet(act("ticket.delete", { id: t.id })) }] : []),
+            ...(can("tickets") && t.status !== "closed" ? [{ label: "بستن تیکت", onClick: () => quiet(act("ticket.close", { id: t.id })) }] : []),
             ...(t.status !== "closed" ? [{ label: "ارسال پاسخ", primary: true, onClick: (wrap) => {
               const text = wrap.querySelector("#tk-reply").value.trim();
               if (!text) { toast("متن پاسخ را بنویسید.", "bad"); return false; }
@@ -1143,6 +1148,7 @@
     Object.defineProperty(BXD, "me", { get: () => me, configurable: true });
     Object.assign(BXD, {
       act, quiet, render, load, productForm,
+      isStaff, can,
       ui: { statusBadge, pill, tile, box, empty, table, seg, money, short, parseAmount, userCell, userById, confirmBox, workCard, productRows, fileUrl, segState, ROLE_LABEL, USER_STATUS, PRODUCT_STATUS },
     });
 

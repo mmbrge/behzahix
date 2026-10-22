@@ -156,8 +156,8 @@ function a_booking_change(): void
 {
     $u = require_user();
     $b = row('SELECT b.*, o.user_id ouid, o.status ostatus, o.service_id, o.deadline, o.created_at ocreated FROM bookings b JOIN orders o ON o.id = b.order_id WHERE b.id = ?', [int_in('id')]);
-    if (!$b || ($u['role'] !== 'admin' && (int) $b['ouid'] !== (int) $u['id'])) fail('نوبت پیدا نشد.', 404);
-    if ($u['role'] !== 'admin') {
+    if (!$b || (!staff_can($u, 'delivery') && (int) $b['ouid'] !== (int) $u['id'])) fail('نوبت پیدا نشد.', 404);
+    if (!staff_can($u, 'delivery')) {
         if ($b['status'] !== 'booked') fail('این نوبت قابل تغییر نیست.', 422);
         $hours = (int) (setting('delivery', 'changeHours') ?? 24);
         $start = new DateTime($b['date'] . ' 00:00', new DateTimeZone('Asia/Tehran'));
@@ -165,17 +165,17 @@ function a_booking_change(): void
         if ($start->getTimestamp() - time() < $hours * 3600) fail('تغییر زمان تا ' . fa_digits((string) $hours) . ' ساعت قبل از نوبت امکان‌پذیر است؛ با پشتیبانی تماس بگیرید.', 422);
     }
     db()->beginTransaction();
-    $lead = $u['role'] === 'admin' ? 0 : order_ready_in(['status' => $b['ostatus'], 'service_id' => $b['service_id'], 'deadline' => $b['deadline'], 'created_at' => $b['ocreated']]);
+    $lead = staff_can($u, 'delivery') ? 0 : order_ready_in(['status' => $b['ostatus'], 'service_id' => $b['service_id'], 'deadline' => $b['deadline'], 'created_at' => $b['ocreated']]);
     $r = dlv_book((int) $b['order_id'], (int) $b['user_id'], str_in('date', 20), str_in('slot', 20), $lead, (int) $b['id']);
     db()->commit();
     $code = (string) val('SELECT code FROM orders WHERE id = ?', [$b['order_id']]);
-    if ($u['role'] === 'admin') { notify((int) $b['user_id'], "زمان تحویل سفارش $code به {$r['label']} تغییر کرد.", 'orders/' . $b['order_id']); sms_user('delivery_booked', (int) $b['user_id'], ['code' => $code, 'date' => $r['label']]); }
+    if (staff_can($u, 'delivery')) { notify((int) $b['user_id'], "زمان تحویل سفارش $code به {$r['label']} تغییر کرد.", 'orders/' . $b['order_id']); sms_user('delivery_booked', (int) $b['user_id'], ['code' => $code, 'date' => $r['label']]); }
     else notify_admins("مشتری زمان تحویل $code را به {$r['label']} تغییر داد.", 'delivery');
     done('زمان تحویل به ' . $r['label'] . ' تغییر کرد.');
 }
 function a_booking_list(): void
 {
-    require_active('admin');
+    require_staff('delivery');
     $from = dlv_parse_date(str_in('from', 20)) ?: dlv_now()->format('Y-m-01');
     $to = dlv_parse_date(str_in('to', 20)) ?: (new DateTime($from))->modify('+42 day')->format('Y-m-d');
     $list = rows("SELECT b.*, o.code, o.title otitle, o.status ostatus, u.name, u.phone FROM bookings b JOIN orders o ON o.id = b.order_id JOIN users u ON u.id = b.user_id WHERE b.date BETWEEN ? AND ? ORDER BY b.date, b.slot, b.id", [$from, $to]);
@@ -186,7 +186,7 @@ function a_booking_list(): void
 }
 function a_booking_status(): void
 {
-    require_active('admin');
+    require_staff('delivery');
     $b = row('SELECT * FROM bookings WHERE id = ?', [int_in('id')]);
     if (!$b) fail('نوبت پیدا نشد.', 404);
     $st = str_in('status', 12);
@@ -200,10 +200,10 @@ function a_booking_create(): void
 {
     $u = require_user();
     $o = row('SELECT * FROM orders WHERE id = ?', [int_in('orderId')]);
-    if (!$o || ($u['role'] !== 'admin' && (int) $o['user_id'] !== (int) $u['id'])) fail('سفارش پیدا نشد.', 404);
+    if (!$o || (!staff_can($u, 'delivery') && !staff_can($u, 'orders') && (int) $o['user_id'] !== (int) $u['id'])) fail('سفارش پیدا نشد.', 404);
     if (row("SELECT id FROM bookings WHERE order_id = ? AND status <> 'cancelled'", [$o['id']])) fail('این سفارش نوبت فعال دارد؛ آن را تغییر دهید.', 422);
     db()->beginTransaction();
-    $r = dlv_book((int) $o['id'], (int) $o['user_id'], str_in('date', 20), str_in('slot', 20), $u['role'] === 'admin' ? 0 : order_ready_in($o));
+    $r = dlv_book((int) $o['id'], (int) $o['user_id'], str_in('date', 20), str_in('slot', 20), staff_can($u, 'delivery') ? 0 : order_ready_in($o));
     db()->commit();
     notify_admins("نوبت تحویل {$o['code']}: {$r['label']}", 'delivery');
     done('زمان تحویل ثبت شد: ' . $r['label']);

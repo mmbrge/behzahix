@@ -263,7 +263,7 @@ function r_order_attach(): void
 {
     $u = require_user();
     $o = row('SELECT * FROM orders WHERE id = ?', [int_in('id')]);
-    if (!$o || ((int) $o['user_id'] !== (int) $u['id'] && $u['role'] !== 'admin')) fail('دسترسی ندارید.', 403);
+    if (!$o || ((int) $o['user_id'] !== (int) $u['id'] && !staff_can($u, 'orders'))) fail('دسترسی ندارید.', 403);
     $out = [];
     foreach (array_slice(uploaded_files(), 0, 20) as $f) $out[] = file_out(store_upload($f, 'attachment', (int) $o['id'], (int) $u['id']));
     out(['files' => $out]);
@@ -273,7 +273,7 @@ function can_access_file(array $f, ?array $u): bool
 {
     if (in_array($f['kind'], ['portfolio', 'cover', 'gallery', 'blog', 'page'], true)) return true;
     if (!$u) return false;
-    if ($u['role'] === 'admin' || (int) $f['owner_id'] === (int) $u['id']) return true;
+    if (staff_can($u, 'orders') || staff_can($u, 'catalog') || (int) $f['owner_id'] === (int) $u['id']) return true;
     if (in_array($f['kind'], ['attachment', 'deliverable'], true)) {
         $o = row('SELECT user_id, designer_id FROM orders WHERE id = ?', [$f['ref_id']]);
         return $o && ((int) $o['user_id'] === (int) $u['id'] || (int) $o['designer_id'] === (int) $u['id']);
@@ -310,15 +310,15 @@ function r_file(): void
 
 // ------------------------------------------------------------------ auth
 // One phone number can own several account types; the visitor picks one.
-const ROLE_TITLES = ['customer' => 'مشتری', 'seller' => 'فروشنده', 'designer' => 'طراح', 'admin' => 'مدیر'];
+const ROLE_TITLES = ['customer' => 'مشتری', 'seller' => 'فروشنده', 'designer' => 'طراح', 'admin' => 'مدیر', 'accountant' => 'حسابدار', 'partner' => 'شریک'];
 function phone_accounts(string $phone): array
 {
-    return rows("SELECT * FROM users WHERE phone = ? ORDER BY FIELD(role, 'customer', 'seller', 'designer', 'admin'), id", [$phone]);
+    return rows("SELECT * FROM users WHERE phone = ? ORDER BY FIELD(role, 'customer', 'seller', 'designer', 'partner', 'accountant', 'admin'), id", [$phone]);
 }
-// Accounts a visitor may see for a number: the admin account is never listed
+// Accounts a visitor may see for a number: staff accounts (admin, accountant, partner) are never listed
 function visible_accounts(array $all): array
 {
-    return array_values(array_filter($all, fn ($u) => $u['role'] !== 'admin'));
+    return array_values(array_filter($all, fn ($u) => !is_staff($u)));
 }
 function accounts_out(array $list): array
 {
@@ -422,7 +422,7 @@ function a_account_switch(): void
     $t = row('SELECT * FROM users WHERE phone = ? AND role = ?', [$u['phone'], $role]);
     if (!$t) fail('حسابی از این نوع ندارید.', 404);
     // the admin account always goes through the full sign-in (and its 2FA)
-    if ($t['role'] === 'admin') fail('برای ورود به حساب مدیر، خارج شوید و با رمز عبور وارد شوید.', 403);
+    if (is_staff($t)) fail('برای ورود به حساب‌های مدیریتی، خارج شوید و با رمز عبور وارد شوید.', 403);
     if ($t['status'] === 'blocked') fail('این حساب مسدود است.', 403);
     login_as((int) $t['id']);
     out(['me' => user_out($t, true)]);

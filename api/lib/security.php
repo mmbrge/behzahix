@@ -71,7 +71,7 @@ function login_failed(string $phone, string $how): void
 }
 function login_succeeded(array $u): void
 {
-    if ($u['role'] !== 'admin') return;
+    if (!is_staff($u)) return;
     sec_log('admin_login', 'ورود مدیر', (int) $u['id']);
     if (!empty(setting('security', 'loginAlert'))) {
         require_once __DIR__ . '/gateways.php';
@@ -87,7 +87,7 @@ function session_mark(int $uid): void
 // ------------------------------------------------------------------ admin two-step login
 function admin_2fa_needed(array $u): bool
 {
-    return $u['role'] === 'admin' && !empty(setting('security', 'admin2fa')) && function_exists('otp_enabled') && otp_enabled();
+    return is_staff($u) && !empty(setting('security', 'admin2fa')) && function_exists('otp_enabled') && otp_enabled();
 }
 function admin_2fa_start(array $u): void
 {

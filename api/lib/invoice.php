@@ -9,7 +9,7 @@ function r_invoice(): void
     $h = function ($s) { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); };
     $deny = function () { http_response_code(404); header('Content-Type: text/plain; charset=utf-8'); exit('فاکتور پیدا نشد یا دسترسی ندارید؛ ابتدا وارد حساب شوید.'); };
     if (!$u) $deny();
-    $admin = $u['role'] === 'admin';
+    $admin = staff_can($u, 'orders') || staff_can($u, 'finance');
     $lines = [];
     $paid = 0;
     if (!empty($_GET['order'])) {

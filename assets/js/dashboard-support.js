@@ -187,7 +187,7 @@
   const prevAfter = BXD.afterRender;
   BXD.afterRender = (view, id, param) => {
     if (prevAfter) prevAfter(view, id, param);
-    if (BXD.me?.role === "admin" && !ST.started) { ST.started = true; ST.timer = setTimeout(tick, 25000); }
+    if (BXD.can?.("support") && !ST.started) { ST.started = true; ST.timer = setTimeout(tick, 25000); }
     const wrap = view.querySelector("[data-support-admin]");
     if (!wrap) return;
     ST.editing = 0;

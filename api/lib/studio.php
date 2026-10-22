@@ -21,7 +21,7 @@ function studio_require_on(string $id): void
 {
     if (studio_tool_on($id)) return;
     $u = me();
-    if ($u && $u['role'] === 'admin') return;
+    if ($u && staff_can($u, 'studio')) return;
     fail('این ابزار استودیو فعلاً غیرفعال است.', 403, 'tool_off');
 }
 const PAGE_RESERVED = ['admin', 'api', 'www', 'behix', 'login', 'dashboard', 'shop', 'blog', 'test', 'support'];
@@ -275,7 +275,7 @@ function a_studio_get(): void
 {
     $u = require_user();
     $it = row('SELECT * FROM studio_items WHERE id = ?', [int_in('id')]);
-    if (!$it || ((int) $it['user_id'] !== (int) $u['id'] && $u['role'] !== 'admin')) fail('طرح پیدا نشد.', 404);
+    if (!$it || ((int) $it['user_id'] !== (int) $u['id'] && !staff_can($u, 'studio'))) fail('طرح پیدا نشد.', 404);
     out(['item' => studio_item_out($it, true), 'price' => $it['paid'] ? 0 : studio_price($it['kind'], $it)]);
 }
 // New unpaid draft from an existing design (how non-members change a bought design)
@@ -403,7 +403,7 @@ function a_page_get(): void
 {
     $u = require_user();
     $p = row('SELECT * FROM pages WHERE id = ?', [int_in('id')]);
-    if (!$p || ((int) $p['user_id'] !== (int) $u['id'] && $u['role'] !== 'admin')) fail('صفحه پیدا نشد.', 404);
+    if (!$p || ((int) $p['user_id'] !== (int) $u['id'] && !staff_can($u, 'studio'))) fail('صفحه پیدا نشد.', 404);
     out(['page' => page_out($p, true), 'prices' => ['month' => page_plan_price($p['kind'], 'month'), 'year' => page_plan_price($p['kind'], 'year')]]);
 }
 function a_page_buy(): void
@@ -428,7 +428,7 @@ function a_page_delete(): void
 {
     $u = require_user();
     $p = row('SELECT * FROM pages WHERE id = ?', [int_in('id')]);
-    if (!$p || ((int) $p['user_id'] !== (int) $u['id'] && $u['role'] !== 'admin')) fail('صفحه پیدا نشد.', 404);
+    if (!$p || ((int) $p['user_id'] !== (int) $u['id'] && !staff_can($u, 'studio'))) fail('صفحه پیدا نشد.', 404);
     foreach (rows("SELECT id FROM files WHERE kind = 'page' AND ref_id = ?", [$p['id']]) as $f) delete_file_row((int) $f['id']);
     q('DELETE FROM pages WHERE id = ?', [$p['id']]);
     done('صفحه حذف شد.');
@@ -447,7 +447,7 @@ function a_page_image(): void
 // ------------------------------------------------------------------ admin
 function a_studio_admin(): void
 {
-    require_active('admin');
+    require_staff('studio');
     $sold = rows('SELECT s.*, u.name uname, u.phone FROM studio_items s JOIN users u ON u.id = s.user_id WHERE s.paid = 1 ORDER BY s.paid_at DESC LIMIT 100');
     $byKind = [];
     foreach (rows('SELECT kind, COUNT(*) n, SUM(price) total FROM studio_items WHERE paid = 1 GROUP BY kind') as $r) $byKind[$r['kind']] = ['n' => (int) $r['n'], 'total' => (int) $r['total']];
@@ -459,7 +459,7 @@ function a_studio_admin(): void
 }
 function a_doctpl_save(): void
 {
-    require_active('admin');
+    require_staff('studio');
     $title = str_in('title', 190);
     if (mb_strlen($title) < 3) fail('عنوان قالب را بنویسید.', 422);
     require_once __DIR__ . '/seo.php';
@@ -475,7 +475,7 @@ function a_doctpl_save(): void
 }
 function a_doctpl_delete(): void
 {
-    require_active('admin');
+    require_staff('studio');
     q('DELETE FROM doc_templates WHERE id = ?', [int_in('id')]);
     done('قالب حذف شد.');
 }

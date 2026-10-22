@@ -22,8 +22,8 @@ function r_dash(): void
         'notifications' => array_map(function ($n) {
             return ['id' => (string) $n['id'], 'text' => $n['text'], 'link' => $n['link'], 'read' => (bool) $n['is_read'], 'at' => ms($n['created_at'])];
         }, rows('SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 60', [$id])),
-        'tickets' => tickets_out($role === 'admin' ? rows('SELECT * FROM tickets ORDER BY id DESC LIMIT 300') : rows('SELECT * FROM tickets WHERE user_id = ? ORDER BY id DESC', [$id])),
-        'settings' => $role === 'admin' ? settings() : public_settings(),
+        'tickets' => tickets_out(staff_can($u, 'tickets') ? rows('SELECT * FROM tickets ORDER BY id DESC LIMIT 300') : rows('SELECT * FROM tickets WHERE user_id = ? ORDER BY id DESC', [$id])),
+        'settings' => $role === 'admin' ? settings() : (is_staff($u) ? array_intersect_key(settings(), array_flip(['general', 'commission', 'orders', 'delivery', 'studio', 'pro', 'tools', 'chat', 'referral', 'invoice', 'payment'])) + public_settings() : public_settings()),
     ];
     $snap['notifications'] = array_map(function ($n) use ($id) { $n['userId'] = (string) $id; return $n; }, $snap['notifications']);
     if (setting('referral', 'enabled')) {
@@ -66,21 +66,27 @@ function r_dash(): void
         $snap['transactions'] = $txOf($id);
         $snap['payouts'] = array_map('payout_out', rows('SELECT * FROM payouts WHERE user_id = ? ORDER BY id DESC', [$id]));
         $snap['coupons'] = array_map('coupon_out', rows('SELECT * FROM coupons WHERE owner_id = ?', [$id]));
-    } elseif ($role === 'admin') {
-        $snap['users'] = array_map(function ($x) { return user_out($x, true); }, rows('SELECT * FROM users ORDER BY id DESC'));
-        $snap['orders'] = array_map('order_out', rows('SELECT * FROM orders ORDER BY id DESC LIMIT 500'));
-        $snap['products'] = array_map(function ($p) { return product_out($p, true); }, rows('SELECT * FROM products ORDER BY id DESC'));
-        $snap['portfolio'] = array_map('work_out', rows('SELECT * FROM portfolio ORDER BY id DESC'));
-        $snap['transactions'] = array_map('tx_out', rows('SELECT * FROM transactions ORDER BY id DESC LIMIT 400'));
-        $snap['purchases'] = array_map('purchase_out', rows('SELECT * FROM purchases ORDER BY id DESC LIMIT 400'));
-        $snap['payouts'] = array_map('payout_out', rows('SELECT * FROM payouts ORDER BY id DESC'));
-        $snap['coupons'] = array_map('coupon_out', rows('SELECT * FROM coupons'));
-        $snap['catalogAll'] = catalog(false);
-        $snap['productCategories'] = rows('SELECT * FROM product_categories ORDER BY sort, title');
+    } elseif (is_staff($u) && $active) {
+        // staff get the site-wide data of the sections they can open
+        $can = function ($s) use ($u) { return staff_can($u, $s); };
+        $sales = $can('overview') || $can('finance');
+        // contact details only for those who manage users or orders
+        $private = $can('users') || $can('orders') || $can('finance');
+        $snap['users'] = array_map(function ($x) use ($private) { return user_out($x, $private); }, rows('SELECT * FROM users ORDER BY id DESC'));
+        $snap['orders'] = $can('orders') || $can('overview') || $can('finance') ? array_map('order_out', rows('SELECT * FROM orders ORDER BY id DESC LIMIT 500')) : [];
+        $snap['products'] = $can('catalog') || $sales ? array_map(function ($p) { return product_out($p, true); }, rows('SELECT * FROM products ORDER BY id DESC')) : [];
+        $snap['portfolio'] = $can('users') ? array_map('work_out', rows('SELECT * FROM portfolio ORDER BY id DESC')) : [];
+        $snap['transactions'] = $sales ? array_map('tx_out', rows('SELECT * FROM transactions ORDER BY id DESC LIMIT 400')) : [];
+        $snap['purchases'] = $sales ? array_map('purchase_out', rows('SELECT * FROM purchases ORDER BY id DESC LIMIT 400')) : [];
+        $snap['payouts'] = $can('finance') ? array_map('payout_out', rows('SELECT * FROM payouts ORDER BY id DESC')) : [];
+        $snap['coupons'] = $can('coupons') ? array_map('coupon_out', rows('SELECT * FROM coupons')) : [];
+        $snap['catalogAll'] = $can('catalog') ? catalog(false) : [];
+        $snap['productCategories'] = $can('catalog') ? rows('SELECT * FROM product_categories ORDER BY sort, title') : [];
         $snap['leads'] = (int) val('SELECT COUNT(*) FROM leads');
         $snap['demoUsers'] = (int) val('SELECT COUNT(*) FROM users WHERE is_demo = 1');
-        $snap['supportWaiting'] = table_exists('chats') ? (int) val("SELECT COUNT(*) FROM chats WHERE status = 'waiting' OR admin_unread > 0") : 0;
-        $snap['deliveryToday'] = table_exists('bookings') ? (int) val("SELECT COUNT(*) FROM bookings WHERE date = ? AND status = 'booked'", [(new DateTime('now', new DateTimeZone('Asia/Tehran')))->format('Y-m-d')]) : 0;
+        $snap['supportWaiting'] = $can('support') && table_exists('chats') ? (int) val("SELECT COUNT(*) FROM chats WHERE status = 'waiting' OR admin_unread > 0") : 0;
+        $snap['deliveryToday'] = $can('delivery') && table_exists('bookings') ? (int) val("SELECT COUNT(*) FROM bookings WHERE date = ? AND status = 'booked'", [(new DateTime('now', new DateTimeZone('Asia/Tehran')))->format('Y-m-d')]) : 0;
+        if ($role !== 'admin') out($snap);
         $snap['smsEvents'] = [];
         foreach (sms_events_def() as $eid => $d) {
             $tok = sms_tokens($d[2]);
@@ -140,7 +146,7 @@ function get_order(int $id): array
 }
 function is_participant(array $o, array $u): bool
 {
-    return $u['role'] === 'admin' || (int) $o['user_id'] === (int) $u['id'] || (int) $o['designer_id'] === (int) $u['id'];
+    return staff_can($u, 'orders') || (int) $o['user_id'] === (int) $u['id'] || (int) $o['designer_id'] === (int) $u['id'];
 }
 function price_of(array $o): int
 {
@@ -204,11 +210,11 @@ function a_ticket_reply(): void
 {
     $u = require_user();
     $t = row('SELECT * FROM tickets WHERE id = ?', [int_in('id')]);
-    if (!$t || ($u['role'] !== 'admin' && (int) $t['user_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
+    if (!$t || (!staff_can($u, 'tickets') && (int) $t['user_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
     $text = str_in('text', 5000);
     if (!$text) fail('متن پاسخ را بنویسید.', 422);
     insert('ticket_replies', ['ticket_id' => $t['id'], 'user_id' => $u['id'], 'body' => $text, 'created_at' => now()]);
-    if ($u['role'] === 'admin') {
+    if (staff_can($u, 'tickets') && (int) $t['user_id'] !== (int) $u['id']) {
         q("UPDATE tickets SET status = 'answered' WHERE id = ?", [$t['id']]);
         if ($t['user_id']) {
             notify((int) $t['user_id'], 'پاسخ جدید برای تیکت «' . $t['subject'] . '»', 'tickets');
@@ -222,7 +228,7 @@ function a_ticket_reply(): void
 }
 function a_ticket_close(): void
 {
-    require_active('admin');
+    require_staff('tickets');
     $t = row('SELECT * FROM tickets WHERE id = ?', [int_in('id')]);
     if (!$t) fail('پیدا نشد.', 404);
     q("UPDATE tickets SET status = 'closed' WHERE id = ?", [$t['id']]);
@@ -231,7 +237,7 @@ function a_ticket_close(): void
 }
 function a_ticket_delete(): void
 {
-    require_active('admin');
+    require_staff('tickets');
     q('DELETE FROM ticket_replies WHERE ticket_id = ?', [int_in('id')]);
     q('DELETE FROM tickets WHERE id = ?', [int_in('id')]);
     done('تیکت حذف شد.');
@@ -317,9 +323,9 @@ function a_unimpersonate(): void
 // ------------------------------------------------------------------ customer
 function own_order(): array
 {
-    $u = require_user('customer', 'admin');
+    $u = require_user('customer', ...STAFF_ROLES);
     $o = get_order(int_in('id'));
-    if ((int) $o['user_id'] !== (int) $u['id'] && $u['role'] !== 'admin') fail('دسترسی ندارید.', 403);
+    if ((int) $o['user_id'] !== (int) $u['id'] && !staff_can($u, 'orders')) fail('دسترسی ندارید.', 403);
     return [$u, $o];
 }
 function a_order_cancel(): void
@@ -420,9 +426,9 @@ function a_order_apply(): void
 }
 function assigned_order(): array
 {
-    $u = require_active('designer', 'admin');
+    $u = require_active('designer', ...STAFF_ROLES);
     $o = get_order(int_in('id'));
-    if ($u['role'] !== 'admin' && (int) $o['designer_id'] !== (int) $u['id']) fail('دسترسی ندارید.', 403);
+    if (!staff_can($u, 'orders') && (int) $o['designer_id'] !== (int) $u['id']) fail('دسترسی ندارید.', 403);
     return [$u, $o];
 }
 function a_order_deliver(): void
@@ -450,27 +456,27 @@ function a_file_delete(): void
 {
     $u = require_user();
     $f = row('SELECT * FROM files WHERE id = ?', [int_in('id')]);
-    if (!$f || ($u['role'] !== 'admin' && (int) $f['owner_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
+    if (!$f || (!staff_can($u, 'orders') && (int) $f['owner_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
     if ($f['path']) @unlink(dirname(__DIR__, 2) . '/uploads/' . $f['path']);
     q('DELETE FROM files WHERE id = ?', [$f['id']]);
     done('فایل حذف شد.');
 }
 function a_work_add(): void
 {
-    $u = require_active('designer', 'admin');
+    $u = require_active('designer', ...STAFF_ROLES);
     $title = str_in('title', 190);
     $svc = find_service(str_in('service', 40));
     if (mb_strlen($title) < 3 || !$svc) fail('عنوان و خدمت را مشخص کنید.', 422);
-    $designer = $u['role'] === 'admin' && int_in('designerId') ? int_in('designerId') : (int) $u['id'];
+    $designer = staff_can($u, 'users') && int_in('designerId') ? int_in('designerId') : (int) $u['id'];
     $id = insert('portfolio', ['designer_id' => $designer, 'title' => $title, 'category_id' => $svc['category_id'], 'service_id' => $svc['id'], 'likes' => 0, 'created_at' => now()]);
     foreach (array_slice(uploaded_files(), 0, 6) as $f) store_upload($f, 'portfolio', $id, (int) $u['id']);
     done('نمونه‌کار اضافه شد.');
 }
 function a_work_delete(): void
 {
-    $u = require_active('designer', 'admin');
+    $u = require_active('designer', ...STAFF_ROLES);
     $w = row('SELECT * FROM portfolio WHERE id = ?', [int_in('id')]);
-    if (!$w || ($u['role'] !== 'admin' && (int) $w['designer_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
+    if (!$w || (!staff_can($u, 'users') && (int) $w['designer_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
     foreach (rows("SELECT * FROM files WHERE kind = 'portfolio' AND ref_id = ?", [$w['id']]) as $f) if ($f['path']) @unlink(dirname(__DIR__, 2) . '/uploads/' . $f['path']);
     q("DELETE FROM files WHERE kind = 'portfolio' AND ref_id = ?", [$w['id']]);
     q('DELETE FROM portfolio WHERE id = ?', [$w['id']]);
@@ -480,7 +486,7 @@ function a_work_delete(): void
 // ------------------------------------------------------------------ seller / products
 function a_product_save(): void
 {
-    $u = require_active('seller', 'admin');
+    $u = require_active('seller', ...STAFF_ROLES);
     $id = int_in('id');
     $title = str_in('title', 190);
     $price = amount_in('price');
@@ -489,7 +495,7 @@ function a_product_save(): void
     if (!row('SELECT id FROM product_categories WHERE id = ?', [$cat])) fail('دسته‌بندی نامعتبر است.', 422);
     $tags = array_values(array_filter(array_map('trim', preg_split('/[,،]/u', str_in('tags', 500)))));
     $data = ['title' => $title, 'category_id' => $cat, 'price' => $price, 'discount' => max(0, min(90, int_in('discount'))), 'tags' => jenc($tags), 'descr' => str_in('desc', 5000)];
-    if ($u['role'] === 'admin') {
+    if (staff_can($u, 'catalog')) {
         $status = str_in('status', 16);
         if (in_array($status, ['pending', 'active', 'hidden', 'rejected'], true)) $data['status'] = $status;
         $seller = int_in('sellerId');
@@ -499,7 +505,7 @@ function a_product_save(): void
     }
     if ($id) {
         $p = row('SELECT * FROM products WHERE id = ?', [$id]);
-        if (!$p || ($u['role'] !== 'admin' && (int) $p['seller_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
+        if (!$p || (!staff_can($u, 'catalog') && (int) $p['seller_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
         update('products', $data, 'id = ?', [$id]);
     } else {
         $data += ['seller_id' => $u['id'], 'sales' => 0, 'rating' => 0, 'created_at' => now()];
@@ -526,13 +532,13 @@ function a_product_save(): void
         store_upload($g, 'gallery', $id, (int) $u['id']);
         $room--;
     }
-    if ($u['role'] !== 'admin') notify_admins('محصول «' . $title . '» برای تأیید ارسال شد.', 'sellers');
-    done($u['role'] === 'admin' ? 'محصول ذخیره شد.' : 'محصول برای بررسی ارسال شد.');
+    if (!staff_can($u, 'catalog')) notify_admins('محصول «' . $title . '» برای تأیید ارسال شد.', 'products');
+    done(staff_can($u, 'catalog') ? 'محصول ذخیره شد.' : 'محصول برای بررسی ارسال شد.');
 }
 // Bulk import products from CSV (Excel "Save as CSV UTF-8"). Admin only.
 function a_product_import(): void
 {
-    $u = require_active('admin');
+    $u = require_staff('catalog');
     $csv = (string) in('csv', '');
     if (strlen($csv) > 2 * 1024 * 1024) fail('فایل خیلی بزرگ است (حداکثر ۲ مگابایت).', 422);
     $csv = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
@@ -580,9 +586,9 @@ function delete_file_row(int $fileId): void
 }
 function own_product(): array
 {
-    $u = require_active('seller', 'admin');
+    $u = require_active('seller', ...STAFF_ROLES);
     $p = row('SELECT * FROM products WHERE id = ?', [int_in('id')]);
-    if (!$p || ($u['role'] !== 'admin' && (int) $p['seller_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
+    if (!$p || (!staff_can($u, 'catalog') && (int) $p['seller_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
     return [$u, $p];
 }
 function a_product_delete(): void
@@ -598,7 +604,7 @@ function a_product_status(): void
 {
     [$u, $p] = own_product();
     $status = str_in('status', 16);
-    if ($u['role'] === 'admin') {
+    if (staff_can($u, 'catalog')) {
         if (!in_array($status, ['pending', 'active', 'hidden', 'rejected'], true)) fail('نامعتبر.', 422);
         notify((int) $p['seller_id'], 'وضعیت «' . $p['title'] . '» تغییر کرد.', 'products');
     } elseif (!in_array($p['status'], ['active', 'hidden'], true) || !in_array($status, ['active', 'hidden'], true)) {
@@ -609,20 +615,21 @@ function a_product_status(): void
 }
 function a_coupon_create(): void
 {
-    $u = require_active('seller', 'admin');
+    $u = require_active();
+    if ($u['role'] !== 'seller' && !staff_can($u, 'coupons')) fail('دسترسی ندارید.', 403);
     $code = strtoupper(preg_replace('/\s/', '', str_in('code', 20)));
     $pct = int_in('percent');
     if (!preg_match('/^[A-Z0-9]{3,20}$/', $code)) fail('کد باید ۳ تا ۲۰ حرف/عدد انگلیسی باشد.', 422);
     if ($pct < 1 || $pct > 90) fail('درصد تخفیف بین ۱ تا ۹۰ باشد.', 422);
     if (row('SELECT code FROM coupons WHERE code = ?', [$code])) fail('این کد قبلاً ساخته شده است.', 422);
-    insert('coupons', ['code' => $code, 'percent' => $pct, 'uses' => 0, 'max_uses' => max(0, int_in('limit')), 'active' => 1, 'owner_id' => $u['role'] === 'admin' ? null : $u['id']]);
+    insert('coupons', ['code' => $code, 'percent' => $pct, 'uses' => 0, 'max_uses' => max(0, int_in('limit')), 'active' => 1, 'owner_id' => staff_can($u, 'coupons') ? null : $u['id']]);
     done('کد تخفیف ساخته شد.');
 }
 function own_coupon(): array
 {
-    $u = require_active('seller', 'admin');
+    $u = require_active('seller', ...STAFF_ROLES);
     $c = row('SELECT * FROM coupons WHERE code = ?', [str_in('code', 32)]);
-    if (!$c || ($u['role'] !== 'admin' && (int) $c['owner_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
+    if (!$c || (!staff_can($u, 'coupons') && (int) $c['owner_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
     return $c;
 }
 function a_coupon_toggle(): void
@@ -641,7 +648,7 @@ function a_coupon_delete(): void
 // ------------------------------------------------------------------ admin: orders
 function a_order_quote(): void
 {
-    require_active('admin');
+    require_staff('orders');
     $o = get_order(int_in('id'));
     $amount = amount_in('amount');
     if ($amount < 1000) fail('مبلغ معتبر وارد کنید.', 422);
@@ -653,7 +660,7 @@ function a_order_quote(): void
 }
 function a_order_assign(): void
 {
-    $admin = require_active('admin');
+    $admin = require_staff('orders');
     $o = get_order(int_in('id'));
     $d = row("SELECT * FROM users WHERE id = ? AND role = 'designer' AND status = 'active'", [int_in('designerId')]);
     if (!$d) fail('طراح معتبر انتخاب کنید.', 422);
@@ -666,7 +673,7 @@ function a_order_assign(): void
 }
 function a_order_status(): void
 {
-    $admin = require_active('admin');
+    $admin = require_staff('orders');
     $o = get_order(int_in('id'));
     $st = str_in('status', 16);
     if (!in_array($st, ORDER_STATUSES, true)) fail('وضعیت نامعتبر.', 422);
@@ -677,7 +684,7 @@ function a_order_status(): void
 }
 function a_order_markPaid(): void
 {
-    $admin = require_active('admin');
+    $admin = require_staff('orders');
     $o = get_order(int_in('id'));
     q('UPDATE orders SET paid = 1, paid_amount = ? WHERE id = ?', [price_of($o), $o['id']]);
     if ($o['designer_id'] && in_array($o['status'], ['new', 'review'], true)) order_event((int) $o['id'], 'in_progress');
@@ -686,7 +693,7 @@ function a_order_markPaid(): void
 }
 function a_order_refund(): void
 {
-    require_active('admin');
+    require_staff('finance');
     $o = get_order(int_in('id'));
     if (!$o['paid']) fail('این سفارش پرداخت نشده است.', 422);
     $amount = amount_in('amount') ?: price_of($o);
@@ -712,8 +719,13 @@ function a_order_delete(): void
 // ------------------------------------------------------------------ admin: users
 function a_user_save(): void
 {
-    $admin = require_active('admin');
+    $admin = require_staff('users');
+    $isAdmin = $admin['role'] === 'admin';
     $id = int_in('id');
+    $old = $id ? row('SELECT * FROM users WHERE id = ?', [$id]) : null;
+    if ($id && !$old) fail('کاربر پیدا نشد.', 404);
+    // only the admin manages staff accounts (admin, accountant, partner)
+    if (!$isAdmin && $old && is_staff($old)) fail('فقط مدیر کل می‌تواند حساب‌های مدیریتی را ویرایش کند.', 403);
     $name = str_in('name', 120);
     if (mb_strlen($name) < 2) fail('نام را وارد کنید.', 422);
     $phone = phone_in();
@@ -723,7 +735,8 @@ function a_user_save(): void
     if ($dup) fail('این شماره قبلاً حسابی از همین نوع دارد.', 422);
     $status = str_in('status', 16);
     if (!in_array($role, ROLES, true) || !in_array($status, USER_STATUSES, true)) fail('نقش یا وضعیت نامعتبر است.', 422);
-    if ($id === (int) $admin['id'] && ($role !== 'admin' || $status !== 'active')) fail('نمی‌توانید نقش یا وضعیت حساب خودتان را تغییر دهید.', 422);
+    if (!$isAdmin && in_array($role, STAFF_ROLES, true)) fail('فقط مدیر کل می‌تواند حساب مدیر، حسابدار یا شریک بسازد.', 403);
+    if ($id === (int) $admin['id'] && ($role !== $admin['role'] || $status !== 'active')) fail('نمی‌توانید نقش یا وضعیت حساب خودتان را تغییر دهید.', 422);
     $commission = trim(en_digits((string) in('commission', '')));
     $email = str_in('email', 190) ?: null;
     if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) fail('ایمیل معتبر نیست.', 422);
@@ -731,6 +744,7 @@ function a_user_save(): void
         'business' => str_in('business', 190) ?: null, 'shop_name' => str_in('shopName', 190) ?: null, 'bio' => str_in('bio', 1000) ?: null,
         'level' => str_in('level', 64) ?: null, 'card' => str_in('card', 64) ?: null,
         'commission' => $commission === '' ? null : max(0, min(100, (float) $commission))];
+    if (in('note') !== null) $data['admin_note'] = mb_substr(trim((string) in('note', '')), 0, 2000) ?: null;
     if (in('skills') !== null) {
         $valid = array_column(rows('SELECT id FROM services'), 'id');
         $data['skills'] = jenc(array_values(array_intersect(array_map('strval', arr_in('skills')), $valid)));
@@ -742,8 +756,6 @@ function a_user_save(): void
     }
     db()->beginTransaction();
     if ($id) {
-        $old = row('SELECT * FROM users WHERE id = ?', [$id]);
-        if (!$old) fail('کاربر پیدا نشد.', 404);
         update('users', $data, 'id = ?', [$id]);
         if ($old['status'] !== $status && $status === 'active' && $old['status'] === 'pending') notify($id, 'حساب شما تأیید و فعال شد 🎉', 'overview');
     } else {
@@ -752,6 +764,7 @@ function a_user_save(): void
         $id = insert('users', $data);
     }
     $adj = (int) en_digits((string) in('walletAdjust', '0'));
+    if ($adj !== 0 && !staff_can($admin, 'finance')) fail('اصلاح کیف پول فقط با دسترسی «مالی» ممکن است.', 403);
     if ($adj !== 0) {
         wallet_add($id, $adj);
         tx($id, $adj > 0 ? 'charge' : 'payment', $adj, 'اصلاح موجودی توسط مدیر');
@@ -761,13 +774,54 @@ function a_user_save(): void
 }
 function a_user_status(): void
 {
-    $admin = require_active('admin');
+    $admin = require_staff('users');
     $id = int_in('id');
     $st = str_in('status', 16);
     if ($id === (int) $admin['id'] || !in_array($st, USER_STATUSES, true)) fail('نامعتبر.', 422);
+    $t = row('SELECT * FROM users WHERE id = ?', [$id]);
+    if (!$t) fail('کاربر پیدا نشد.', 404);
+    if ($admin['role'] !== 'admin' && is_staff($t)) fail('فقط مدیر کل می‌تواند حساب‌های مدیریتی را تغییر دهد.', 403);
     update('users', ['status' => $st], 'id = ?', [$id]);
     notify($id, $st === 'active' ? 'حساب شما تأیید و فعال شد 🎉' : ($st === 'rejected' ? 'درخواست همکاری شما تأیید نشد.' : 'وضعیت حساب شما تغییر کرد.'), 'overview');
     done('وضعیت کاربر به‌روز شد.');
+}
+function a_user_note(): void
+{
+    $me = require_staff('users');
+    $t = row('SELECT * FROM users WHERE id = ?', [int_in('id')]);
+    if (!$t) fail('کاربر پیدا نشد.', 404);
+    if ($me['role'] !== 'admin' && is_staff($t)) fail('فقط مدیر کل.', 403);
+    update('users', ['admin_note' => mb_substr(trim((string) in('note', '')), 0, 2000) ?: null], 'id = ?', [$t['id']]);
+    done('یادداشت ذخیره شد.');
+}
+// Everything about one user for the admin's detail drawer
+function a_user_detail(): void
+{
+    $me = require_staff('users');
+    $u = row('SELECT * FROM users WHERE id = ?', [int_in('id')]);
+    if (!$u) fail('کاربر پیدا نشد.', 404);
+    $id = (int) $u['id'];
+    $fin = staff_can($me, 'finance') || staff_can($me, 'overview');
+    $orders = rows('SELECT * FROM orders WHERE user_id = ? OR designer_id = ? ORDER BY id DESC LIMIT 50', [$id, $id]);
+    $spent = (int) val("SELECT COALESCE(-SUM(amount), 0) FROM transactions WHERE user_id = ? AND type IN ('payment', 'purchase')", [$id]);
+    $earned = (int) val("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type IN ('earning', 'sale')", [$id]);
+    out([
+        'user' => user_out($u, true) + ['note' => (string) ($u['admin_note'] ?? ''), 'lastIp' => (string) ($u['last_ip'] ?? '')],
+        'stats' => [
+            'orders' => (int) val('SELECT COUNT(*) FROM orders WHERE user_id = ?', [$id]),
+            'ordersDone' => (int) val("SELECT COUNT(*) FROM orders WHERE user_id = ? AND status = 'done'", [$id]),
+            'jobs' => (int) val('SELECT COUNT(*) FROM orders WHERE designer_id = ?', [$id]),
+            'purchases' => (int) val('SELECT COUNT(*) FROM purchases WHERE user_id = ?', [$id]),
+            'products' => (int) val('SELECT COUNT(*) FROM products WHERE seller_id = ?', [$id]),
+            'tickets' => (int) val('SELECT COUNT(*) FROM tickets WHERE user_id = ?', [$id]),
+            'invited' => (int) val('SELECT COUNT(*) FROM users WHERE referred_by = ?', [$id]),
+            'spent' => $fin ? $spent : null, 'earned' => $fin ? $earned : null,
+        ],
+        'orders' => array_map(function ($o) { return ['id' => (string) $o['id'], 'code' => $o['code'], 'title' => $o['title'], 'status' => $o['status'], 'price' => (int) ($o['quote'] ?? $o['estimate']), 'paid' => (bool) $o['paid'], 'at' => ms($o['created_at'])]; }, $orders),
+        'transactions' => $fin ? array_map('tx_out', rows('SELECT * FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 30', [$id])) : [],
+        'accounts' => array_map(function ($a) { return ['id' => (string) $a['id'], 'role' => $a['role'], 'status' => $a['status']]; }, rows('SELECT id, role, status FROM users WHERE phone = ? AND id <> ?', [$u['phone'], $id])),
+        'referrer' => $u['referred_by'] ? (string) val('SELECT name FROM users WHERE id = ?', [(int) $u['referred_by']]) : '',
+    ]);
 }
 function delete_user_data(int $id): void
 {
@@ -902,7 +956,7 @@ function a_fresh_start(): void
 // ------------------------------------------------------------------ admin: finance
 function a_payout_paid(): void
 {
-    require_active('admin');
+    require_staff('finance');
     $p = row("SELECT * FROM payouts WHERE id = ? AND status = 'pending'", [int_in('id')]);
     if (!$p) fail('درخواست پیدا نشد.', 404);
     update('payouts', ['status' => 'paid'], 'id = ?', [$p['id']]);
@@ -913,7 +967,7 @@ function a_payout_paid(): void
 }
 function a_payout_reject(): void
 {
-    require_active('admin');
+    require_staff('finance');
     $p = row("SELECT * FROM payouts WHERE id = ? AND status = 'pending'", [int_in('id')]);
     if (!$p) fail('درخواست پیدا نشد.', 404);
     update('payouts', ['status' => 'rejected'], 'id = ?', [$p['id']]);
@@ -931,7 +985,7 @@ function slug_in(string $k): string
 }
 function a_category_save(): void
 {
-    require_active('admin');
+    require_staff('catalog');
     $id = slug_in('id');
     $isNew = (bool) in('isNew');
     if ($isNew && row('SELECT id FROM categories WHERE id = ?', [$id])) fail('این شناسه قبلاً استفاده شده است.', 422);
@@ -943,7 +997,7 @@ function a_category_save(): void
 }
 function a_category_delete(): void
 {
-    require_active('admin');
+    require_staff('catalog');
     $id = str_in('id', 40);
     if (val('SELECT COUNT(*) FROM services WHERE category_id = ?', [$id])) fail('ابتدا خدمات این شاخه را حذف یا جابه‌جا کنید.', 422);
     q('DELETE FROM categories WHERE id = ?', [$id]);
@@ -995,7 +1049,7 @@ function clean_fields(array $raw): array
 }
 function a_service_save(): void
 {
-    require_active('admin');
+    require_staff('catalog');
     $id = slug_in('id');
     $isNew = (bool) in('isNew');
     if ($isNew && row('SELECT id FROM services WHERE id = ?', [$id])) fail('این شناسه قبلاً استفاده شده است.', 422);
@@ -1010,7 +1064,7 @@ function a_service_save(): void
 }
 function a_service_delete(): void
 {
-    require_active('admin');
+    require_staff('catalog');
     $id = str_in('id', 40);
     if (val('SELECT COUNT(*) FROM orders WHERE service_id = ?', [$id])) {
         q('UPDATE services SET active = 0 WHERE id = ?', [$id]);
@@ -1021,7 +1075,7 @@ function a_service_delete(): void
 }
 function a_productCategory_save(): void
 {
-    require_active('admin');
+    require_staff('catalog');
     $id = slug_in('id');
     if (in('isNew') && row('SELECT id FROM product_categories WHERE id = ?', [$id])) fail('این شناسه قبلاً استفاده شده است.', 422);
     $title = str_in('title', 120);
@@ -1031,7 +1085,7 @@ function a_productCategory_save(): void
 }
 function a_productCategory_delete(): void
 {
-    require_active('admin');
+    require_staff('catalog');
     $id = str_in('id', 40);
     if (val('SELECT COUNT(*) FROM products WHERE category_id = ?', [$id])) fail('این دسته محصول دارد؛ ابتدا محصولات را جابه‌جا کنید.', 422);
     q('DELETE FROM product_categories WHERE id = ?', [$id]);
@@ -1060,6 +1114,9 @@ function a_settings_save(): void
     sec_log('admin_action', 'تغییر تنظیمات: ' . $group, (int) me()['id']);
     foreach ($defaults[$group] as $k => $d) {
         if (array_key_exists($k, $value)) $current[$k] = coerce_like($d, $value[$k]);
+    }
+    if ($group === 'roles') {
+        foreach (['partner', 'accountant'] as $r) $current[$r] = array_values(array_intersect((array) ($current[$r] ?? []), array_keys(STAFF_SECTIONS)));
     }
     if ($group === 'commission') {
         foreach (['percent', 'newcomerPercent'] as $k) $current[$k] = max(0, min(100, (float) $current[$k]));
@@ -1209,20 +1266,20 @@ function a_sms_test(): void
 // ------------------------------------------------------------------ product reviews (admin)
 function a_review_list(): void
 {
-    $u = require_active('admin', 'seller');
-    $where = $u['role'] === 'admin' ? '1 = 1' : 'p.seller_id = ' . (int) $u['id'];
+    $u = require_active('seller', ...STAFF_ROLES);
+    $where = staff_can($u, 'catalog') ? '1 = 1' : 'p.seller_id = ' . (int) $u['id'];
     $list = rows("SELECT r.*, u.name uname, p.title ptitle FROM product_reviews r JOIN users u ON u.id = r.user_id JOIN products p ON p.id = r.product_id WHERE $where ORDER BY r.id DESC LIMIT 300");
     out(['reviews' => array_map(function ($r) { return review_out($r, true); }, $list)]);
 }
 function review_owned(array $u): array
 {
     $r = row('SELECT r.*, p.seller_id FROM product_reviews r JOIN products p ON p.id = r.product_id WHERE r.id = ?', [int_in('id')]);
-    if (!$r || ($u['role'] !== 'admin' && (int) $r['seller_id'] !== (int) $u['id'])) fail('نظر پیدا نشد.', 404);
+    if (!$r || (!staff_can($u, 'catalog') && (int) $r['seller_id'] !== (int) $u['id'])) fail('نظر پیدا نشد.', 404);
     return $r;
 }
 function a_review_toggle(): void
 {
-    $u = require_active('admin');
+    $u = require_staff('catalog');
     $r = review_owned($u);
     update('product_reviews', ['hidden' => (int) $r['hidden'] ? 0 : 1], 'id = ?', [$r['id']]);
     product_rating_refresh((int) $r['product_id']);
@@ -1230,7 +1287,7 @@ function a_review_toggle(): void
 }
 function a_review_reply(): void
 {
-    $u = require_active('admin', 'seller');
+    $u = require_active('seller', ...STAFF_ROLES);
     $r = review_owned($u);
     $text = str_in('reply', 1500);
     update('product_reviews', ['reply' => $text !== '' ? $text : null], 'id = ?', [$r['id']]);
@@ -1239,7 +1296,7 @@ function a_review_reply(): void
 }
 function a_review_delete(): void
 {
-    $u = require_active('admin');
+    $u = require_staff('catalog');
     $r = review_owned($u);
     q('DELETE FROM product_reviews WHERE id = ?', [$r['id']]);
     product_rating_refresh((int) $r['product_id']);
@@ -1257,12 +1314,12 @@ function post_out(array $p, bool $full = false): array
 }
 function a_post_list(): void
 {
-    require_active('admin');
+    require_staff('blog');
     out(['posts' => array_map('post_out', rows('SELECT * FROM posts ORDER BY COALESCE(published_at, created_at) DESC LIMIT 500'))]);
 }
 function a_post_get(): void
 {
-    require_active('admin');
+    require_staff('blog');
     $p = row('SELECT * FROM posts WHERE id = ?', [int_in('id')]);
     if (!$p) fail('مطلب پیدا نشد.', 404);
     out(['post' => post_out($p, true)]);
@@ -1276,7 +1333,7 @@ function post_slug(string $s): string
 }
 function a_post_save(): void
 {
-    $u = require_active('admin');
+    $u = require_staff('blog');
     require_once __DIR__ . '/seo.php';
     $id = int_in('id');
     $title = str_in('title', 255);
@@ -1305,7 +1362,7 @@ function a_post_save(): void
 }
 function a_post_delete(): void
 {
-    require_active('admin');
+    require_staff('blog');
     $p = row('SELECT * FROM posts WHERE id = ?', [int_in('id')]);
     if (!$p) fail('مطلب پیدا نشد.', 404);
     foreach (rows("SELECT id FROM files WHERE kind = 'blog' AND ref_id = ?", [$p['id']]) as $f) delete_file_row((int) $f['id']);
@@ -1315,7 +1372,7 @@ function a_post_delete(): void
 // Image inside a post body → public URL
 function a_post_image(): void
 {
-    $u = require_active('admin');
+    $u = require_staff('blog');
     $f = uploaded_files('image')[0] ?? null;
     if (!$f || !preg_match('/\.(jpe?g|png|webp|gif)$/i', (string) $f['name'])) fail('یک تصویر JPG، PNG یا WebP انتخاب کنید.', 422);
     $r = store_upload($f, 'blog', int_in('id') ?: null, (int) $u['id']);

@@ -145,7 +145,7 @@ function pro_apply_payment(int $uid, int $amount, array $ref): string
 // Admin: grant / extend / cancel a membership by hand
 function a_pro_grant(): void
 {
-    require_user('admin');
+    require_staff('pro');
     $id = int_in('userId');
     if (!$id && str_in('phone', 20) !== '') $id = (int) val("SELECT id FROM users WHERE phone = ? ORDER BY role = 'customer' DESC, id LIMIT 1", [phone_in('phone')]);
     if (!$id || !row('SELECT id FROM users WHERE id = ?', [$id])) fail('کاربری با این مشخصات پیدا نشد.', 404);
@@ -156,7 +156,7 @@ function a_pro_grant(): void
 }
 function a_pro_members(): void
 {
-    require_user('admin');
+    require_staff('pro');
     $rows = rows('SELECT id, name, phone, pro_until, pro_biz FROM users WHERE pro_until IS NOT NULL AND pro_until > UTC_TIMESTAMP() ORDER BY pro_until DESC LIMIT 300');
     $since = gmdate('Y-m-d H:i:s', time() - 30 * 86400);
     out(['members' => array_map(fn ($r) => ['id' => (int) $r['id'], 'name' => $r['name'], 'phone' => $r['phone'], 'until' => ms($r['pro_until']), 'business' => (bool) $r['pro_biz']], $rows),

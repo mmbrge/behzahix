@@ -531,7 +531,7 @@ function chat_admin_row(array $c): array
 }
 function a_chat_list(): void
 {
-    require_active('admin');
+    require_staff('support');
     $f = str_in('filter', 16);
     $qs = str_in('q', 80);
     $page = max(0, int_in('page'));
@@ -561,7 +561,7 @@ function a_chat_list(): void
 }
 function a_chat_get(): void
 {
-    require_active('admin');
+    require_staff('support');
     $c = row('SELECT * FROM chats WHERE id = ?', [int_in('id')]);
     if (!$c) fail('گفتگو پیدا نشد.', 404);
     if ((int) $c['admin_unread']) update('chats', ['admin_unread' => 0], 'id = ?', [$c['id']]);
@@ -573,7 +573,7 @@ function a_chat_get(): void
 }
 function a_chat_poll(): void
 {
-    require_active('admin');
+    require_staff('support');
     $id = int_in('id');
     $res = ['waiting' => (int) val("SELECT COUNT(*) FROM chats WHERE status = 'waiting' OR admin_unread > 0")];
     if ($id && ($c = row('SELECT * FROM chats WHERE id = ?', [$id]))) {
@@ -587,7 +587,7 @@ function a_chat_poll(): void
 }
 function a_chat_send(): void
 {
-    $me = require_active('admin');
+    $me = require_staff('support');
     $c = row('SELECT * FROM chats WHERE id = ?', [int_in('id')]);
     if (!$c) fail('گفتگو پیدا نشد.', 404);
     $text = str_in('text', 4000);
@@ -600,7 +600,7 @@ function a_chat_send(): void
 // Only the admin can edit or delete messages; deleting keeps a placeholder so the thread stays readable
 function a_chat_edit(): void
 {
-    require_active('admin');
+    require_staff('support');
     $m = row('SELECT * FROM chat_messages WHERE id = ?', [int_in('id')]);
     if (!$m || $m['sender'] !== 'admin' || (int) $m['deleted']) fail('فقط پیام‌های خودتان قابل ویرایش است.', 422);
     $text = str_in('text', 4000);
@@ -611,7 +611,7 @@ function a_chat_edit(): void
 }
 function a_chat_delete(): void
 {
-    require_active('admin');
+    require_staff('support');
     $m = row('SELECT * FROM chat_messages WHERE id = ?', [int_in('id')]);
     if (!$m) fail('پیام پیدا نشد.', 404);
     update('chat_messages', ['deleted' => 1], 'id = ?', [$m['id']]);
@@ -620,7 +620,7 @@ function a_chat_delete(): void
 }
 function a_chat_close(): void
 {
-    require_active('admin');
+    require_staff('support');
     $c = row('SELECT * FROM chats WHERE id = ?', [int_in('id')]);
     if (!$c) fail('گفتگو پیدا نشد.', 404);
     if ($c['status'] === 'closed') {
@@ -633,7 +633,7 @@ function a_chat_close(): void
 }
 function a_chat_remove(): void
 {
-    require_active('admin');
+    require_staff('support');
     $id = int_in('id');
     q('DELETE FROM chat_messages WHERE chat_id = ?', [$id]);
     q('DELETE FROM chats WHERE id = ?', [$id]);
@@ -642,7 +642,7 @@ function a_chat_remove(): void
 // Try the bot from the panel without creating a conversation
 function a_chat_try(): void
 {
-    require_active('admin');
+    require_staff('support');
     $r = bot_reply(str_in('text', 500), null, ['topic' => '', 'misses' => 0]);
     out(['reply' => $r]);
 }
