@@ -63,7 +63,20 @@ function default_settings(): array
             // Staged payment: orders at or above stagedMin can start with a deposit
             'stagedEnabled' => true, 'stagedMin' => 5000000, 'stagedPercent' => 50,
         ],
-        'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس', 'testOpen' => false],
+        // 'driver'/'merchant'/'sandbox' are the pre-v16 single gateway (moved to gw_* on upgrade)
+        'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس', 'testOpen' => false, 'default' => ''],
+        // Online gateways (pay_gateways.php): any number can be on; the customer picks one
+        'gw_zarinpal' => ['enabled' => false, 'label' => 'زرین‌پال', 'note' => 'پرداخت با همه کارت‌های عضو شتاب', 'sort' => 1, 'merchant' => '', 'sandbox' => false],
+        'gw_zibal' => ['enabled' => false, 'label' => 'زیبال', 'note' => 'پرداخت با همه کارت‌های عضو شتاب', 'sort' => 2, 'merchant' => '', 'sandbox' => false],
+        'gw_idpay' => ['enabled' => false, 'label' => 'آیدی‌پی', 'note' => 'پرداخت با همه کارت‌های عضو شتاب', 'sort' => 3, 'apiKey' => '', 'sandbox' => false],
+        'gw_payping' => ['enabled' => false, 'label' => 'پی‌پینگ', 'note' => 'پرداخت با همه کارت‌های عضو شتاب', 'sort' => 4, 'token' => ''],
+        'gw_nextpay' => ['enabled' => false, 'label' => 'نکست‌پی', 'note' => 'پرداخت با همه کارت‌های عضو شتاب', 'sort' => 5, 'apiKey' => ''],
+        'gw_mellat' => ['enabled' => false, 'label' => 'بانک ملت', 'note' => 'درگاه مستقیم بانک ملت (به‌پرداخت)', 'sort' => 6, 'terminalId' => '', 'username' => '', 'password' => ''],
+        'gw_saman' => ['enabled' => false, 'label' => 'بانک سامان', 'note' => 'درگاه مستقیم بانک سامان (سپ)', 'sort' => 7, 'terminalId' => ''],
+        'gw_sadad' => ['enabled' => false, 'label' => 'بانک ملی', 'note' => 'درگاه مستقیم بانک ملی (سداد)', 'sort' => 8, 'terminalId' => '', 'merchantId' => '', 'key' => ''],
+        'gw_parsian' => ['enabled' => false, 'label' => 'بانک پارسیان', 'note' => 'درگاه مستقیم بانک پارسیان', 'sort' => 9, 'pin' => ''],
+        'gw_pasargad' => ['enabled' => false, 'label' => 'بانک پاسارگاد', 'note' => 'درگاه مستقیم بانک پاسارگاد', 'sort' => 10, 'terminalNumber' => '', 'username' => '', 'password' => '', 'apiUrl' => ''],
+        'gw_sepehr' => ['enabled' => false, 'label' => 'بانک صادرات', 'note' => 'درگاه مستقیم سپهر (صادرات)', 'sort' => 11, 'terminalId' => ''],
         'sms' => ['driver' => 'none', 'apiKey' => '', 'template' => 'verify', 'templateId' => '', 'paramName' => 'CODE', 'adminPhone' => '',
             // login / sign-up codes: 'sms' = the service above, 'apiir' = api.ir OTP web service (no SMS line needed)
             'otpProvider' => 'sms', 'apiirToken' => '', 'apiirTemplate' => 1, 'apiirCall' => false, 'loginOtpDefault' => false],
@@ -148,6 +161,8 @@ function default_settings(): array
             'apiUrl' => '', 'merchantId' => '', 'key' => ''],
         'bnpl_torobpay' => ['enabled' => false, 'label' => 'ترب‌پی', 'note' => 'خرید اعتباری، پرداخت در اقساط', 'installments' => 4, 'min' => 0, 'max' => 0,
             'apiUrl' => '', 'clientId' => '', 'clientSecret' => '', 'username' => '', 'password' => ''],
+        'bnpl_tara' => ['enabled' => false, 'label' => 'تارا', 'note' => 'خرید اعتباری با کیف پول تارا', 'installments' => 0, 'min' => 0, 'max' => 0,
+            'apiUrl' => '', 'username' => '', 'password' => '', 'serviceId' => ''],
     ];
 }
 
@@ -177,12 +192,21 @@ function public_settings(): array
         'chat' => ['enabled' => (bool) $s['chat']['enabled'], 'botName' => (string) $s['chat']['botName'], 'greeting' => (string) $s['chat']['greeting']],
         'tools' => ['enabled' => (bool) $s['tools']['enabled'], 'disabled' => array_values((array) $s['tools']['disabled']), 'shortRequireLogin' => (bool) $s['tools']['shortRequireLogin']],
         'sms' => ['enabled' => function_exists('otp_enabled') ? otp_enabled() : $s['sms']['driver'] !== 'none', 'otpDefault' => (bool) $s['sms']['loginOtpDefault']],
-        'payment' => ['driver' => $s['payment']['driver']],
+        'payment' => ['driver' => $s['payment']['driver'], 'test' => !empty($s['general']['demoMode']) || !empty($s['payment']['testOpen'])],
+        'gateways' => (function () use ($s) {
+            $list = [];
+            foreach (['zarinpal', 'zibal', 'idpay', 'payping', 'nextpay', 'mellat', 'saman', 'sadad', 'parsian', 'pasargad', 'sepehr'] as $id) {
+                $c = $s['gw_' . $id] ?? [];
+                if (!empty($c['enabled'])) $list[] = ['id' => $id, 'label' => (string) $c['label'], 'note' => (string) $c['note'], 'sort' => (int) $c['sort'], 'default' => ($s['payment']['default'] ?? '') === $id];
+            }
+            usort($list, function ($a, $b) { return $a['sort'] <=> $b['sort']; });
+            return $list;
+        })(),
         'bnpl' => array_values(array_filter(array_map(function ($id) use ($s) {
             $c = $s['bnpl_' . $id] ?? [];
             return empty($c['enabled']) ? null : ['id' => $id, 'label' => (string) $c['label'], 'note' => (string) $c['note'],
                 'installments' => (int) $c['installments'], 'min' => (int) $c['min'], 'max' => (int) $c['max']];
-        }, ['snapppay', 'digipay', 'azki', 'torobpay']))),
+        }, ['snapppay', 'digipay', 'azki', 'torobpay', 'tara']))),
     ];
 }
 

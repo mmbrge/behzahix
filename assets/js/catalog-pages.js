@@ -231,7 +231,7 @@
             ${items.length ? `<form class="coupon-row" data-coupon><input class="input" name="code" dir="ltr" placeholder="کد تخفیف" value="${esc(couponCode)}" aria-label="کد تخفیف"><button class="btn btn-ghost btn-sm" type="submit">اعمال</button></form><p class="small" data-coupon-note></p>` : ""}
             <div class="row-between"><span class="muted">جمع کل</span><b class="price" style="font-size:1.4rem" data-total>${toman(total)}</b></div>
             ${user ? `<p class="small muted mt-1">موجودی کیف پول: ${toman(wallet)}${wallet && wallet < total ? ` — ${toman(total - wallet)} از درگاه پرداخت می‌شود` : ""}</p>` : '<p class="small muted mt-1">برای خرید ابتدا وارد شوید.</p>'}
-            ${user && items.length && wallet < total && BX.bnplFor(total - wallet).length ? `<p class="small mt-2"><b>روش پرداخت</b></p>${BX.payOptions(total - wallet)}` : ""}
+            ${user && items.length && wallet < total && (BX.bnplFor(total - wallet).length || (BX.settings.gateways || []).length > 1) ? `<p class="small mt-2"><b>روش پرداخت</b></p>${BX.payOptions(total - wallet)}` : ""}
             <button type="button" class="btn btn-primary btn-block mt-2" data-checkout ${items.length ? "" : "disabled"}>${icon("lock")} ${user && wallet >= total ? "پرداخت از کیف پول" : "پرداخت و دانلود"}</button>
           </aside>`;
         const close = () => wrap.remove();

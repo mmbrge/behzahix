@@ -538,6 +538,7 @@
             <form class="form-grid" data-form="charge">
               <div class="amount-chips">${[500000, 1000000, 2000000, 5000000].map((a) => `<button type="button" data-act="amount" data-v="${a}">${short(a)} تومان</button>`).join("")}</div>
               <div class="field"><label class="field-label" for="ch-amount">مبلغ دلخواه (تومان)</label><input class="input" id="ch-amount" name="amount" dir="ltr" inputmode="numeric"></div>
+              ${(BX.settings.gateways || []).length > 1 ? `<div class="field"><span class="field-label">درگاه پرداخت</span>${BX.payOptions(10000).replace(/<label class="opt-card pay-opt" data-bnpl[\s\S]*?<\/label>/g, "")}</div>` : ""}
               <button class="btn btn-primary" type="submit">${icon("lock")} پرداخت از درگاه</button>
             </form>`)}
         </div>
@@ -1160,7 +1161,7 @@
         if (text) quiet(act("order.message", { id: f.dataset.id, text }));
       },
       ticket: (f) => quiet(act("ticket.create", { subject: f.elements.subject.value, message: f.elements.message.value, department: f.elements.department?.value || "", priority: f.elements.priority?.value || "normal" })),
-      charge: (f) => quiet(act("wallet.charge", { amount: f.elements.amount.value })),
+      charge: (f) => quiet(act("wallet.charge", { amount: f.elements.amount.value, method: f.querySelector("[name=method]:checked")?.value || "" })),
       payout: (f) => quiet(act("payout.request", { amount: f.elements.amount.value, card: f.elements.card.value })),
       profile: (f) => {
         const e = f.elements;

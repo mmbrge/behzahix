@@ -67,7 +67,7 @@ if (($b = ip_blocked()) && $route !== 'boot') fail('دسترسی از این ا�
 // Scheduled jobs (abandoned-cart SMS…): piggyback on traffic; never blocks the request
 try { lazy_cron(($route === 'cron')); } catch (Throwable $e) { error_log('[BEHIX] cron: ' . $e->getMessage()); }
 if ($route === 'cron') out(['ok' => true]);
-$get = ['boot' => 'r_boot', 'file' => 'r_file', 'pay.callback' => 'payment_callback', 'go' => 'r_short_go', 'invoice' => 'r_invoice'];
+$get = ['boot' => 'r_boot', 'file' => 'r_file', 'pay.callback' => 'payment_callback', 'pay.go' => 'r_pay_go', 'go' => 'r_short_go', 'invoice' => 'r_invoice'];
 // SEO feeds (also reachable as /sitemap.xml and /robots.txt through seo.php)
 $feeds = ['feed.torob' => 'seo_feed_torob', 'feed.blog' => 'blog', 'feed.products' => 'products', 'sitemap' => 'seo_sitemap', 'robots' => 'seo_robots'];
 if (isset($feeds[$route])) {
@@ -76,7 +76,7 @@ if (isset($feeds[$route])) {
     function_exists($f) ? $f() : seo_feed_rss($f);
 }
 if (isset($get[$route])) {
-    if ($route === 'pay.callback') require_once __DIR__ . '/lib/gateways.php';
+    if ($route === 'pay.callback' || $route === 'pay.go') require_once __DIR__ . '/lib/gateways.php';
     if ($route === 'invoice') require_once __DIR__ . '/lib/invoice.php';
     $get[$route]();
     exit;

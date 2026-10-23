@@ -4,13 +4,14 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 15;
+const BX_SCHEMA_VERSION = 16;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
 {
     return [
         ['products', 'image', 'VARCHAR(20) NULL'], // v3 — cover image (files.id, kind = cover)
+        ['payments', 'meta', 'TEXT NULL'], // v16 — POSTed form for bank gateways (pay.go)
         ['tickets', 'department', 'VARCHAR(60) NULL'], // v15 — ticket departments, priority, assigned staff
         ['tickets', 'priority', "VARCHAR(10) NOT NULL DEFAULT 'normal'"],
         ['tickets', 'assignee_id', 'INT UNSIGNED NULL'],
@@ -54,6 +55,17 @@ function bx_migrate(int $from): void
             q("UPDATE settings SET v = ? WHERE k = 'studio'", [jenc($st)]);
         }
         q('UPDATE doc_templates SET price = NULL WHERE price = 150000');
+    }
+    if ($from < 16) {
+        // one gateway → many: the old single gateway becomes the first gw_* entry
+        $p = setting('payment');
+        if (in_array($p['driver'] ?? '', ['zarinpal', 'zibal'], true) && trim((string) ($p['merchant'] ?? '')) !== '') {
+            $g = setting('gw_' . $p['driver']);
+            $g['enabled'] = true; $g['merchant'] = $p['merchant']; $g['sandbox'] = !empty($p['sandbox']);
+            save_setting('gw_' . $p['driver'], $g);
+            $p['default'] = $p['driver'];
+            save_setting('payment', $p);
+        }
     }
     if ($from < 13) {
         // one phone number may own several account types (customer, seller, designer…)

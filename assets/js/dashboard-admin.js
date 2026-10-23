@@ -604,10 +604,21 @@
     ] },
     payment: { title: "درگاه پرداخت", icon: "wallet", groups: [
       ["payment", [
-        ["driver", "درگاه", "select", [["test", "تست (بدون پول)"], ["zarinpal", "زرین‌پال"], ["zibal", "زیبال"]]],
-        ["merchant", "مرچنت کد", "ltr"], ["sandbox", "حالت آزمایشی درگاه (Sandbox)", "switch"], ["description", "توضیح پرداخت", "text"],
+        ["default", "درگاه پیش‌فرض (اول انتخاب‌شده در صفحه پرداخت)", "select", [["", "اولین درگاه فعال"], ["zarinpal", "زرین‌پال"], ["zibal", "زیبال"], ["idpay", "آیدی‌پی"], ["payping", "پی‌پینگ"], ["nextpay", "نکست‌پی"], ["mellat", "بانک ملت (به‌پرداخت)"], ["saman", "بانک سامان (سپ)"], ["sadad", "بانک ملی (سداد)"], ["parsian", "بانک پارسیان (پک)"], ["pasargad", "بانک پاسارگاد (پپ)"], ["sepehr", "بانک صادرات (سپهر)"]]],
+        ["description", "توضیح پرداخت", "text"],
         ["testOpen", "درگاه تست برای همه باز باشد (فقط دوره آزمایش — هر کسی بدون پول خرید می‌کند)", "switch"],
-      ], "با درگاه «تست»، مدیر همیشه می‌تواند کل مسیر خرید و پرداخت را آزمایش کند؛ مشتری‌ها فقط وقتی که حالت نمایشی یا گزینه بالا روشن باشد. قبل از افتتاح سایت، مرچنت کد زرین‌پال یا زیبال را وارد و درگاه را عوض کنید. آدرس بازگشت خودکار ساخته می‌شود؛ دامنه سایت باید در پنل درگاه ثبت شده باشد."],
+      ], "هر تعداد درگاه را که بخواهید روشن کنید؛ مشتری در صفحه پرداخت یکی را انتخاب می‌کند. تا وقتی هیچ درگاهی روشن نیست، فقط درگاه «تست» کار می‌کند (برای مدیر همیشه، برای مشتری فقط با گزینه بالا یا حالت نمایشی). آدرس بازگشت خودکار ساخته می‌شود؛ دامنه سایت (و برای درگاه‌های مستقیم بانکی، آی‌پی هاست) باید نزد درگاه ثبت شده باشد. بعد از ذخیره، «تست اتصال» هر درگاه را بزنید."],
+      ["gw_zarinpal", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["merchant", "مرچنت کد", "ltr"], ["sandbox", "حالت آزمایشی (Sandbox)", "switch"]], "مرچنت کد را از پنل زرین‌پال (بخش درگاه‌ها) بردارید."],
+      ["gw_zibal", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["merchant", "مرچنت (Merchant)", "ltr"], ["sandbox", "حالت آزمایشی", "switch"]], "در حالت آزمایشی، مرچنت «zibal» به‌صورت خودکار استفاده می‌شود."],
+      ["gw_idpay", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["apiKey", "API Key", "ltr"], ["sandbox", "حالت آزمایشی (Sandbox)", "switch"]], "کلید API را از پنل آیدی‌پی ← وب‌سرویس بردارید."],
+      ["gw_payping", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["token", "توکن (Bearer Token)", "ltr"]], "توکن را از پنل پی‌پینگ ← توسعه‌دهندگان بسازید."],
+      ["gw_nextpay", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["apiKey", "API Key", "ltr"]], "کلید را از پنل نکست‌پی ← درگاه‌ها بردارید."],
+      ["gw_mellat", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["terminalId", "شماره ترمینال", "ltr"], ["username", "نام کاربری", "ltr"], ["password", "رمز عبور", "ltr"]], "این اطلاعات را بانک ملت پس از قرارداد پذیرندگی می‌دهد. آی‌پی سرور هاست باید نزد بانک ثبت شود."],
+      ["gw_saman", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["terminalId", "شماره ترمینال (Terminal ID)", "ltr"]], "آی‌پی سرور و دامنه سایت باید در پنل سپ ثبت شده باشد."],
+      ["gw_sadad", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["terminalId", "شماره ترمینال", "ltr"], ["merchantId", "شماره پذیرنده (Merchant ID)", "ltr"], ["key", "کلید ترمینال (Terminal Key)", "ltr"]], "کلید ترمینال یک رشته Base64 است که بانک ملی همراه ترمینال می‌دهد."],
+      ["gw_parsian", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["pin", "پین (LoginAccount / Pin)", "ltr"]], "پین را بانک پارسیان پس از قرارداد می‌دهد؛ آی‌پی سرور باید نزد بانک ثبت شود."],
+      ["gw_pasargad", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["terminalNumber", "شماره ترمینال", "ltr"], ["username", "نام کاربری", "ltr"], ["password", "رمز عبور", "ltr"], ["apiUrl", "آدرس API (خالی = https://pep.shaparak.ir/dorsa1)", "ltr"]], "درگاه جدید پاسارگاد (پپ) با نام کاربری و رمز کار می‌کند."],
+      ["gw_sepehr", [["enabled", "فعال باشد (در صفحه پرداخت نمایش داده شود)", "switch"], ["label", "نام نمایشی برای مشتری", "text"], ["note", "توضیح کوتاه", "text"], ["sort", "ترتیب نمایش (کوچک‌تر = بالاتر)", "number"], ["terminalId", "شماره ترمینال", "ltr"]], "آی‌پی سرور هاست باید نزد شرکت سپهر ثبت شود."],
     ] },
     chat: { title: "پشتیبانی و ربات", icon: "ai", groups: [
       ["chat", [
@@ -664,6 +675,11 @@
         ["apiUrl", "آدرس API (خالی = پیش‌فرض)", "ltr"],
         ["clientId", "Client ID", "ltr"], ["clientSecret", "Client Secret", "ltr"], ["username", "نام کاربری", "ltr"], ["password", "رمز عبور", "ltr"],
       ], "اطلاعات پذیرنده را پس از قرارداد از ترب‌پی بگیرید."],
+      ["bnpl_tara", [
+        ["enabled", "فعال باشد (پس از عقد قرارداد پذیرندگی)", "switch"], ["label", "نام نمایشی", "text"], ["note", "توضیح کوتاه برای مشتری", "text"],
+        ["installments", "تعداد قسط برای نمایش مبلغ هر قسط (۰ = نمایش نده)", "number"], ["min", "حداقل مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"], ["max", "حداکثر مبلغ سفارش (تومان، ۰ = بدون محدودیت)", "number"],
+        ["apiUrl", "آدرس API (خالی = https://pay.tara360.ir/pay/api)", "ltr"], ["username", "نام کاربری پذیرنده", "ltr"], ["password", "رمز عبور", "ltr"], ["serviceId", "شناسه سرویس (Service ID) که تارا می‌دهد", "ltr"],
+      ], "خرید اعتباری تارا (tara360). اطلاعات پذیرنده را پس از قرارداد از تارا بگیرید و «تست اتصال» را بزنید."],
     ] },
     tools: { title: "ابزارها", icon: "wrench", groups: [
       ["tools", [
@@ -747,14 +763,14 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { tickets: "دپارتمان‌های تیکت", roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { tickets: "دپارتمان‌های تیکت", roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", bnpl_tara: "تارا", gw_zarinpal: "زرین‌پال", gw_zibal: "زیبال", gw_idpay: "آیدی‌پی", gw_payping: "پی‌پینگ", gw_nextpay: "نکست‌پی", gw_mellat: "بانک ملت (به‌پرداخت)", gw_saman: "بانک سامان (سپ)", gw_sadad: "بانک ملی (سداد)", gw_parsian: "بانک پارسیان (پک)", gw_pasargad: "بانک پاسارگاد (پپ)", gw_sepehr: "بانک صادرات (سپهر)", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "تنظیمات کلی پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">
          ${fields.map((f) => fieldInput(group, f, (S.settings[group] || {})[f[0]])).join("")}
          <div class="span-2 row"><button class="btn btn-primary" type="submit">${icon("check")} ذخیره</button>
            ${group === "sms" ? `<button class="btn btn-ghost" type="button" data-act="sms-test">${icon("send")} ارسال کد تأیید آزمایشی به شماره من</button><a class="btn btn-ghost" href="#settings/smsTpl">${icon("list")} قالب‌های پیامک رویدادها</a>` : ""}
-           ${group === "payment" ? `<button class="btn btn-ghost" type="button" data-act="payment-test">${icon("zap")} تست اتصال درگاه</button>` : ""}
+           ${group.startsWith("gw_") ? `<button class="btn btn-ghost" type="button" data-act="payment-test" data-id="${group.slice(3)}">${icon("zap")} تست اتصال (پس از ذخیره)</button>` : ""}
            ${group.startsWith("bnpl_") ? `<button class="btn btn-ghost" type="button" data-act="bnpl-test" data-id="${group.slice(5)}">${icon("zap")} تست اتصال (پس از ذخیره)</button>` : ""}
            ${group === "legal" ? '<a class="btn btn-ghost" href="terms.html" target="_blank">مشاهده صفحه قوانین</a>' : ""}</div>
        </form>`)).join("")}</div>`;
@@ -885,9 +901,9 @@
         BX.toast(r.message, "ok");
       } catch (err) { BX.toast(err.message, "bad"); }
     },
-    "payment-test": async () => {
+    "payment-test": async (el) => {
       try {
-        const r = await BX.api("a.payment.test");
+        const r = await BX.api("a.payment.test", { id: el.dataset.id });
         BX.modal({ title: "تست درگاه پرداخت", body: `<p class="lh">${BX.esc(r.message)}</p><p class="muted small lh mt-1">برای اطمینان کامل، یک پرداخت واقعی ۱,۰۰۰ تومانی انجام دهید؛ مبلغ به کیف پول خودتان در سایت اضافه می‌شود و بعد از بازگشت، نتیجه نمایش داده می‌شود.</p>`,
           actions: [{ label: "بستن" }, { label: "پرداخت آزمایشی ۱,۰۰۰ تومان", primary: true, onClick: () => { location.href = r.payUrl; } }] });
       } catch (err) { BX.toast(err.message, "bad"); }

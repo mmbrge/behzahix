@@ -149,6 +149,7 @@ function security_checks(): array
     $admins = rows("SELECT id, name, phone, password_hash, created_at FROM users WHERE role = 'admin' AND status = 'active'");
     $integrity = integrity_check();
     $pay = setting('payment');
+    require_once __DIR__ . '/gateways.php';
     $checks = [
         ['https', 'اتصال امن HTTPS', $https, 'critical', 'گواهی SSL را در cPanel (بخش SSL/TLS یا AutoSSL) فعال و ریدایرکت HTTPS را در .htaccess روشن کنید.'],
         ['php', 'نسخه PHP (۸٫۲ به بالا؛ ۸٫۴ پیشنهادی)', version_compare(PHP_VERSION, '8.2', '>='), 'high', 'نسخه فعلی ' . PHP_VERSION . ' است. سایت روی ۷٫۴ هم کار می‌کند، اما نسخه‌های قدیمی دیگر به‌روزرسانی امنیتی نمی‌گیرند؛ از «Select PHP Version» در cPanel نسخه ۸٫۴ را انتخاب کنید و افزونه‌های gd، mbstring، pdo_mysql، curl، zip و intl را تیک بزنید.'],
@@ -158,8 +159,8 @@ function security_checks(): array
         ['uploads', 'قفل پوشه آپلود (اجرای کد ممنوع)', is_file($root . '/uploads/.htaccess'), 'critical', 'فایل uploads/.htaccess حذف شده است؛ آن را از فایل zip سایت دوباره آپلود کنید.'],
         ['apilock', 'قفل پوشه API', is_file($root . '/api/.htaccess'), 'high', 'فایل api/.htaccess را از فایل zip سایت دوباره آپلود کنید.'],
         ['demo', 'حالت نمایشی خاموش', empty(setting('general', 'demoMode')), 'high', 'از «تنظیمات ← داده‌های نمایشی» حالت نمایشی را خاموش و داده‌های نمونه را حذف کنید.'],
-        ['paytest', 'درگاه واقعی (نه تست)', $pay['driver'] !== 'test', 'critical', 'درگاه «تست» فقط برای آزمایش است؛ از «تنظیمات ← درگاه پرداخت» زرین‌پال یا زیبال را تنظیم کنید.'],
-        ['payopen', 'درگاه تست برای مشتری‌ها بسته', $pay['driver'] !== 'test' || empty($pay['testOpen']), 'critical', 'گزینه «درگاه تست برای همه باز باشد» روشن است و هر کسی بدون پرداخت خرید می‌کند؛ بعد از پایان آزمایش آن را خاموش کنید.'],
+        ['paytest', 'درگاه پرداخت واقعی فعال', (function_exists('gw_enabled') ? (bool) gw_enabled() : false), 'critical', 'هنوز هیچ درگاه واقعی روشن نیست و فقط درگاه «تست» کار می‌کند؛ از «تنظیمات ← درگاه پرداخت» حداقل یک درگاه (زرین‌پال، زیبال یا درگاه مستقیم بانک) را روشن کنید.'],
+        ['payopen', 'درگاه تست برای مشتری‌ها بسته', empty($pay['testOpen']), 'critical', 'گزینه «درگاه تست برای همه باز باشد» روشن است و هر کسی بدون پرداخت خرید می‌کند؛ بعد از پایان آزمایش آن را خاموش کنید.'],
         ['2fa', 'ورود دومرحله‌ای مدیر', !empty(setting('security', 'admin2fa')) && otp_enabled(), 'high', 'سرویس پیامک را تنظیم و «ورود دومرحله‌ای مدیر» را در همین بخش روشن کنید.'],
         ['admins', 'تعداد مدیران کم', count($admins) <= 2, 'medium', 'تعداد حساب‌های مدیر ' . count($admins) . ' است؛ مدیرهای اضافه را به نقش دیگری تغییر دهید.'],
         ['integrity', 'سالم بودن فایل‌های هسته', $integrity['manifest'] && !$integrity['changed'] && !$integrity['missing'], 'high', $integrity['changed'] ? 'فایل‌های تغییرکرده: ' . implode('، ', $integrity['changed']) . ' — اگر خودتان تغییر نداده‌اید، فایل‌ها را از نسخه اصلی جایگزین کنید.' : 'فهرست اثرانگشت فایل‌ها پیدا نشد.'],

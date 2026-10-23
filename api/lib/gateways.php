@@ -1,8 +1,10 @@
 <?php
-// BEHIX — payment gateways (Zarinpal, Zibal, test) and SMS providers (Kavenegar, SMS.ir).
+// BEHIX — payment flow (online gateways in pay_gateways.php, installment providers,
+// test gateway) and SMS providers (Kavenegar, SMS.ir, api.ir OTP).
 // Amounts are stored in Toman; gateways are called in Rial.
 if (!defined('BX')) { http_response_code(403); exit; }
 require_once __DIR__ . '/sms.php';
+require_once __DIR__ . '/pay_gateways.php';
 
 function http_json(string $method, string $url, ?array $body = null, array $headers = []): array
 {
@@ -53,7 +55,18 @@ function http_call(string $method, string $url, ?array $body, array $headers = [
 // ------------------------------------------------------------------ installment (BNPL) gateways
 // Flows follow the open-source shetabit/multipay drivers (MIT). Each provider
 // has its own settings group: bnpl_snapppay, bnpl_digipay, bnpl_azki, bnpl_torobpay.
-const BNPL_PROVIDERS = ['snapppay' => 'اسنپ‌پی', 'digipay' => 'دیجی‌پی', 'azki' => 'ازکی وام', 'torobpay' => 'ترب‌پی'];
+const BNPL_PROVIDERS = ['snapppay' => 'اسنپ‌پی', 'digipay' => 'دیجی‌پی', 'azki' => 'ازکی وام', 'torobpay' => 'ترب‌پی', 'tara' => 'تارا'];
+// Tara (tara360.ir) credit purchase: login, purchase token, POSTed form, verify
+function tara_api(array $c): string
+{
+    return rtrim(trim((string) ($c['apiUrl'] ?? '')) ?: 'https://pay.tara360.ir/pay/api', '/');
+}
+function tara_login(array $c): string
+{
+    [$code, $b] = http_call('POST', tara_api($c) . '/v2/authenticate', ['username' => (string) ($c['username'] ?? ''), 'password' => (string) ($c['password'] ?? '')]);
+    if ($code !== 200 || empty($b['accessToken'])) throw new RuntimeException('tara_login');
+    return (string) $b['accessToken'];
+}
 
 function bnpl_cfg(string $id): array
 {
@@ -156,6 +169,18 @@ function bnpl_start(string $method, int $pid, string $purpose, array $ref, int $
         update('payments', ['authority' => mb_substr((string) ($b['ticket'] ?? $provider), 0, 120)], 'id = ?', [$pid]);
         return $b['redirectUrl'];
     }
+    if ($method === 'tara') {
+        $token = tara_login($c);
+        $ip = function_exists('client_ip') ? client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '');
+        [$code, $b] = http_call('POST', tara_api($c) . '/getToken', [
+            'ip' => $ip, 'amount' => $rial, 'mobile' => $mobile, 'orderId' => 'BX' . $pid, 'callBackUrl' => $callback, 'vat' => 0,
+            'serviceAmountList' => [['serviceId' => (string) ($c['serviceId'] ?? '1'), 'amount' => $rial]],
+            'taraInvoiceItemList' => array_map(function ($it) { return ['name' => $it['name'], 'code' => $it['id'], 'count' => 1, 'unit' => 2, 'fee' => $it['amount'] * 10, 'group' => '1', 'groupTitle' => $it['category'], 'data' => '']; }, $items),
+        ], ['Authorization: Bearer ' . $token]);
+        if ($code !== 200 || (string) ($b['result'] ?? '') !== '0' || empty($b['token'])) fail('تارا درخواست را نپذیرفت: ' . ($b['description'] ?? $code), 502);
+        update('payments', ['authority' => mb_substr((string) $b['token'], 0, 120), 'meta' => jenc(['action' => tara_api($c) . '/ipgPurchase', 'fields' => ['username' => (string) $c['username'], 'token' => (string) $b['token']]])], 'id = ?', [$pid]);
+        return base_url() . '/api/index.php?r=pay.go&pid=' . $pid;
+    }
     if ($method === 'azki') {
         if (empty($c['merchantId']) || empty($c['key'])) fail('ازکی وام هنوز تنظیم نشده است.', 503);
         $r = azki_call($c, '/payment/purchase', [
@@ -207,6 +232,13 @@ function bnpl_verify(array $pay): array
         if (isset($b['amount']) && (int) $b['amount'] !== (int) $pay['amount'] * 10) return [false, null];
         return [true, (string) ($b['trackingCode'] ?? $tracking)];
     }
+    if ($method === 'tara') {
+        $tok = (string) ($in['token'] ?? $pay['authority']);
+        if (!hash_equals((string) $pay['authority'], $tok) || (isset($in['result']) && (string) $in['result'] !== '0')) return [false, null];
+        $ip = function_exists('client_ip') ? client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '');
+        [$code, $b] = http_call('POST', tara_api($c) . '/purchaseVerify', ['ip' => $ip, 'token' => $tok], ['Authorization: Bearer ' . tara_login($c)]);
+        return [$code === 200 && (string) ($b['result'] ?? '') === '0', (string) ($b['rrn'] ?? $tok)];
+    }
     if ($method === 'azki') {
         $st = azki_call($c, '/payment/status', ['ticket_id' => $pay['authority']]);
         if (isset($st['_error']) || (int) ($st['status'] ?? 0) !== 8) return [false, null];
@@ -227,17 +259,27 @@ function test_pay_allowed(int $userId): bool
     if (!empty(setting('general', 'demoMode')) || !empty(setting('payment', 'testOpen'))) return true;
     return val('SELECT role FROM users WHERE id = ?', [$userId]) === 'admin';
 }
+// $method: 'wallet' is handled by the caller; 'gw:<id>' (or a gateway id) = that online gateway;
+// '' / 'gateway' = the default gateway; an installment provider id; 'test' = test gateway.
 function payment_start(int $userId, string $purpose, array $ref, int $amount, string $description, string $method = ''): string
 {
-    $p = setting('payment');
-    $driver = $p['driver'];
     if ($amount < 1000) fail('مبلغ پرداخت معتبر نیست.', 422);
-    // The test gateway approves anything — never allow it on a live site
-    if ($driver === 'test' && !test_pay_allowed($userId)) fail('پرداخت آنلاین هنوز راه‌اندازی نشده است؛ لطفاً کمی بعد دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.', 503, 'no_gateway');
+    $method = strpos($method, 'gw:') === 0 ? substr($method, 3) : $method;
+    $enabled = gw_enabled();
     if (isset(BNPL_PROVIDERS[$method])) {
         if ($purpose === 'charge') fail('شارژ کیف پول با پرداخت اقساطی ممکن نیست.', 422);
         if (!in_array($method, bnpl_available($amount), true)) fail('این روش پرداخت برای این مبلغ در دسترس نیست.', 422);
         $driver = $method;
+    } elseif (isset(PAY_GATEWAYS[$method])) {
+        if (!in_array($method, $enabled, true)) fail('این درگاه پرداخت فعال نیست.', 422);
+        $driver = $method;
+    } elseif ($method === 'test' || !$enabled) {
+        // The test gateway approves anything — never allow it on a live site
+        if (!test_pay_allowed($userId)) fail('پرداخت آنلاین هنوز راه‌اندازی نشده است؛ لطفاً کمی بعد دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.', 503, 'no_gateway');
+        $driver = 'test';
+    } else {
+        $def = (string) setting('payment', 'default');
+        $driver = in_array($def, $enabled, true) ? $def : $enabled[0];
     }
     $id = insert('payments', ['user_id' => $userId, 'purpose' => $purpose, 'ref' => jenc($ref), 'amount' => $amount, 'driver' => $driver, 'status' => 'pending', 'created_at' => now()]);
     $callback = base_url() . '/api/index.php?r=pay.callback&pid=' . $id;
@@ -249,29 +291,14 @@ function payment_start(int $userId, string $purpose, array $ref, int $amount, st
             fail('اتصال به درگاه اقساطی ناموفق بود؛ اطلاعات پذیرنده را در تنظیمات بررسی کنید.', 502);
         }
     }
-
-    if ($driver === 'zarinpal') {
-        if (!$p['merchant']) fail('درگاه پرداخت هنوز تنظیم نشده است.', 503);
-        $host = !empty($p['sandbox']) ? 'https://sandbox.zarinpal.com' : 'https://payment.zarinpal.com';
-        $r = http_json('POST', "$host/pg/v4/payment/request.json", [
-            'merchant_id' => $p['merchant'], 'amount' => $amount * 10, 'callback_url' => $callback,
-            'description' => $description, 'metadata' => ['mobile' => $mobile],
-        ]);
-        $auth = $r['data']['authority'] ?? null;
-        if (($r['data']['code'] ?? 0) !== 100 || !$auth) fail('اتصال به درگاه ناموفق بود: ' . jenc($r['errors'] ?? $r['_error'] ?? 'unknown'), 502);
-        update('payments', ['authority' => $auth], 'id = ?', [$id]);
-        return "$host/pg/StartPay/$auth";
-    }
-    if ($driver === 'zibal') {
-        $merchant = !empty($p['sandbox']) ? 'zibal' : $p['merchant'];
-        if (!$merchant) fail('درگاه پرداخت هنوز تنظیم نشده است.', 503);
-        $r = http_json('POST', 'https://gateway.zibal.ir/v1/request', ['merchant' => $merchant, 'amount' => $amount * 10, 'callbackUrl' => $callback, 'description' => $description, 'mobile' => $mobile]);
-        if (($r['result'] ?? 0) !== 100 || empty($r['trackId'])) fail('اتصال به درگاه ناموفق بود: ' . ($r['message'] ?? $r['_error'] ?? 'unknown'), 502);
-        update('payments', ['authority' => (string) $r['trackId']], 'id = ?', [$id]);
-        return 'https://gateway.zibal.ir/start/' . $r['trackId'];
+    if (isset(PAY_GATEWAYS[$driver])) {
+        $r = gw_start($driver, $id, $amount, $description ?: (string) setting('payment', 'description'), $mobile, $callback);
+        $upd = ['authority' => mb_substr((string) $r['authority'], 0, 120)];
+        if (!empty($r['form'])) $upd['meta'] = jenc(['action' => $r['form'][0], 'fields' => $r['form'][1]]);
+        update('payments', $upd, 'id = ?', [$id]);
+        return !empty($r['form']) ? base_url() . '/api/index.php?r=pay.go&pid=' . $id : $r['url'];
     }
     // Test driver: completes without real money (see test_pay_allowed)
-    if (!test_pay_allowed($userId)) fail('پرداخت آنلاین هنوز راه‌اندازی نشده است؛ لطفاً با پشتیبانی تماس بگیرید.', 503, 'no_gateway');
     $auth = 'TEST-' . bin2hex(random_bytes(6));
     update('payments', ['authority' => $auth], 'id = ?', [$id]);
     return $callback . '&Authority=' . $auth . '&Status=OK';
@@ -290,26 +317,11 @@ function payment_callback(): void
     $hash = ['charge' => 'wallet', 'order' => 'orders', 'cart' => 'downloads', 'studio' => 'studio', 'pro' => 'pro'][$pay['purpose']] ?? 'overview';
     if ($pay['status'] === 'paid') $back($hash, true, 'این پرداخت قبلاً تأیید شده است.');
 
-    $p = setting('payment');
     $ok = false;
     $refId = null;
-    if ($pay['driver'] === 'zarinpal') {
-        $auth = $_GET['Authority'] ?? '';
-        if (($_GET['Status'] ?? '') === 'OK' && hash_equals((string) $pay['authority'], (string) $auth)) {
-            $host = !empty($p['sandbox']) ? 'https://sandbox.zarinpal.com' : 'https://payment.zarinpal.com';
-            $r = http_json('POST', "$host/pg/v4/payment/verify.json", ['merchant_id' => $p['merchant'], 'amount' => (int) $pay['amount'] * 10, 'authority' => $auth]);
-            $code = $r['data']['code'] ?? 0;
-            $ok = in_array($code, [100, 101], true);
-            $refId = $r['data']['ref_id'] ?? null;
-        }
-    } elseif ($pay['driver'] === 'zibal') {
-        $track = $_GET['trackId'] ?? '';
-        if (($_GET['success'] ?? '') === '1' && hash_equals((string) $pay['authority'], (string) $track)) {
-            $merchant = !empty($p['sandbox']) ? 'zibal' : $p['merchant'];
-            $r = http_json('POST', 'https://gateway.zibal.ir/v1/verify', ['merchant' => $merchant, 'trackId' => (int) $track]);
-            $ok = in_array($r['result'] ?? 0, [100, 201], true) && (int) ($r['amount'] ?? 0) === (int) $pay['amount'] * 10;
-            $refId = $r['refNumber'] ?? null;
-        }
+    if (isset(PAY_GATEWAYS[$pay['driver']])) {
+        // banks POST back (cross-site, without the session cookie); the payment id is in the URL
+        try { [$ok, $refId] = gw_verify($pay['driver'], $pay); } catch (Throwable $e) { error_log('[BEHIX] verify ' . $pay['driver'] . ': ' . $e->getMessage()); $ok = false; }
     } elseif (isset(BNPL_PROVIDERS[$pay['driver']])) {
         try { [$ok, $refId] = bnpl_verify($pay); } catch (Throwable $e) { $ok = false; }
     } elseif ($pay['driver'] === 'test') {

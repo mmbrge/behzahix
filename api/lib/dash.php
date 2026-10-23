@@ -24,7 +24,7 @@ function r_dash(): void
         }, rows('SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 60', [$id])),
         // staff with the tickets section see all; a staff member a ticket is assigned to sees it too
         'tickets' => tickets_out(staff_can($u, 'tickets') ? rows("SELECT * FROM tickets ORDER BY (status = 'closed'), FIELD(priority, 'urgent', 'high', 'normal', 'low'), id DESC LIMIT 400")
-            : rows('SELECT * FROM tickets WHERE user_id = ? OR assignee_id = ? ORDER BY id DESC', [$id, $id])),
+            : rows('SELECT * FROM tickets WHERE user_id = ? OR assignee_id = ? ORDER BY id DESC', [$id, $id]), is_staff($u)),
         'settings' => $role === 'admin' ? settings() : (is_staff($u) ? array_intersect_key(settings(), array_flip(['general', 'commission', 'orders', 'delivery', 'studio', 'pro', 'tools', 'chat', 'referral', 'invoice', 'payment'])) + public_settings() : public_settings()),
     ];
     $snap['notifications'] = array_map(function ($n) use ($id) { $n['userId'] = (string) $id; return $n; }, $snap['notifications']);
@@ -109,9 +109,10 @@ function r_dash(): void
     out($snap);
 }
 
-function tickets_out(array $list): array
+// $staff = false hides internal referral notes («↪ …») from customers
+function tickets_out(array $list, bool $staff = true): array
 {
-    return array_map(function ($t) {
+    return array_map(function ($t) use ($staff) {
         return ['id' => (string) $t['id'], 'userId' => $t['user_id'] ? (string) $t['user_id'] : null, 'name' => $t['name'], 'phone' => $t['phone'],
             'subject' => $t['subject'], 'message' => $t['message'], 'status' => $t['status'], 'at' => ms($t['created_at']),
             'department' => (string) ($t['department'] ?? ''), 'priority' => (string) ($t['priority'] ?? 'normal'),
@@ -119,7 +120,7 @@ function tickets_out(array $list): array
             'assignee' => !empty($t['assignee_id']) ? (string) val('SELECT name FROM users WHERE id = ?', [(int) $t['assignee_id']]) : '',
             'updatedAt' => !empty($t['updated_at']) ? ms($t['updated_at']) : ms($t['created_at']),
             'replies' => array_map(function ($r) { return ['from' => (string) $r['user_id'], 'name' => $r['name'], 'text' => $r['body'], 'at' => ms($r['created_at'])]; },
-                rows('SELECT r.*, u.name FROM ticket_replies r LEFT JOIN users u ON u.id = r.user_id WHERE ticket_id = ? ORDER BY r.id', [$t['id']]))];
+                array_values(array_filter(rows('SELECT r.*, u.name FROM ticket_replies r LEFT JOIN users u ON u.id = r.user_id WHERE ticket_id = ? ORDER BY r.id', [$t['id']]), function ($r) use ($staff) { return $staff || strpos((string) $r['body'], '↪ ') !== 0; })))];
     }, $list);
 }
 function tx_out(array $t): array
@@ -445,7 +446,8 @@ function a_wallet_charge(): void
     $u = require_user();
     $amount = amount_in('amount');
     if ($amount < 10000) fail('حداقل مبلغ شارژ ۱۰ هزار تومان است.', 422);
-    done('', ['redirect' => payment_start((int) $u['id'], 'charge', [], $amount, 'شارژ کیف پول بهیکس')]);
+    $m = str_in('method', 16);
+    done('', ['redirect' => payment_start((int) $u['id'], 'charge', [], $amount, 'شارژ کیف پول بهیکس', isset(BNPL_PROVIDERS[$m]) ? '' : $m)]);
 }
 function a_fav_toggle(): void
 {
@@ -1242,6 +1244,7 @@ function a_settings_save(): void
         $current['shortGuestDaily'] = max(1, min(1000, (int) $current['shortGuestDaily']));
     }
     if ($group === 'payment' && !in_array($current['driver'], ['test', 'zarinpal', 'zibal'], true)) $current['driver'] = 'test';
+    if ($group === 'payment' && $current['default'] !== '' && !isset(PAY_GATEWAYS[$current['default']])) $current['default'] = '';
     if ($group === 'sms' && !in_array($current['driver'], ['none', 'kavenegar', 'smsir'], true)) $current['driver'] = 'none';
     save_setting($group, $current);
     done('تنظیمات ذخیره شد.');
@@ -1262,14 +1265,15 @@ function a_sms_eventTest(): void
     if (!$ok) fail('ارسال ناموفق بود' . ($resp ? ": $resp" : '') . ' — نام الگو، تأیید الگو در پنل پیامک و اعتبار را بررسی کنید.', 502);
     done('پیامک آزمایشی «' . $defs[$event][0] . '» به شماره شما ارسال شد.');
 }
-// Checks the bank gateway: creates a 1,000 Toman wallet top-up and returns its payment URL
+// Checks one gateway: creates a 1,000 Toman wallet top-up and returns its payment URL
 function a_payment_test(): void
 {
     $u = require_active('admin');
-    $p = setting('payment');
-    if ($p['driver'] === 'test') fail('درگاه روی «تست» است؛ ابتدا زرین‌پال یا زیبال و مرچنت کد را ذخیره کنید.', 422);
-    $url = payment_start((int) $u['id'], 'charge', [], 1000, 'تست درگاه پرداخت');
-    done('اتصال به درگاه برقرار شد ✅', ['payUrl' => $url]);
+    $id = str_in('id', 16);
+    if (!isset(PAY_GATEWAYS[$id])) fail('درگاه نامعتبر است.', 422);
+    if (!in_array($id, gw_enabled(), true)) fail('ابتدا تیک «فعال باشد» را بزنید و ذخیره کنید.', 422);
+    $url = payment_start((int) $u['id'], 'charge', [], 1000, 'تست درگاه ' . PAY_GATEWAYS[$id], 'gw:' . $id);
+    done('اتصال به ' . PAY_GATEWAYS[$id] . ' برقرار شد ✅ برای اطمینان کامل، یک پرداخت ۱٬۰۰۰ تومانی انجام دهید.', ['payUrl' => $url]);
 }
 // Checks an installment provider's credentials (login only — no purchase)
 function a_bnpl_test(): void
@@ -1287,6 +1291,7 @@ function a_bnpl_test(): void
             if ((int) ($b['rsCode'] ?? -1) === 18 || (int) ($b['rsCode'] ?? -1) === 15) fail('امضا یا دسترسی نامعتبر است؛ Merchant ID و کلید را بررسی کنید.', 502);
             done('ارتباط با ازکی وام برقرار است و امضا پذیرفته شد ✅');
         }
+        if ($id === 'tara') { tara_login($c); done('ورود به تارا موفق بود ✅ نام کاربری و رمز درست است.'); }
         $api = bnpl_api($c, ['snapppay' => 'https://fms-gateway-staging.apps.public.teh-1.snappcloud.io', 'torobpay' => 'https://cpg.torobpay.com', 'digipay' => 'https://api.mydigipay.com'][$id]);
         $url = $id === 'digipay' ? "$api/digipay/api/oauth/token" : "$api/api/online/v1/oauth/token";
         bnpl_oauth($url, $c, $id !== 'snapppay', $id === 'snapppay' ? ['scope' => 'online-merchant'] : []);
