@@ -616,3 +616,15 @@ small.bad { color: var(--bad); }
 .ud-list li > :first-child { flex: 1; min-width: 160px; }
 .ud-list a { color: inherit; }
 .ud-list b.ok { color: #22c55e; } .ud-list b.bad { color: #ef4444; }
+/* tickets: departments, priority, assignee */
+.tiles-sm .tile { padding: 14px; }
+.tiles-sm .tile-value { font-size: 1.2rem; margin-top: 6px; }
+tr.tk-urgent td:first-child { box-shadow: inset -3px 0 0 #ef4444; }
+.tk-who { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; }
+.tk-who .icon { width: 14px; height: 14px; color: var(--accent); }
+.tk-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tk-meta .badge .icon { width: 13px; height: 13px; }
+.tk-manage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 10px; align-items: end; padding: 12px; margin-bottom: 12px; border-radius: 16px; background: var(--hover); border: 1px solid var(--line); }
+@media (max-width: 700px) { .tk-manage { grid-template-columns: 1fr 1fr; } .tk-manage .field:nth-child(3) { grid-column: 1 / -1; } }
+.tk-sys { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px auto; padding: 4px 12px; border-radius: 999px; background: var(--hover); color: var(--muted); font-size: .74rem; width: fit-content; }
+.tk-sys .icon { width: 13px; height: 13px; }

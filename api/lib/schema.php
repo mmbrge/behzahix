@@ -4,13 +4,17 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 14;
+const BX_SCHEMA_VERSION = 15;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
 {
     return [
         ['products', 'image', 'VARCHAR(20) NULL'], // v3 — cover image (files.id, kind = cover)
+        ['tickets', 'department', 'VARCHAR(60) NULL'], // v15 — ticket departments, priority, assigned staff
+        ['tickets', 'priority', "VARCHAR(10) NOT NULL DEFAULT 'normal'"],
+        ['tickets', 'assignee_id', 'INT UNSIGNED NULL'],
+        ['tickets', 'updated_at', 'DATETIME NULL'],
         ['users', 'last_login_at', 'DATETIME NULL'], // v14 — user details for the admin
         ['users', 'last_ip', 'VARCHAR(45) NULL'],
         ['users', 'admin_note', 'TEXT NULL'],

@@ -22,7 +22,9 @@ function r_dash(): void
         'notifications' => array_map(function ($n) {
             return ['id' => (string) $n['id'], 'text' => $n['text'], 'link' => $n['link'], 'read' => (bool) $n['is_read'], 'at' => ms($n['created_at'])];
         }, rows('SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 60', [$id])),
-        'tickets' => tickets_out(staff_can($u, 'tickets') ? rows('SELECT * FROM tickets ORDER BY id DESC LIMIT 300') : rows('SELECT * FROM tickets WHERE user_id = ? ORDER BY id DESC', [$id])),
+        // staff with the tickets section see all; a staff member a ticket is assigned to sees it too
+        'tickets' => tickets_out(staff_can($u, 'tickets') ? rows("SELECT * FROM tickets ORDER BY (status = 'closed'), FIELD(priority, 'urgent', 'high', 'normal', 'low'), id DESC LIMIT 400")
+            : rows('SELECT * FROM tickets WHERE user_id = ? OR assignee_id = ? ORDER BY id DESC', [$id, $id])),
         'settings' => $role === 'admin' ? settings() : (is_staff($u) ? array_intersect_key(settings(), array_flip(['general', 'commission', 'orders', 'delivery', 'studio', 'pro', 'tools', 'chat', 'referral', 'invoice', 'payment'])) + public_settings() : public_settings()),
     ];
     $snap['notifications'] = array_map(function ($n) use ($id) { $n['userId'] = (string) $id; return $n; }, $snap['notifications']);
@@ -112,6 +114,10 @@ function tickets_out(array $list): array
     return array_map(function ($t) {
         return ['id' => (string) $t['id'], 'userId' => $t['user_id'] ? (string) $t['user_id'] : null, 'name' => $t['name'], 'phone' => $t['phone'],
             'subject' => $t['subject'], 'message' => $t['message'], 'status' => $t['status'], 'at' => ms($t['created_at']),
+            'department' => (string) ($t['department'] ?? ''), 'priority' => (string) ($t['priority'] ?? 'normal'),
+            'assigneeId' => !empty($t['assignee_id']) ? (string) $t['assignee_id'] : null,
+            'assignee' => !empty($t['assignee_id']) ? (string) val('SELECT name FROM users WHERE id = ?', [(int) $t['assignee_id']]) : '',
+            'updatedAt' => !empty($t['updated_at']) ? ms($t['updated_at']) : ms($t['created_at']),
             'replies' => array_map(function ($r) { return ['from' => (string) $r['user_id'], 'name' => $r['name'], 'text' => $r['body'], 'at' => ms($r['created_at'])]; },
                 rows('SELECT r.*, u.name FROM ticket_replies r LEFT JOIN users u ON u.id = r.user_id WHERE ticket_id = ? ORDER BY r.id', [$t['id']]))];
     }, $list);
@@ -202,36 +208,70 @@ function a_ticket_create(): void
     $subject = str_in('subject', 190);
     $message = str_in('message', 5000);
     if (!$subject || mb_strlen($message) < 3) fail('موضوع و پیام را وارد کنید.', 422);
-    insert('tickets', ['user_id' => $u['id'], 'name' => $u['name'], 'phone' => $u['phone'], 'subject' => $subject, 'message' => $message, 'status' => 'open', 'created_at' => now()]);
-    notify_admins('تیکت جدید: ' . $subject, 'tickets');
+    $dep = ticket_department(str_in('department', 60));
+    $pri = str_in('priority', 10);
+    if (!isset(TICKET_PRIORITIES[$pri])) $pri = 'normal';
+    insert('tickets', ['user_id' => $u['id'], 'name' => $u['name'], 'phone' => $u['phone'], 'subject' => $subject, 'message' => $message, 'status' => 'open',
+        'department' => $dep, 'priority' => $pri, 'created_at' => now(), 'updated_at' => now()]);
+    notify_admins(($pri === 'urgent' ? '🔴 ' : '') . 'تیکت جدید' . ($dep ? " ($dep)" : '') . ': ' . $subject, 'tickets');
     done('تیکت ثبت شد؛ به‌زودی پاسخ می‌دهیم.');
 }
 function a_ticket_reply(): void
 {
     $u = require_user();
     $t = row('SELECT * FROM tickets WHERE id = ?', [int_in('id')]);
-    if (!$t || (!staff_can($u, 'tickets') && (int) $t['user_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
+    $assigned = (int) ($t['assignee_id'] ?? 0) === (int) $u['id'];
+    if (!$t || (!staff_can($u, 'tickets') && !$assigned && (int) $t['user_id'] !== (int) $u['id'])) fail('دسترسی ندارید.', 403);
     $text = str_in('text', 5000);
     if (!$text) fail('متن پاسخ را بنویسید.', 422);
     insert('ticket_replies', ['ticket_id' => $t['id'], 'user_id' => $u['id'], 'body' => $text, 'created_at' => now()]);
-    if (staff_can($u, 'tickets') && (int) $t['user_id'] !== (int) $u['id']) {
-        q("UPDATE tickets SET status = 'answered' WHERE id = ?", [$t['id']]);
+    if ((staff_can($u, 'tickets') || $assigned) && (int) $t['user_id'] !== (int) $u['id']) {
+        q("UPDATE tickets SET status = 'answered', updated_at = ? WHERE id = ?", [now(), $t['id']]);
         if ($t['user_id']) {
             notify((int) $t['user_id'], 'پاسخ جدید برای تیکت «' . $t['subject'] . '»', 'tickets');
             sms_user('ticket_reply', (int) $t['user_id'], ['code' => (string) $t['id']]);
         }
     } else {
-        q("UPDATE tickets SET status = 'open' WHERE id = ?", [$t['id']]);
-        notify_admins('پاسخ جدید در تیکت «' . $t['subject'] . '»', 'tickets');
+        q("UPDATE tickets SET status = 'open', updated_at = ? WHERE id = ?", [now(), $t['id']]);
+        // the assigned staff member hears first; everyone with the tickets section otherwise
+        if (!empty($t['assignee_id'])) notify((int) $t['assignee_id'], 'پاسخ مشتری در تیکت «' . $t['subject'] . '»', 'tickets');
+        else notify_admins('پاسخ جدید در تیکت «' . $t['subject'] . '»', 'tickets');
     }
     done('پاسخ ارسال شد.');
 }
+// Staff: department, priority, status and the staff member (کارشناس) responsible
+function a_ticket_update(): void
+{
+    $me = require_staff('tickets');
+    $t = row('SELECT * FROM tickets WHERE id = ?', [int_in('id')]);
+    if (!$t) fail('تیکت پیدا نشد.', 404);
+    $data = ['updated_at' => now()];
+    if (in('department') !== null) $data['department'] = ticket_department(str_in('department', 60));
+    if (in('priority') !== null && isset(TICKET_PRIORITIES[str_in('priority', 10)])) $data['priority'] = str_in('priority', 10);
+    if (in('status') !== null && in_array(str_in('status', 16), ['open', 'answered', 'closed'], true)) $data['status'] = str_in('status', 16);
+    $note = '';
+    if (in('assigneeId') !== null) {
+        $aid = int_in('assigneeId');
+        if ($aid) {
+            $a = row('SELECT * FROM users WHERE id = ?', [$aid]);
+            if (!$a || !is_staff($a) || $a['status'] !== 'active') fail('کارشناس باید یکی از حساب‌های تیم مدیریت (مدیر، شریک یا حسابدار) باشد.', 422);
+            if ($aid !== (int) ($t['assignee_id'] ?? 0)) {
+                notify($aid, '📌 تیکت «' . $t['subject'] . '» به شما ارجاع شد' . ($me['id'] != $aid ? ' (توسط ' . $me['name'] . ')' : '') . '.', 'tickets');
+                insert('ticket_replies', ['ticket_id' => $t['id'], 'user_id' => $me['id'], 'body' => '↪ ارجاع به ' . $a['name'], 'created_at' => now()]);
+            }
+        }
+        $data['assignee_id'] = $aid ?: null;
+    }
+    update('tickets', $data, 'id = ?', [$t['id']]);
+    done('تیکت به‌روز شد.');
+}
 function a_ticket_close(): void
 {
-    require_staff('tickets');
+    $u = require_active();
     $t = row('SELECT * FROM tickets WHERE id = ?', [int_in('id')]);
     if (!$t) fail('پیدا نشد.', 404);
-    q("UPDATE tickets SET status = 'closed' WHERE id = ?", [$t['id']]);
+    if (!staff_can($u, 'tickets') && (int) ($t['assignee_id'] ?? 0) !== (int) $u['id']) fail('دسترسی ندارید.', 403);
+    q("UPDATE tickets SET status = 'closed', updated_at = ? WHERE id = ?", [now(), $t['id']]);
     if ($t['user_id']) notify((int) $t['user_id'], 'تیکت «' . $t['subject'] . '» بسته شد.', 'tickets');
     done('تیکت بسته شد.');
 }

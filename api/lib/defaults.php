@@ -84,6 +84,8 @@ function default_settings(): array
         // Seller details printed on invoices (empty = taken from site name / contact)
         'invoice' => ['sellerName' => '', 'economicCode' => '', 'nationalId' => '', 'regNo' => '', 'address' => '', 'postalCode' => '', 'phone' => '', 'vatPercent' => 0, 'note' => ''],
         // Security: admin two-step login by SMS, admin login alert, IP blocking after failed sign-ins
+        // Ticket departments shown to customers (one per line in Settings → Tickets)
+        'tickets' => ['departments' => ['پشتیبانی فنی', 'فروش و سفارش', 'مالی و پرداخت', 'همکاری (طراح و فروشنده)', 'پیشنهاد و انتقاد']],
         // What accountant and partner accounts may open (STAFF_SECTIONS keys); settings and security are admin-only
         'roles' => [
             'partner' => ['overview', 'orders', 'delivery', 'support', 'tickets', 'coupons', 'studio'],
@@ -169,6 +171,7 @@ function public_settings(): array
         'shop' => $s['shop'],
         'studio' => $s['studio'],
         'guard' => (bool) ($s['security']['guard'] ?? true),
+        'tickets' => ['departments' => array_values(array_filter(array_map('strval', (array) ($s['tickets']['departments'] ?? []))))],
         'pro' => ['enabled' => (bool) $s['pro']['enabled'], 'name' => (string) $s['pro']['name'], 'discount' => (int) $s['pro']['discount']],
         'delivery' => ['place' => (string) $s['delivery']['place'], 'note' => (string) $s['delivery']['note'], 'changeHours' => (int) $s['delivery']['changeHours'], 'afterWork' => (bool) $s['delivery']['afterWork'], 'enabled' => (bool) $s['delivery']['enabled']],
         'chat' => ['enabled' => (bool) $s['chat']['enabled'], 'botName' => (string) $s['chat']['botName'], 'greeting' => (string) $s['chat']['greeting']],

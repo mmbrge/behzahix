@@ -247,6 +247,12 @@ function require_user(string ...$roles): array
     if ($roles && !in_array($u['role'], $roles, true)) fail('دسترسی ندارید.', 403, 'forbidden');
     return $u;
 }
+const TICKET_PRIORITIES = ['low' => 'کم', 'normal' => 'عادی', 'high' => 'زیاد', 'urgent' => 'فوری'];
+function ticket_department(string $d): ?string
+{
+    $list = array_map('strval', (array) setting('tickets', 'departments'));
+    return in_array($d, $list, true) ? $d : ($list[0] ?? null);
+}
 function is_staff(?array $u): bool
 {
     return $u && in_array($u['role'], STAFF_ROLES, true);

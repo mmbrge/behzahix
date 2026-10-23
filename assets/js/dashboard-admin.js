@@ -671,6 +671,10 @@
         ["shortGuestDaily", "سقف ساخت لینک کوتاه برای مهمان در هر روز", "number"], ["blockedDomains", "دامنه‌های ممنوع برای کوتاه‌سازی (هر خط یک دامنه، مثلاً example.com)", "lines"],
       ], "روشن یا خاموش کردن هر ابزار از بخش «ابزارها و لینک‌ها» انجام می‌شود."],
     ] },
+    tickets: { title: "تیکت‌ها", icon: "ticket", groups: [
+      ["tickets", [["departments", "دپارتمان‌ها (هر خط یکی؛ اولی پیش‌فرض است)", "lines"]],
+        "مشتری هنگام ثبت تیکت دپارتمان و اولویت را انتخاب می‌کند. در «تیکت‌ها» هر تیکت را می‌توانید به یک کارشناس (مدیر، شریک یا حسابدار) ارجاع دهید؛ کارشناس اعلان می‌گیرد و حتی بدون دسترسی کامل به بخش تیکت‌ها، تیکت‌های ارجاع‌شده به خودش را می‌بیند، پاسخ می‌دهد و می‌بندد."],
+    ] },
     roles: { title: "نقش‌ها و دسترسی", icon: "shield", groups: [
       ["roles", [
         ["partner", "«شریک» به این بخش‌ها دسترسی دارد", "checks", STAFF_SECTIONS],
@@ -743,7 +747,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { tickets: "دپارتمان‌های تیکت", roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "درگاه پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">

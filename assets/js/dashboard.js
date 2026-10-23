@@ -348,21 +348,50 @@
         `<button class="btn btn-ghost btn-sm" data-act="read-all">${icon("check")} خواندن همه</button>`);
     }
     const TICKET_STATUS = { open: ["باز", "warn"], answered: ["پاسخ داده شد", "info"], closed: ["بسته", "ok"] };
+    const TICKET_PRI = { urgent: ["فوری", "bad"], high: ["زیاد", "warn"], normal: ["عادی", "info"], low: ["کم", "ok"] };
+    const ticketDeps = () => S.settings.tickets?.departments || [];
+    const staffUsers = () => S.users.filter((u) => STAFF.includes(u.role) && u.status === "active");
     function ticketsView(all = false) {
-      const rows = S.tickets.map((t) => `
-        <tr data-act="open-ticket" data-id="${t.id}" style="cursor:pointer">
+      const deps = ticketDeps();
+      let list = S.tickets;
+      if (all) {
+        const st = segState["tk-st"] || "active", dep = segState["tk-dep"] || "", pri = segState["tk-pri"] || "", who = segState["tk-who"] || "";
+        list = list.filter((t) => (st === "all" || (st === "active" ? t.status !== "closed" : t.status === st))
+          && (!dep || t.department === dep) && (!pri || t.priority === pri)
+          && (!who || (who === "me" ? t.assigneeId === me.id : who === "none" ? !t.assigneeId : t.assigneeId === who)));
+      }
+      const rows = list.map((t) => `
+        <tr data-act="open-ticket" data-id="${t.id}" style="cursor:pointer" class="${t.priority === "urgent" && t.status !== "closed" ? "tk-urgent" : ""}">
           ${all ? `<td>${userCell(userById(t.userId) || { name: t.name, phone: t.phone, hue: 200 })}</td>` : ""}
           <td><b>${esc(t.subject)}</b><br><small class="muted">${esc(t.message.slice(0, 70))}</small></td>
+          <td>${t.department ? `<span class="badge">${esc(t.department)}</span>` : '<span class="muted">—</span>'}</td>
+          <td>${pill(TICKET_PRI[t.priority] || TICKET_PRI.normal)}</td>
+          ${all ? `<td>${t.assignee ? `<span class="tk-who">${icon("user")} ${esc(t.assignee)}</span>` : '<span class="muted small">ارجاع نشده</span>'}</td>` : ""}
           <td>${pill(TICKET_STATUS[t.status] || ["—", "info"])}</td>
-          <td class="muted">${ago(t.at)}</td>
+          <td class="muted">${ago(t.updatedAt || t.at)}</td>
         </tr>`);
       const form = all ? "" : box("تیکت جدید", "plus", `
         <form class="form-grid" data-form="ticket">
+          <div class="form-grid form-grid-2">
+            ${deps.length ? `<div class="field"><label class="field-label" for="tk-dep">دپارتمان</label><select class="select" id="tk-dep" name="department">${deps.map((d) => `<option>${esc(d)}</option>`).join("")}</select></div>` : ""}
+            <div class="field"><label class="field-label" for="tk-pri">اولویت</label><select class="select" id="tk-pri" name="priority">${["normal", "high", "urgent", "low"].map((k) => `<option value="${k}">${TICKET_PRI[k][0]}</option>`).join("")}</select></div>
+          </div>
           <div class="field"><label class="field-label" for="tk-sub">موضوع</label><input class="input" id="tk-sub" name="subject" required></div>
           <div class="field"><label class="field-label" for="tk-msg">پیام</label><textarea class="textarea" id="tk-msg" name="message" required></textarea></div>
           <button class="btn btn-primary" type="submit">${icon("send")} ارسال تیکت</button>
         </form>`);
-      return `<div class="dash-grid ${all ? "" : "dash-grid-2"}">${box(all ? "تیکت‌ها و پیام‌های تماس" : "تیکت‌های من", "ticket", table([...(all ? ["فرستنده"] : []), "موضوع", "وضعیت", "زمان"], rows, "تیکتی وجود ندارد."))}${form}</div>`;
+      const open = S.tickets.filter((t) => t.status !== "closed");
+      const filters = all ? `
+        <div class="tiles tiles-sm mb-2">
+          ${tile("تیکت باز", faDigits(open.length), "ticket")}${tile("فوری و زیاد", faDigits(open.filter((t) => ["urgent", "high"].includes(t.priority)).length), "zap")}
+          ${tile("ارجاع به من", faDigits(open.filter((t) => t.assigneeId === me.id).length), "user")}${tile("بدون کارشناس", faDigits(open.filter((t) => !t.assigneeId).length), "inbox")}
+        </div>
+        <div class="row-between">${seg("tk-st", [["active", "باز و پاسخ‌داده", open.length], ["open", "منتظر پاسخ", S.tickets.filter((t) => t.status === "open").length], ["closed", "بسته"], ["all", "همه"]], segState["tk-st"] || "active")}
+          ${seg("tk-who", [["", "همه کارشناس‌ها"], ["me", "ارجاع به من"], ["none", "ارجاع نشده"]], segState["tk-who"] || "")}</div>
+        <div class="row-between mt-2">${seg("tk-dep", [["", "همه دپارتمان‌ها"], ...deps.map((d) => [d, d, S.tickets.filter((t) => t.department === d && t.status !== "closed").length])], segState["tk-dep"] || "")}
+          ${seg("tk-pri", [["", "همه اولویت‌ها"], ...Object.entries(TICKET_PRI).map(([k, [l]]) => [k, l])], segState["tk-pri"] || "")}</div>` : "";
+      return `<div class="dash-grid ${all ? "" : "dash-grid-2"}">${box(all ? "تیکت‌ها و پیام‌های تماس" : "تیکت‌های من", "ticket", `${filters}<div class="${all ? "mt-2" : ""}">${table([...(all ? ["فرستنده"] : []), "موضوع", "دپارتمان", "اولویت", ...(all ? ["کارشناس"] : []), "وضعیت", "آخرین تغییر"], rows, "تیکتی وجود ندارد.")}</div>`,
+        all && can("settings") ? `<a class="btn btn-ghost btn-sm" href="#settings/tickets">${icon("settings")} دپارتمان‌ها</a>` : "")}${form}</div>`;
     }
     const TX_TYPE = { charge: "شارژ", payment: "پرداخت سفارش", purchase: "خرید فایل", earning: "درآمد پروژه", sale: "فروش فایل", payout: "تسویه", refund: "بازگشت وجه" };
     function txTable(tx, withUser = false) {
@@ -787,7 +816,7 @@
       </div>`;
     }
     const navFor = () => (me.role !== "customer" && me.role !== "admin" && me.status !== "active" ? PENDING_NAV
-      : isStaff() ? ADMIN.filter((n) => can(n.id)) : NAVS[me.role]);
+      : isStaff() ? ADMIN.filter((n) => can(n.id) || (n.id === "tickets" && S.tickets.some((t) => t.assigneeId === me.id))) : NAVS[me.role]);
 
     function shell() {
       const nav = navFor();
@@ -1091,16 +1120,30 @@
       "payout-reject": (el) => confirmBox("رد درخواست تسویه", "مبلغ به موجودی کاربر برمی‌گردد.", () => quiet(act("payout.reject", { id: el.dataset.id })), "رد درخواست"),
       "open-ticket": (el) => {
         const t = S.tickets.find((x) => x.id === el.dataset.id);
+        const staffSide = can("tickets") || t.assigneeId === me.id;
+        const manage = can("tickets");
         modal({
           title: t.subject, wide: true,
-          body: `<div class="chat" style="height:auto;max-height:60vh"><div class="chat-log">
-            <div class="msg ${t.userId === me.id ? "me" : "them"}"><span class="who">${esc(t.name)}${can("tickets") && t.phone ? ` · <span dir="ltr">${faDigits(t.phone)}</span>` : ""}</span>${esc(t.message)}<small>${ago(t.at)}</small></div>
-            ${t.replies.map((r) => `<div class="msg ${r.from === me.id ? "me" : "them"}"><span class="who">${esc(r.name || "")}</span>${esc(r.text)}<small>${ago(r.at)}</small></div>`).join("")}
+          body: `<div class="tk-meta">${t.department ? `<span class="badge">${icon("folder")} ${esc(t.department)}</span>` : ""}${pill(TICKET_PRI[t.priority] || TICKET_PRI.normal)}${pill(TICKET_STATUS[t.status] || ["—", "info"])}${t.assignee ? `<span class="badge badge--brand">${icon("user")} کارشناس: ${esc(t.assignee)}</span>` : ""}</div>
+            ${manage ? `<div class="tk-manage">
+              <div class="field"><label class="field-label" for="tm-dep">دپارتمان</label><select class="select" id="tm-dep">${ticketDeps().map((d) => `<option ${d === t.department ? "selected" : ""}>${esc(d)}</option>`).join("")}</select></div>
+              <div class="field"><label class="field-label" for="tm-pri">اولویت</label><select class="select" id="tm-pri">${Object.entries(TICKET_PRI).map(([k, [l]]) => `<option value="${k}" ${k === t.priority ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+              <div class="field"><label class="field-label" for="tm-who">ارجاع به کارشناس</label><select class="select" id="tm-who"><option value="0">— بدون کارشناس —</option>${staffUsers().map((u) => `<option value="${u.id}" ${u.id === t.assigneeId ? "selected" : ""}>${esc(u.name)} (${ROLE_LABEL[u.role]})${u.id === me.id ? " — خودم" : ""}</option>`).join("")}</select></div>
+              <button type="button" class="btn btn-ghost btn-sm" data-tk-save>${icon("check")} ذخیره</button>
+            </div>` : ""}
+            <div class="chat" style="height:auto;max-height:55vh"><div class="chat-log">
+            <div class="msg ${t.userId === me.id ? "me" : "them"}"><span class="who">${esc(t.name)}${staffSide && t.phone ? ` · <span dir="ltr">${faDigits(t.phone)}</span>` : ""}</span>${esc(t.message)}<small>${ago(t.at)}</small></div>
+            ${t.replies.filter((r) => staffSide || !/^↪ /.test(r.text)).map((r) => /^↪ /.test(r.text) ? `<div class="tk-sys">${icon("refresh")} ${esc(r.name || "")}: ${esc(r.text.slice(2))} · ${ago(r.at)}</div>` : `<div class="msg ${r.from === me.id ? "me" : "them"}"><span class="who">${esc(r.name || "")}</span>${esc(r.text)}<small>${ago(r.at)}</small></div>`).join("")}
             </div></div>
             ${t.status !== "closed" ? `<textarea class="textarea mt-2" id="tk-reply" placeholder="پاسخ…"></textarea>` : '<p class="muted small mt-2">این تیکت بسته شده است.</p>'}`,
+          onOpen: (w) => w.querySelector("[data-tk-save]")?.addEventListener("click", () => {
+            quiet(act("ticket.update", { id: t.id, department: w.querySelector("#tm-dep")?.value || "", priority: w.querySelector("#tm-pri").value, assigneeId: w.querySelector("#tm-who").value }));
+            w.querySelector("[data-close]")?.click();
+          }),
           actions: [
-            ...(can("tickets") ? [{ label: "حذف", onClick: () => quiet(act("ticket.delete", { id: t.id })) }] : []),
-            ...(can("tickets") && t.status !== "closed" ? [{ label: "بستن تیکت", onClick: () => quiet(act("ticket.close", { id: t.id })) }] : []),
+            ...(manage ? [{ label: "حذف", onClick: () => quiet(act("ticket.delete", { id: t.id })) }] : []),
+            ...(staffSide && t.status !== "closed" ? [{ label: "بستن تیکت", onClick: () => quiet(act("ticket.close", { id: t.id })) }] : []),
+            ...(manage && t.status === "closed" ? [{ label: "بازکردن دوباره", onClick: () => quiet(act("ticket.update", { id: t.id, status: "open" })) }] : []),
             ...(t.status !== "closed" ? [{ label: "ارسال پاسخ", primary: true, onClick: (wrap) => {
               const text = wrap.querySelector("#tk-reply").value.trim();
               if (!text) { toast("متن پاسخ را بنویسید.", "bad"); return false; }
@@ -1116,7 +1159,7 @@
         const text = f.elements.text.value.trim();
         if (text) quiet(act("order.message", { id: f.dataset.id, text }));
       },
-      ticket: (f) => quiet(act("ticket.create", { subject: f.elements.subject.value, message: f.elements.message.value })),
+      ticket: (f) => quiet(act("ticket.create", { subject: f.elements.subject.value, message: f.elements.message.value, department: f.elements.department?.value || "", priority: f.elements.priority?.value || "normal" })),
       charge: (f) => quiet(act("wallet.charge", { amount: f.elements.amount.value })),
       payout: (f) => quiet(act("payout.request", { amount: f.elements.amount.value, card: f.elements.card.value })),
       profile: (f) => {

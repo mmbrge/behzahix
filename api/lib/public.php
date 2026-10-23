@@ -80,7 +80,8 @@ function r_contact_send(): void
     $message = str_in('message', 3000);
     if (mb_strlen($name) < 2 || mb_strlen($message) < 5) fail('نام و پیام را کامل وارد کنید.', 422);
     $u = me();
-    insert('tickets', ['user_id' => $u['id'] ?? null, 'name' => $name, 'phone' => $phone, 'subject' => $subject, 'message' => $message, 'status' => 'open', 'created_at' => now()]);
+    insert('tickets', ['user_id' => $u['id'] ?? null, 'name' => $name, 'phone' => $phone, 'subject' => $subject, 'message' => $message, 'status' => 'open',
+        'department' => function_exists('ticket_department') ? ticket_department(str_in('department', 60)) : null, 'priority' => 'normal', 'created_at' => now(), 'updated_at' => now()]);
     notify_admins("پیام جدید از $name: $subject", 'tickets');
     out(['ok' => true]);
 }
