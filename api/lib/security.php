@@ -151,7 +151,7 @@ function security_checks(): array
     $pay = setting('payment');
     $checks = [
         ['https', 'اتصال امن HTTPS', $https, 'critical', 'گواهی SSL را در cPanel (بخش SSL/TLS یا AutoSSL) فعال و ریدایرکت HTTPS را در .htaccess روشن کنید.'],
-        ['php', 'نسخه PHP (۸٫۱ به بالا)', version_compare(PHP_VERSION, '8.1', '>='), 'high', 'نسخه فعلی ' . PHP_VERSION . ' است؛ از بخش «Select PHP Version» در cPanel نسخه ۸٫۲ یا بالاتر را انتخاب کنید.'],
+        ['php', 'نسخه PHP (۸٫۲ به بالا؛ ۸٫۴ پیشنهادی)', version_compare(PHP_VERSION, '8.2', '>='), 'high', 'نسخه فعلی ' . PHP_VERSION . ' است. سایت روی ۷٫۴ هم کار می‌کند، اما نسخه‌های قدیمی دیگر به‌روزرسانی امنیتی نمی‌گیرند؛ از «Select PHP Version» در cPanel نسخه ۸٫۴ را انتخاب کنید و افزونه‌های gd، mbstring، pdo_mysql، curl، zip و intl را تیک بزنید.'],
         ['install', 'حذف فایل نصب (install.php)', !is_file($root . '/install.php'), 'high', 'فایل install.php را از هاست حذف کنید؛ با وجود قفل بودن، بهتر است روی سرور نماند.'],
         ['errors', 'نمایش‌ندادن خطاهای PHP', !ini_get('display_errors') || ini_get('display_errors') === '0', 'medium', 'display_errors را در تنظیمات PHP هاست خاموش کنید.'],
         ['config', 'دسترسی امن فایل تنظیمات', $perm === '' || in_array($perm, ['600', '640', '644', '400', '440'], true), 'medium', "دسترسی فعلی config.php برابر $perm است؛ در File Manager آن را ۶۴۴ یا ۶۰۰ کنید."],

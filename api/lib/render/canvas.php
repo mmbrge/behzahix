@@ -307,7 +307,11 @@ final class BxCanvas
             case 'poly':
                 $pts = [];
                 foreach ($o[1] as [$px, $py]) { $pts[] = (int) round($px * $k); $pts[] = (int) round($py * $k); }
-                if (count($pts) >= 6) imagefilledpolygon($im, $pts, self::col($im, $o[2]));
+                if (count($pts) >= 6) {
+                    // PHP 7.x needs the point count; 8.x deprecates passing it
+                    if (PHP_VERSION_ID < 80000) imagefilledpolygon($im, $pts, intdiv(count($pts), 2), self::col($im, $o[2]));
+                    else imagefilledpolygon($im, $pts, self::col($im, $o[2]));
+                }
                 break;
             case 'text':
                 [, $x, $y, $s, $font, $size, $c] = $o;

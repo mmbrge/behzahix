@@ -154,7 +154,7 @@ function slide_text_size(BxCanvas $c, array $el): float
     return $size;
 }
 
-function slides_canvas(array $slides, array $only = null): BxCanvas
+function slides_canvas(array $slides, ?array $only = null): BxCanvas
 {
     $c = new BxCanvas(SLIDE_W, SLIDE_H);
     $c->defaultDir = 'rtl';

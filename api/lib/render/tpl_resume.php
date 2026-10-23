@@ -9,10 +9,12 @@ const RESUME_TPLS = ['modern', 'classic', 'minimal', 'creative', 'executive', 't
 // A column that flows down the page and continues on a new page when full
 final class BxFlow
 {
-    public float $y;
-    public function __construct(public BxCanvas $c, public float $x, public float $w, float $top, public float $bottom, private $onPage, public float $nextTop = 40)
+    public $c; public $x; public $w; public $y; public $bottom; public $nextTop;
+    private $onPage;
+    // (no constructor promotion: the site also runs on PHP 7.4)
+    public function __construct(BxCanvas $c, float $x, float $w, float $top, float $bottom, callable $onPage, float $nextTop = 40)
     {
-        $this->y = $top;
+        $this->c = $c; $this->x = $x; $this->w = $w; $this->y = $top; $this->bottom = $bottom; $this->onPage = $onPage; $this->nextTop = $nextTop;
     }
     public function need(float $h): void
     {
