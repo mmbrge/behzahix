@@ -26,7 +26,7 @@
     const SCHEMA = {
       card: [
         { title: "آدرس صفحه و ظاهر", icon: "link", fields: [
-          { k: "slug", label: `آدرس صفحه: ${location.host}/c/…`, dir: "ltr", ph: "sara-mohammadi", help: "فقط حروف انگلیسی کوچک، عدد و خط‌تیره" },
+          { k: "slug", label: "آدرس اختصاصی صفحه", dir: "ltr", ph: "sara-mohammadi", help: "فقط حروف انگلیسی کوچک، عدد و خط‌تیره" },
           { k: "color", type: "color", label: "رنگ", swatches: SW }, { k: "dark", type: "check", label: "حالت تیره" }, { k: "avatar", type: "image", label: "عکس پروفایل یا لوگو", upload: true },
         ] },
         { title: "معرفی", icon: "user", fields: [{ k: "name", label: "نام" }, { k: "title", label: "سمت / تخصص" }, { k: "company", label: "شرکت / برند" }, { k: "bio", type: "textarea", label: "معرفی کوتاه", span: true }] },
@@ -39,7 +39,7 @@
       ],
       menu: [
         { title: "آدرس صفحه و ظاهر", icon: "link", fields: [
-          { k: "slug", label: `آدرس منو: ${location.host}/c/…`, dir: "ltr", ph: "cafe-nova", help: "فقط حروف انگلیسی کوچک، عدد و خط‌تیره" },
+          { k: "slug", label: "آدرس اختصاصی منو", dir: "ltr", ph: "cafe-nova", help: "فقط حروف انگلیسی کوچک، عدد و خط‌تیره" },
           { k: "theme", type: "tpl", label: "طرح منو", options: MENU_THEMES },
           { k: "color", type: "color", label: "رنگ", swatches: SW }, { k: "dark", type: "check", label: "حالت تیره (طرح‌های مدرن، گالری و شاد)" },
           { k: "logo", type: "image", label: "لوگو", upload: true }, { k: "cover", type: "image", label: "عکس کاور بالای منو (افقی)", upload: true },
@@ -93,7 +93,16 @@
       const pf = v.querySelector("[data-pf]");
       const refresh = H.debounce(() => { pf.elements.data.value = JSON.stringify(data); pf.submit(); }, 400);
       const autosave = H.debounce(() => STUDIO.saveDraft(`page-${kind}`, data), 600);
-      STUDIO.form.bind(formEl, schema, data, () => { refresh(); autosave(); });
+      // the full address, under the field, as it will be shared
+      const slugIn = formEl.querySelector('[data-p="slug"]');
+      const urlPrev = document.createElement("div");
+      urlPrev.className = "st-url-prev";
+      const paintUrl = () => {
+        const v = String(data.slug || "").trim().toLowerCase() || (kind === "menu" ? "cafe-nova" : "sara-mohammadi");
+        urlPrev.innerHTML = `${BX.icon("link")}<span dir="ltr">${H.esc(location.origin)}/c/<b>${H.esc(v)}</b></span>`;
+      };
+      if (slugIn) { slugIn.closest(".field").appendChild(urlPrev); paintUrl(); }
+      STUDIO.form.bind(formEl, schema, data, () => { refresh(); autosave(); paintUrl(); });
       refresh();
       const box = v.querySelector("[data-pg-box]");
       const status = v.querySelector("[data-pg-status]");
