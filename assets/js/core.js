@@ -237,11 +237,23 @@
     if (mega) {
       // pause heavy page animations while the services menu is open
       const root = document.documentElement;
-      const open = () => root.classList.add("mega-open"), close = () => root.classList.remove("mega-open");
-      mega.addEventListener("pointerenter", open);
-      mega.addEventListener("pointerleave", close);
+      // Hover intent: open at once, close only after the pointer has been away for a moment,
+      // so moving diagonally from «خدمات» down into the panel never closes it.
+      let shut = 0;
+      const open = () => { clearTimeout(shut); mega.classList.add("is-open"); root.classList.add("mega-open"); };
+      const close = (now) => {
+        clearTimeout(shut);
+        const go = () => { mega.classList.remove("is-open"); root.classList.remove("mega-open"); };
+        now === true ? go() : (shut = setTimeout(go, 380));
+      };
+      mega.addEventListener("pointerenter", (e) => { if (e.pointerType !== "touch") open(); });
+      mega.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") close(); });
       mega.addEventListener("focusin", open);
-      mega.addEventListener("focusout", (e) => { if (!mega.contains(e.relatedTarget)) close(); });
+      mega.addEventListener("focusout", (e) => { if (!mega.contains(e.relatedTarget)) close(true); });
+      // a click on a link inside, or on another nav item, closes it straight away
+      mega.addEventListener("click", (e) => { if (e.target.closest(".mega a")) close(true); });
+      el.querySelectorAll(".nav > a, .nav-item:not(.has-mega) > a").forEach((a) => a.addEventListener("pointerenter", () => { if (mega.classList.contains("is-open")) close(); }));
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && mega.classList.contains("is-open")) close(true); });
       mega.addEventListener("keydown", (e) => {
         if (e.key === "Escape") mega.querySelector("a").focus();
       });

@@ -35,14 +35,18 @@
 .header-bar { position: relative; }
 .nav-item { position: static; }
 .nav-item .chev { width: 14px; height: 14px; transition: transform .3s var(--ease-out); }
-.nav-item:hover .chev, .nav-item:focus-within .chev { transform: rotate(180deg); }
+.nav-item.is-open .chev, .nav-item:focus-within .chev { transform: rotate(180deg); }
 .mega {
   position: absolute; top: 100%; left: 50%; z-index: 60;
   width: min(1040px, calc(100vw - 32px)); padding-top: 12px;
   opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%, 6px);
   transition: opacity .2s, transform .25s var(--ease-out), visibility 0s linear .2s;
 }
-.nav-item:hover .mega, .nav-item:focus-within .mega { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); transition-delay: 0s; }
+/* opened by JS with a short close delay (moving the mouse down to the panel never closes it); keyboard: focus-within */
+.nav-item.is-open .mega, .nav-item:focus-within .mega { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); transition-delay: 0s; }
+/* invisible bridge from the link down to the panel */
+.nav-item.is-open > a { position: relative; }
+.nav-item.is-open > a::after { content: ""; position: absolute; inset: 100% -24px auto; height: 34px; }
 /* solid background (no backdrop blur): the blur over the animated hero was the main source of lag */
 .mega-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; padding: 14px;
