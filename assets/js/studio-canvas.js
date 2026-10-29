@@ -94,7 +94,7 @@
       ] },
       { title: "تصاویر", icon: "image", fields: [{ k: "photo", type: "image", label: "عکس اصلی / محصول", max: 1600 }, { k: "logo", type: "image", label: "لوگو", max: 600 }, { k: "dim", type: "range", label: "تیرگی روی عکس پس‌زمینه", min: 0, max: 80 }] },
     ];
-    const postDefaults = () => ({ tpl: "sale", size: "post", color: "#dc2626", color2: "#facc15", title: "حراج بزرگ پاییزه", subtitle: "فقط تا پایان هفته", body: "", badge: "۳۰٪", cta: "همین حالا خرید کنید", date: "", footer: "", photo: "", logo: "", dim: 45 });
+    const postDefaults = () => ({ tpl: "sale", size: "post", color: "#dc2626", color2: "#facc15", title: "حراج بزرگ پاییزه", subtitle: "فقط تا پایان هفته", body: "", badge: "۳۰٪", cta: "همین حالا خرید کنید", date: "", footer: "", photo: "asset:autumn-sale", logo: "", dim: 45 });
     // Ready-made occasions (Iranian calendar) — one click fills the design
     const OCCASIONS = [
       ["نوروز", { tpl: "occasion", color: "#16a34a", color2: "#fde047", title: "نوروز مبارک", subtitle: "سال نو، روزهای نو", body: "بهار دل‌انگیز را به شما و خانواده محترمتان تبریک می‌گوییم.", badge: "", cta: "" }],

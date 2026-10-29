@@ -117,6 +117,10 @@ function default_settings(): array
         'studio' => [
             'enabled' => true, 'trialDays' => 7, 'off' => [], // tools switched off (STUDIO_TOOLS ids)
             // credit/installment per tool: tools in bnplOff can't be paid that way; bnplFee_<tool> = % added
+            // free final files per tool every 30 days: free_<tool> for every signed-in user,
+            // pro_<tool> for PRO members (0 = the shared PRO pool), freeUsers = per-person limits
+            'free_resume' => 0, 'free_card' => 0, 'free_post' => 0, 'free_doc' => 0, 'free_slides' => 0,
+            'pro_resume' => 0, 'pro_card' => 0, 'pro_post' => 0, 'pro_doc' => 0, 'pro_slides' => 0, 'freeUsers' => [],
             'bnplOff' => [], 'bnplFee_resume' => 0.0, 'bnplFee_card' => 0.0, 'bnplFee_post' => 0.0, 'bnplFee_doc' => 0.0, 'bnplFee_slides' => 0.0, 'bnplFee_pageCard' => 0.0, 'bnplFee_pageMenu' => 0.0,
             // Oct 2026 market check, then +50% at the owner's request
             'resume' => 69000, 'card' => 135000, 'post' => 69000, 'doc' => 75000, 'slides' => 195000,
@@ -192,7 +196,7 @@ function public_settings(): array
         'theme' => $s['theme'],
         'uploads' => ['maxMB' => (int) $s['uploads']['maxMB'], 'ext' => $s['uploads']['ext']],
         'shop' => $s['shop'],
-        'studio' => $s['studio'],
+        'studio' => array_diff_key($s['studio'], ['freeUsers' => 1]), // the per-person list holds phone numbers
         'guard' => (bool) ($s['security']['guard'] ?? true),
         'tickets' => ['departments' => array_values(array_filter(array_map('strval', (array) ($s['tickets']['departments'] ?? []))))],
         'pro' => ['enabled' => (bool) $s['pro']['enabled'], 'name' => (string) $s['pro']['name'], 'discount' => (int) $s['pro']['discount']],

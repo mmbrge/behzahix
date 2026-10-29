@@ -36,6 +36,45 @@ function studio_price(string $kind, ?array $item = null): int
     }
     return max(0, (int) ($s[$kind] ?? 0));
 }
+// Free final files of one tool left in the last 30 days. A person listed in
+// Settings → Studio («phone | count» or «phone | tool | count») gets their own
+// limit instead of the general one; PRO members then use their PRO allowance
+// (a per-tool limit, or the shared monthly pool when that is 0).
+function studio_quota(array $u, string $kind): array
+{
+    require_once __DIR__ . '/pro.php';
+    $s = setting('studio');
+    $free = (int) ($s['free_' . $kind] ?? 0);
+    $own = null;
+    foreach ((array) ($s['freeUsers'] ?? []) as $line) {
+        $p = array_map('trim', explode('|', en_digits((string) $line)));
+        $phone = preg_replace('/\D/', '', $p[0] ?? '');
+        if (strlen($phone) === 10 && $phone[0] === '9') $phone = '0' . $phone;
+        if ($phone === '' || $phone !== (string) ($u['phone'] ?? '')) continue;
+        if (count($p) >= 3) {
+            $t = $p[1];
+            $hit = $t === $kind || $t === 'همه' || $t === '*' || $t === (STUDIO_KINDS[$kind] ?? '') || $t === (STUDIO_TOOLS[$kind] ?? '');
+            if ($hit && ($t !== 'همه' && $t !== '*' || $own === null)) $own = (int) $p[2];
+        } elseif ($own === null) $own = (int) ($p[1] ?? 0);
+    }
+    if ($own !== null) $free = max(0, $own);
+    $uid = (int) $u['id'];
+    $q = ['free' => $free, 'freeLeft' => max(0, $free - usage_count('studio-free:' . $kind, $uid, 30)), 'pro' => false, 'proLimit' => 0, 'proLeft' => 0, 'proKey' => ''];
+    if (pro_active($u)) {
+        $lim = (int) ($s['pro_' . $kind] ?? 0);
+        $q['pro'] = true;
+        if ($lim > 0) { $q['proKey'] = 'studio-pro:' . $kind; $q['proLimit'] = $lim; $q['proLeft'] = max(0, $lim - usage_count($q['proKey'], $uid, 30)); }
+        else { $c = pro_cfg(); $q['proKey'] = 'studio-file'; $q['proLimit'] = (int) (pro_info($u)['business'] ?? false ? $c['studioFilesBiz'] : $c['studioFiles']); $q['proLeft'] = pro_studio_left($u); }
+    }
+    return $q;
+}
+function studio_quotas(?array $u): array
+{
+    $out = [];
+    if ($u) foreach (STUDIO_KINDS as $k => $t) { $q = studio_quota($u, $k); unset($q['proKey']); $out[$k] = $q; }
+    return $out;
+}
+
 function studio_item_out(array $i, bool $withData = false): array
 {
     $o = ['id' => (int) $i['id'], 'kind' => $i['kind'], 'kindTitle' => STUDIO_KINDS[$i['kind']] ?? $i['kind'], 'title' => $i['title'], 'paid' => (bool) $i['paid'],
@@ -233,7 +272,7 @@ function r_studio_info(): void
         return ['id' => (int) $d['id'], 'title' => $d['title'], 'category' => $d['category'], 'desc' => $d['descr'], 'body' => $d['body'], 'price' => $d['price'] !== null ? (int) $d['price'] : (int) $s['doc']];
     }, rows('SELECT * FROM doc_templates WHERE active = 1 ORDER BY sort, id'));
     out(['enabled' => !empty($s['enabled']), 'prices' => array_intersect_key($s, array_flip(['resume', 'card', 'post', 'doc', 'slides', 'pageCardMonth', 'pageCardYear', 'pageMenuMonth', 'pageMenuYear'])),
-        'trialDays' => (int) $s['trialDays'], 'docs' => $docs, 'formats' => STUDIO_FORMATS, 'off' => array_values((array) ($s['off'] ?? []))]);
+        'trialDays' => (int) $s['trialDays'], 'docs' => $docs, 'formats' => STUDIO_FORMATS, 'off' => array_values((array) ($s['off'] ?? [])), 'quota' => studio_quotas(me())]);
 }
 
 // ------------------------------------------------------------------ user: designs
@@ -262,7 +301,8 @@ function a_studio_save(): void
         $id = insert('studio_items', ['user_id' => $u['id'], 'kind' => $kind, 'title' => $title, 'data' => $json, 'thumb' => $thumb, 'paid' => 0, 'price' => 0, 'created_at' => now(), 'updated_at' => now()]);
     }
     $it = row('SELECT * FROM studio_items WHERE id = ?', [$id]);
-    out(['item' => studio_item_out($it), 'price' => $it['paid'] ? 0 : studio_price($kind, $it)]);
+    $q = studio_quota($u, $kind); unset($q['proKey']);
+    out(['item' => studio_item_out($it), 'price' => $it['paid'] ? 0 : studio_price($kind, $it), 'quota' => $q]);
 }
 function a_studio_list(): void
 {

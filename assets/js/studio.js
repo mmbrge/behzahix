@@ -69,7 +69,7 @@
     if (f.type === "range") return `<div class="field">${lab}<input type="range" id="${id}" data-p="${path}" min="${f.min}" max="${f.max}" step="${f.step || 1}" value="${H.esc(v)}"></div>`;
     if (f.type === "tpl") return `<div class="field span-2">${lab}<div class="st-tpls">${f.options.map(([o, l, sw]) => `<button type="button" class="st-tpl ${o === v ? "is-on" : ""}" data-tpl="${path}" data-v="${o}"><i style="background:${sw || "var(--brand)"}"></i>${l}</button>`).join("")}</div></div>`;
     if (f.type === "image") {
-      const src = v ? (f.upload ? `api/index.php?r=file&id=${encodeURIComponent(v)}` : v) : "";
+      const src = v ? (f.upload ? `api/index.php?r=file&id=${encodeURIComponent(v)}` : /^asset:[a-z0-9-]+$/.test(v) ? `assets/img/studio/${v.slice(6)}.jpg` : v) : "";
       return `<div class="field${span}">${lab}<div class="st-img">${src ? `<img src="${src}" alt="">` : `<span>${BX.icon("image")}</span>`}<label class="btn btn-ghost btn-xs">${BX.icon("upload")} ${v ? "تغییر" : "انتخاب"}<input type="file" accept="image/*" data-img="${path}" data-max="${f.max || 900}" ${f.upload ? "data-upload" : ""} hidden></label>${v ? `<button type="button" class="btn btn-ghost btn-xs" data-clear="${path}">حذف</button>` : ""}</div>${help}</div>`;
     }
     if (f.type === "list") {
@@ -200,6 +200,7 @@
   STUDIO.editor = function (view, cfg) {
     const { kind, schema } = cfg;
     let item = cfg.item || null; // {id, paid, title}
+    let quota = S.info?.quota?.[kind] || null; // monthly free / PRO files left
     let price = cfg.price ?? (S.info?.prices?.[kind] || 0);
     const data = cfg.data;
     const savedJson = JSON.stringify(data);
@@ -221,7 +222,9 @@
     const paintSoon = H.debounce(() => paint(data), kind === "slides" ? 800 : 450);
     const autosave = H.debounce(() => STUDIO.saveDraft(kind, data), 600);
     const status = () => {
-      view.querySelector("[data-st-status]").textContent = item?.paid ? (item.via === "pro" ? `دریافت‌شده با ${proName()} — دانلود نامحدود` : "خریداری شده — دانلود نامحدود") : `پیش‌نمایش رایگان · فایل نهایی ${H.money(price)}${isPro() ? ` یا رایگان با ${proName()}` : ""}`;
+      const freeLeft = quota?.freeLeft || 0;
+      view.querySelector("[data-st-status]").textContent = item?.paid ? (item.via === "pro" ? `دریافت‌شده با ${proName()} — دانلود نامحدود` : item.via === "free" ? "دریافت رایگان — دانلود نامحدود" : "خریداری شده — دانلود نامحدود")
+        : freeLeft ? `پیش‌نمایش رایگان · ${H.fa(freeLeft)} فایل نهایی رایگان این ماه` : `پیش‌نمایش رایگان · فایل نهایی ${H.money(price)}${isPro() && (!quota || quota.proLeft > 0) ? ` یا رایگان با ${proName()}` : ""}`;
       view.querySelector('[data-st="get"]').innerHTML = item?.paid ? `${BX.icon("download")} دانلود` : `${BX.icon("download")} دریافت<span class="hide-sm"> فایل نهایی</span>`;
     };
     // a bought design is locked for non-members (they can save a new copy)
@@ -240,7 +243,7 @@
     async function save(quiet) {
       if (!BX.me) { STUDIO.saveDraft(kind, data); needLogin(cfg.route || kind); return null; }
       const r = await BX.api("a.studio.save", { id: item?.id || 0, kind, title: (cfg.titleOf ? cfg.titleOf(data) : "") || cfg.title, data });
-      item = r.item; price = r.price;
+      item = r.item; price = r.price; if (r.quota) quota = r.quota;
       if (location.hash.split("/")[1] !== String(item.id)) history.replaceState(null, "", `#${cfg.route || kind}/${item.id}`);
       if (!quiet) BX.toast("طرح ذخیره شد؛ از پنل «ساخته‌های من» هم در دسترس است.", "ok");
       status();
@@ -285,16 +288,24 @@
         if (!it) return;
         if (it.paid) return formats();
         const wallet = BX.me?.wallet || 0;
-        if (isPro()) {
+        if (quota?.freeLeft > 0 && BX.me?.role !== "admin") {
+          return BX.modal({
+            title: "دریافت رایگان فایل نهایی",
+            body: `<div class="st-buy"><p class="lh">${H.fa(quota.freeLeft)} از ${H.fa(quota.free)} فایل رایگان این ماه برای «${H.esc(cfg.title)}» برایتان باقی مانده است. این فایل بدون واترمارک و با کیفیت کامل ساخته می‌شود و همیشه از «ساخته‌های من» قابل دانلود است.</p></div>`,
+            actions: [{ label: "انصراف" }, { label: "دریافت رایگان", primary: true, onClick: () => { item.paid = true; item.via = "free"; quota.freeLeft--; status(); formats(); } }],
+          });
+        }
+        if (isPro() && (!quota || quota.proLeft > 0 || BX.me?.role === "admin")) {
           return BX.modal({
             title: `دریافت با اشتراک ${proName()}`,
-            body: `<div class="st-buy"><p class="lh">این فایل از سهمیه ماهانه اشتراک شما کم می‌شود و همیشه از «ساخته‌های من» قابل دانلود و ویرایش است.</p></div>`,
+            body: `<div class="st-buy"><p class="lh">این فایل از سهمیه ماهانه اشتراک شما کم می‌شود${quota?.proLimit ? ` (${H.fa(quota.proLeft)} از ${H.fa(quota.proLimit)} باقی مانده)` : ""} و همیشه از «ساخته‌های من» قابل دانلود و ویرایش است.</p></div>`,
             actions: [{ label: "انصراف" }, { label: "دریافت فایل", primary: true, onClick: () => { item.paid = true; item.via = "pro"; status(); formats(); } }],
           });
         }
         BX.modal({
           title: "دریافت فایل نهایی",
           body: `<div class="st-buy"><p class="lh">فایل بدون واترمارک و با کیفیت چاپ ${cfg.deliverText || ""} روی سرور ساخته می‌شود و همیشه از پنل «ساخته‌های من» قابل دانلود است.</p>
+            ${isPro() && quota?.pro && quota.proLeft <= 0 ? `<p class="muted small">سهمیه فایل این ماه اشتراک ${proName()} برای این ابزار تمام شده است؛ این طرح را می‌توانید جداگانه بخرید.</p>` : ""}
             <div class="st-buy-price"><span>مبلغ</span><b>${H.money(price)}</b></div>
             ${price && wallet ? `<p class="muted small">موجودی کیف پول: ${BX.toman(wallet)}${wallet >= price ? " — از کیف پول کسر می‌شود." : " — مابقی از درگاه پرداخت می‌شود."}</p>` : ""}
             <a class="st-upsell" href="dashboard.html#pro">${BX.icon("star")}<span><b>${proName()}</b> — ماهی ${H.money(S.pro?.plans?.[0]?.price || 0)}: ${H.fa(S.pro?.studioFiles || 15)} فایل در ماه + ویرایش نامحدود طرح‌ها + کارت ویزیت دیجیتال</span></a></div>`,

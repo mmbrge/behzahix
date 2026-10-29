@@ -50,7 +50,7 @@ function post_render(array $d): BxCanvas
     switch ($t) {
         case 'sale':
             $c->rect(0, 0, $W, $H, bx_grad(0, 0, $W, $H, $col, bx_shade($col, -0.55)));
-            if ($photo) { $c->image($photo, 0, 0, $W, $H); $c->rect(0, 0, $W, $H, bx_grad(0, 0, $W, $H, bx_alpha($col, 0.82), bx_alpha(bx_shade($col, -0.55), 0.92))); }
+            if ($photo) { $c->image($photo, 0, 0, $W, $H); $c->rect(0, 0, $W, $H, bx_grad(0, 0, 0, $H, bx_alpha($col, min(0.95, 0.25 + $dim)), bx_alpha(bx_shade($col, -0.55), min(0.97, 0.15 + $dim)))); }
             for ($i = 0; $i < 6; $i++) $c->circle($W * ($i % 3) / 2, $H * (0.15 + $i * 0.15), $W * 0.18, bx_rgba('#ffffff', 0.06));
             for ($i = 0; $i < 9; $i++) $c->poly([[$W - $i * 64, 0], [$W - $i * 64 - 26, 0], [$W - $i * 64 - 120, $W * 0.09], [$W - $i * 64 - 94, $W * 0.09]], bx_alpha($col2, 0.85));
             $logoAt($pad, $pad * 1.2, $W * 0.13);

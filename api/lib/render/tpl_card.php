@@ -38,7 +38,7 @@ function card_wave(float $y, float $amp, float $phase, int $W, int $H): array
 function card_render(array $d, bool $sample = false): BxCanvas
 {
     $W = CARD_W; $H = CARD_H;
-    $d += ['name' => '', 'role' => '', 'company' => '', 'slogan' => '']; // keys the layouts read directly
+    $d += ['name' => '', 'role' => '', 'company' => '', 'slogan' => '', 'phone' => '']; // keys the layouts read directly
     if ($sample) {
         $d['name'] = $d['name'] ?: 'نام و نام خانوادگی';
         if (!$d['role'] && !$d['company']) $d['role'] = 'سمت شما';

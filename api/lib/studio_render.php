@@ -34,7 +34,7 @@ function studio_canvas(string $kind, array $data, bool $preview, bool $sample = 
 }
 function studio_wm_text(): string { return 'پیش‌نمایش ' . (setting('general', 'siteName') ?: 'BEHIX'); }
 // Preview pixel width per kind (deliberately below print quality)
-const STUDIO_PREVIEW_PX = ['resume' => 640, 'doc' => 640, 'card' => 620, 'post' => 540, 'slides' => 420];
+const STUDIO_PREVIEW_PX = ['resume' => 880, 'doc' => 880, 'card' => 860, 'post' => 820, 'slides' => 640];
 
 function studio_preview_images(BxCanvas $c, string $kind, int $max = 3): array
 {
@@ -43,7 +43,7 @@ function studio_preview_images(BxCanvas $c, string $kind, int $max = 3): array
     for ($i = 0; $i < $n; $i++) {
         $c->pages[$i]['ops'][] = ['wm', studio_wm_text()];
         // many slides: cheaper single-sample render keeps typing responsive
-        $out[] = 'data:image/jpeg;base64,' . base64_encode($kind === 'slides' && $n > 6 ? $c->preview($i, STUDIO_PREVIEW_PX[$kind], 1, 66) : $c->preview($i, STUDIO_PREVIEW_PX[$kind] ?? 600));
+        $out[] = 'data:image/jpeg;base64,' . base64_encode($kind === 'slides' && $n > 6 ? $c->preview($i, STUDIO_PREVIEW_PX[$kind], 1, 74) : $c->preview($i, STUDIO_PREVIEW_PX[$kind] ?? 600));
     }
     return $out;
 }
@@ -108,12 +108,18 @@ function a_studio_export(): void
     if (!isset(STUDIO_FORMATS[$kind][$fmt])) $fmt = array_key_first(STUDIO_FORMATS[$kind]);
     if (!$it['paid']) {
         require_once __DIR__ . '/pro.php';
-        if (!pro_active($u)) fail('برای دریافت فایل نهایی ابتدا طرح را خریداری کنید.', 402, 'unpaid');
-        if (!staff_can($u, 'studio')) {
-            if (pro_studio_left($u) <= 0) fail('سهمیه فایل این ماه اشتراک شما تمام شده است؛ می‌توانید همین طرح را جداگانه بخرید.', 402, 'quota');
-            usage_add('studio-file', (int) $u['id']);
+        $via = 'pro';
+        if (staff_can($u, 'studio')) {
+            if (!pro_active($u)) fail('برای دریافت فایل نهایی ابتدا طرح را خریداری کنید.', 402, 'unpaid');
+        } else {
+            // the monthly free files come first, then the PRO allowance
+            $q = studio_quota($u, $kind);
+            if ($q['freeLeft'] > 0) { usage_add('studio-free:' . $kind, (int) $u['id']); $via = 'free'; }
+            elseif (!$q['pro']) fail('برای دریافت فایل نهایی ابتدا طرح را خریداری کنید.', 402, 'unpaid');
+            elseif ($q['proLeft'] <= 0) fail('سهمیه فایل این ماه اشتراک شما تمام شده است؛ می‌توانید همین طرح را جداگانه بخرید.', 402, 'quota');
+            else usage_add($q['proKey'], (int) $u['id']);
         }
-        update('studio_items', ['paid' => 1, 'price' => 0, 'paid_at' => now(), 'via' => 'pro'], 'id = ?', [$it['id']]);
+        update('studio_items', ['paid' => 1, 'price' => 0, 'paid_at' => now(), 'via' => $via], 'id = ?', [$it['id']]);
     }
     studio_render_boot();
     $data = bx_clean(jdec($it['data'], []));

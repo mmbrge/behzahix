@@ -42,10 +42,16 @@ function bx_grad(float $x1, float $y1, float $x2, float $y2, $c1, $c2): array { 
 // reference server files, so a crafted request cannot pull private uploads.
 function bx_image_load(?string $src)
 {
-    if (!$src || !is_string($src) || strncmp($src, 'data:image/', 11) !== 0) return null;
-    $p = strpos($src, ',');
-    if ($p === false || strlen($src) > 6 * 1024 * 1024) return null;
-    $bin = base64_decode(substr($src, $p + 1), true);
+    if (!$src || !is_string($src)) return null;
+    // built-in sample images that ship with the site (assets/img/studio)
+    if (preg_match('/^asset:([a-z0-9-]{1,40})$/', $src, $m)) {
+        $bin = @file_get_contents(dirname(__DIR__, 3) . '/assets/img/studio/' . $m[1] . '.jpg');
+    } else {
+        if (strncmp($src, 'data:image/', 11) !== 0) return null;
+        $p = strpos($src, ',');
+        if ($p === false || strlen($src) > 6 * 1024 * 1024) return null;
+        $bin = base64_decode(substr($src, $p + 1), true);
+    }
     if (!$bin) return null;
     $info = @getimagesizefromstring($bin);
     if (!$info || $info[0] * $info[1] > 16000000 || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP], true)) return null;
@@ -467,7 +473,7 @@ final class BxCanvas
         return (string) ob_get_clean();
     }
     // Low-resolution watermarked JPEG for previews
-    public function preview(int $page, int $px, int $ss = 2, int $q = 72): string
+    public function preview(int $page, int $px, int $ss = 2, int $q = 84): string
     {
         $im = $this->toGd($page, $px, $ss, true);
         ob_start(); imagejpeg($im, null, $q); imagedestroy($im);

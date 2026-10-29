@@ -35,7 +35,7 @@
           <a class="sd-thumb sd-thumb--${i.kind}" href="studio.html#${ROUTE[i.kind]}/${i.id}">${i.thumb ? `<img src="${i.thumb}" alt="" loading="lazy">` : icon(KIND_ICON[i.kind] || "file")}</a>
           <div class="sd-body"><b title="${esc(i.title)}">${esc(i.title)}</b>
             <small class="muted">${esc(i.kindTitle)} · ${ago(i.updatedAt)}</small>
-            <div>${i.paid ? `<span class="badge badge--ok">${i.via === "pro" ? `با ${esc(proName)}` : "خریداری شده"}</span>` : '<span class="badge">پیش‌نویس</span>'}</div></div>
+            <div>${i.paid ? `<span class="badge badge--ok">${i.via === "pro" ? `با ${esc(proName)}` : i.via === "free" ? "رایگان" : "خریداری شده"}</span>` : '<span class="badge">پیش‌نویس</span>'}</div></div>
           <div class="sd-actions">
             ${i.paid ? `<button class="btn btn-primary btn-xs" data-act="studio-dl" data-id="${i.id}">${icon("download")} دانلود</button>` : `<a class="btn btn-primary btn-xs" href="studio.html#${ROUTE[i.kind]}/${i.id}">${icon("edit")} ادامه</a>`}
             ${locked ? `<a class="btn btn-ghost btn-xs" href="#pro" title="ویرایش طرح خریداری‌شده با ${esc(proName)}">${icon("lock")} ویرایش</a>` : i.paid ? `<a class="btn btn-ghost btn-xs" href="studio.html#${ROUTE[i.kind]}/${i.id}">${icon("edit")} ویرایش</a>` : ""}
