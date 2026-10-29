@@ -291,20 +291,56 @@
   // ---------------------------------------------------------------- Installments (BNPL)
   // Providers enabled in settings whose min/max allow this amount (Toman)
   BX.bnplFor = (amount) => (BX.settings?.bnpl || []).filter((b) => (!b.min || amount >= b.min) && (!b.max || amount <= b.max));
+  // Surcharges (Settings → Payment / products / studio): gateway fee and credit-purchase %
+  BX.gatewayFee = (amount) => {
+    const p = BX.settings?.payment || {};
+    if (!p.fee) return 0;
+    const f = Math.round((amount * p.fee) / 100);
+    return p.feeMax > 0 ? Math.min(f, p.feeMax) : f;
+  };
+  // credit rule for a studio tool: resume, card, post, doc, slides, page-card, page-menu
+  BX.studioBnpl = (tool) => {
+    const s = BX.settings?.studio || {};
+    const key = { "page-card": "pageCard", "page-menu": "pageMenu" }[tool] || tool;
+    return { ok: !(s.bnplOff || []).includes(tool), fee: Number(s[`bnplFee_${key}`] || 0) };
+  };
+  // credit rule for products in the cart: every product must allow it; % weighted by price
+  BX.productsBnpl = (list, priceOf) => {
+    if (list.some((p) => p.bnplOk === false)) return { ok: false, fee: 0 };
+    const tot = list.reduce((s, p) => s + priceOf(p), 0);
+    return { ok: true, fee: tot ? Math.round((list.reduce((s, p) => s + priceOf(p) * (p.bnplFee || 0), 0) / tot) * 100) / 100 : 0 };
+  };
   // Payment-method cards: wallet (optional), each online gateway, installment providers
-  BX.payOptions = (amount, { wallet = null, gatewayNote = "پرداخت آنلاین با همه کارت‌ها" } = {}) => {
-    const inst = BX.bnplFor(amount);
+  // bnpl: { ok, fee } — whether credit purchase is allowed here and the % it adds
+  BX.payOptions = (amount, { wallet = null, gatewayNote = "پرداخت آنلاین با همه کارت‌ها", bnpl = null } = {}) => {
+    const rule = bnpl || { ok: true, fee: Number(BX.settings?.payment?.bnplFee || 0) };
+    const instTotal = amount + (rule.fee > 0 ? Math.round((amount * rule.fee) / 100) : 0);
+    const inst = rule.ok ? BX.bnplFor(instTotal) : [];
     // every online gateway the admin switched on (Settings → Payment)
     const gateways = BX.settings?.gateways || [];
+    const gFee = BX.gatewayFee(amount);
+    const feeNote = gFee ? `<br><small class="pay-fee">+ ${num(gFee)} تومان کارمزد درگاه</small>` : "";
     const card = (v, ic, title, note, checked, extra = "") => `<label class="opt-card pay-opt" ${extra}><input type="radio" name="method" value="${v}" ${checked ? "checked" : ""}><span class="opt-icon">${icon(ic)}</span><b>${title}</b><small>${note}</small></label>`;
     return `<div class="opt-cards pay-opts">
       ${wallet ? card("wallet", "wallet", "کیف پول", wallet.note, wallet.checked, wallet.disabled ? 'style="opacity:.5;pointer-events:none"' : "") : ""}
-      ${gateways.length ? gateways.map((g, i) => card(`gw:${g.id}`, "lock", esc(g.label), esc(g.note || gatewayNote), !wallet?.checked && (g.default || (!gateways.some((x) => x.default) && i === 0)), 'data-gw')).join("")
-        : card("gateway", "lock", "درگاه بانکی", gatewayNote, !wallet?.checked)}
-      ${gateways.length && (BX.settings.payment?.test || BX.me?.role === "admin") ? card("test", "zap", "درگاه تست", "بدون پول — فقط برای آزمایش", false) : ""}
-      ${inst.map((b) => card(b.id, "calendar", esc(b.label), `${esc(b.note)}${b.installments > 1 ? `<br><b class="brand">${faDigits(b.installments)} قسط × ${num(Math.ceil(amount / b.installments / 1000) * 1000)} تومان</b>` : ""}`, false, 'data-bnpl')).join("")}
-    </div>`;
+      ${gateways.length ? gateways.map((g, i) => card(`gw:${g.id}`, "lock", esc(g.label), esc(g.note || gatewayNote) + feeNote, !wallet?.checked && (g.default || (!gateways.some((x) => x.default) && i === 0)), 'data-gw')).join("")
+        : card("gateway", "lock", "درگاه بانکی", gatewayNote + feeNote, !wallet?.checked)}
+      ${gateways.length && (BX.settings.payment?.test || BX.me?.role === "admin") ? card("test", "zap", "درگاه تست", "بدون پول — فقط برای آزمایش" + feeNote, false) : ""}
+      ${inst.map((b) => card(b.id, "calendar", esc(b.label), `${esc(b.note)}${rule.fee > 0 ? `<br><small class="pay-fee">+${faDigits(rule.fee)}٪ (${num(instTotal - amount)} تومان) در پرداخت اعتباری</small>` : ""}${b.installments > 1 ? `<br><b class="brand">${faDigits(b.installments)} قسط × ${num(Math.ceil(instTotal / b.installments / 1000) * 1000)} تومان</b>` : ""}`, false, 'data-bnpl')).join("")}
+    </div>${!rule.ok && (BX.settings?.bnpl || []).length ? `<p class="muted small mt-1">${icon("info")} پرداخت اعتباری و اقساطی برای این خرید فعال نیست.</p>` : ""}`;
   };
+  // Small modal to choose how to pay; resolves to the method value (or null if cancelled)
+  BX.payPicker = ({ title = "انتخاب روش پرداخت", amount, bnpl = null, intro = "" }) => new Promise((done) => {
+    const gateways = BX.settings?.gateways || [];
+    const inst = (bnpl?.ok !== false) ? BX.bnplFor(amount) : [];
+    if (gateways.length <= 1 && !inst.length && !BX.gatewayFee(amount)) return done("");
+    let picked = null;
+    modal({
+      title, body: `${intro}<div class="row-between"><span class="muted">مبلغ قابل پرداخت</span><b class="price">${num(amount)} تومان</b></div><div class="mt-2">${BX.payOptions(amount, { bnpl })}</div>`,
+      actions: [{ label: "انصراف", onClick: () => { picked = null; } }, { label: "ادامه پرداخت", primary: true, onClick: (w) => { picked = w.querySelector("[name=method]:checked")?.value || ""; } }],
+      onClose: () => done(picked),
+    });
+  });
 
   // ---------------------------------------------------------------- Mobile: menu sheet
   // Full-screen menu that grows out of the menu button (phones & tablets).
@@ -823,7 +859,7 @@
     setTimeout(() => t.remove(), 3700);
   }
 
-  function modal({ title, body, actions = [], wide = false, onOpen }) {
+  function modal({ title, body, actions = [], wide = false, onOpen, onClose }) {
     const wrap = document.createElement("div");
     wrap.className = "modal-wrap";
     wrap.innerHTML = `
@@ -833,11 +869,15 @@
         ${actions.length ? `<div class="modal-foot">${actions.map((a, i) => `<button type="button" class="btn ${a.primary ? "btn-primary" : "btn-ghost"} btn-sm" data-act="${i}">${a.label}</button>`).join("")}</div>` : ""}
       </div>`;
     const prev = document.activeElement;
+    let closed = false;
     const close = () => {
+      if (closed) return;
+      closed = true;
       wrap.classList.add("is-out");
       document.removeEventListener("keydown", onKey);
       setTimeout(() => wrap.remove(), 250);
       prev && prev.focus && prev.focus();
+      if (onClose) onClose();
     };
     const onKey = (e) => e.key === "Escape" && close();
     wrap.addEventListener("click", (e) => {

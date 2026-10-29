@@ -542,6 +542,9 @@ function a_product_save(): void
         if (in_array($status, ['pending', 'active', 'hidden', 'rejected'], true)) $data['status'] = $status;
         $seller = int_in('sellerId');
         if ($seller) $data['seller_id'] = $seller;
+        // credit / installment payment for this product
+        if (in('bnplOk') !== null) $data['bnpl_ok'] = in('bnplOk') ? 1 : 0;
+        if (in('bnplFee') !== null) { $f = (float) en_digits((string) in('bnplFee')); $data['bnpl_fee'] = $f > 0 ? min(50, $f) : null; }
     } else {
         $data['status'] = 'pending'; // every seller edit is reviewed again
     }

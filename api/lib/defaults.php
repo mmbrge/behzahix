@@ -64,7 +64,11 @@ function default_settings(): array
             'stagedEnabled' => true, 'stagedMin' => 5000000, 'stagedPercent' => 50,
         ],
         // 'driver'/'merchant'/'sandbox' are the pre-v16 single gateway (moved to gw_* on upgrade)
-        'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس', 'testOpen' => false, 'default' => ''],
+        'payment' => ['driver' => 'test', 'merchant' => '', 'sandbox' => false, 'description' => 'پرداخت در بهیکس', 'testOpen' => false, 'default' => '',
+            // surcharge for every online gateway (covers the gateway fee); 0 = none
+            'feeEnabled' => false, 'feePercent' => 1.0, 'feeMax' => 0,
+            // credit/installment surcharge for service orders, X PRO and hosted pages (products and studio tools have their own)
+            'bnplFee' => 0.0],
         // Online gateways (pay_gateways.php): any number can be on; the customer picks one
         'gw_zarinpal' => ['enabled' => false, 'label' => 'زرین‌پال', 'note' => 'پرداخت با همه کارت‌های عضو شتاب', 'sort' => 1, 'merchant' => '', 'sandbox' => false],
         'gw_zibal' => ['enabled' => false, 'label' => 'زیبال', 'note' => 'پرداخت با همه کارت‌های عضو شتاب', 'sort' => 2, 'merchant' => '', 'sandbox' => false],
@@ -110,6 +114,8 @@ function default_settings(): array
         // Studio (studio.html): self-service builders, paid per finished file; hosted pages paid per period
         'studio' => [
             'enabled' => true, 'trialDays' => 7, 'off' => [], // tools switched off (STUDIO_TOOLS ids)
+            // credit/installment per tool: tools in bnplOff can't be paid that way; bnplFee_<tool> = % added
+            'bnplOff' => [], 'bnplFee_resume' => 0.0, 'bnplFee_card' => 0.0, 'bnplFee_post' => 0.0, 'bnplFee_doc' => 0.0, 'bnplFee_slides' => 0.0, 'bnplFee_pageCard' => 0.0, 'bnplFee_pageMenu' => 0.0,
             // Oct 2026 market check, then +50% at the owner's request
             'resume' => 69000, 'card' => 135000, 'post' => 69000, 'doc' => 75000, 'slides' => 195000,
             'pageCardMonth' => 45000, 'pageCardYear' => 399000, 'pageMenuMonth' => 255000, 'pageMenuYear' => 2550000,
@@ -192,7 +198,8 @@ function public_settings(): array
         'chat' => ['enabled' => (bool) $s['chat']['enabled'], 'botName' => (string) $s['chat']['botName'], 'greeting' => (string) $s['chat']['greeting']],
         'tools' => ['enabled' => (bool) $s['tools']['enabled'], 'disabled' => array_values((array) $s['tools']['disabled']), 'shortRequireLogin' => (bool) $s['tools']['shortRequireLogin']],
         'sms' => ['enabled' => function_exists('otp_enabled') ? otp_enabled() : $s['sms']['driver'] !== 'none', 'otpDefault' => (bool) $s['sms']['loginOtpDefault']],
-        'payment' => ['driver' => $s['payment']['driver'], 'test' => !empty($s['general']['demoMode']) || !empty($s['payment']['testOpen'])],
+        'payment' => ['driver' => $s['payment']['driver'], 'test' => !empty($s['general']['demoMode']) || !empty($s['payment']['testOpen']),
+            'fee' => !empty($s['payment']['feeEnabled']) ? (float) $s['payment']['feePercent'] : 0, 'feeMax' => (int) $s['payment']['feeMax'], 'bnplFee' => (float) $s['payment']['bnplFee']],
         'gateways' => (function () use ($s) {
             $list = [];
             foreach (['zarinpal', 'zibal', 'idpay', 'payping', 'nextpay', 'mellat', 'saman', 'sadad', 'parsian', 'pasargad', 'sepehr'] as $id) {

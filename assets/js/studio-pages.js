@@ -148,7 +148,11 @@
         if (act === "copy") navigator.clipboard?.writeText(page.url).then(() => BX.toast("آدرس کپی شد.", "ok"));
         if (act === "buy") {
           try {
-            const r = await BX.api("a.page.buy", { id: page.id, plan: b.dataset.plan });
+            const cost = b.dataset.plan === "year" ? prices.year : prices.month;
+            const due = (cost || 0) - (BX.me?.wallet || 0);
+            let method = "";
+            if (due > 0) { method = await BX.payPicker({ title: "روش پرداخت اشتراک", amount: due, bnpl: BX.studioBnpl(`page-${kind}`) }); if (method === null) return; }
+            const r = await BX.api("a.page.buy", { id: page.id, plan: b.dataset.plan, method });
             if (r.redirect) { location.href = r.redirect; return; }
             const g = await BX.api("a.page.get", { id: page.id }); page = g.page; paintBox();
             BX.toast("اشتراک فعال شد.", "ok");

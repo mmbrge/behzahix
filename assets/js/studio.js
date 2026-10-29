@@ -298,8 +298,12 @@
             <div class="st-buy-price"><span>مبلغ</span><b>${H.money(price)}</b></div>
             ${price && wallet ? `<p class="muted small">موجودی کیف پول: ${BX.toman(wallet)}${wallet >= price ? " — از کیف پول کسر می‌شود." : " — مابقی از درگاه پرداخت می‌شود."}</p>` : ""}
             <a class="st-upsell" href="dashboard.html#pro">${BX.icon("star")}<span><b>${proName()}</b> — ماهی ${H.money(S.pro?.plans?.[0]?.price || 0)}: ${H.fa(S.pro?.studioFiles || 15)} فایل در ماه + ویرایش نامحدود طرح‌ها + کارت ویزیت دیجیتال</span></a></div>`,
-          actions: [{ label: "انصراف" }, { label: price ? "پرداخت و دریافت" : "دریافت رایگان", primary: true, onClick: () => {
-            BX.api("a.studio.buy", { id: it.id }).then((r) => {
+          actions: [{ label: "انصراف" }, { label: price ? "پرداخت و دریافت" : "دریافت رایگان", primary: true, onClick: async () => {
+            // the rest after the wallet goes through a gateway or credit purchase (if this tool allows it)
+            const due = price - (wallet || 0);
+            let method = "";
+            if (price && due > 0) { method = await BX.payPicker({ title: "روش پرداخت", amount: due, bnpl: BX.studioBnpl(kind) }); if (method === null) return; }
+            BX.api("a.studio.buy", { id: it.id, method }).then((r) => {
               if (r.redirect) { STUDIO.saveDraft(kind, data); location.href = r.redirect; return; }
               item.paid = true;
               if (r.paidFromWallet && BX.me) BX.me.wallet = Math.max(0, (BX.me.wallet || 0) - r.paidFromWallet);

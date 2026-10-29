@@ -4,13 +4,16 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 16;
+const BX_SCHEMA_VERSION = 17;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
 {
     return [
         ['products', 'image', 'VARCHAR(20) NULL'], // v3 — cover image (files.id, kind = cover)
+        ['products', 'bnpl_ok', 'TINYINT(1) NOT NULL DEFAULT 1'], // v17 — credit/installment per product
+        ['products', 'bnpl_fee', 'DECIMAL(5,2) NULL'], // % added when paid by credit (NULL = no extra)
+        ['payments', 'fee', 'BIGINT NOT NULL DEFAULT 0'], // gateway / credit surcharge inside amount
         ['payments', 'meta', 'TEXT NULL'], // v16 — POSTed form for bank gateways (pay.go)
         ['tickets', 'department', 'VARCHAR(60) NULL'], // v15 — ticket departments, priority, assigned staff
         ['tickets', 'priority', "VARCHAR(10) NOT NULL DEFAULT 'normal'"],

@@ -919,6 +919,9 @@
           ${isAdmin ? `
             <div class="field"><label class="field-label" for="pd-seller">فروشنده</label><select class="select" id="pd-seller" name="sellerId">${sellers.map((u) => `<option value="${u.id}" ${u.id === (p.sellerId || me.id) ? "selected" : ""}>${esc(u.shopName || u.name)}${u.role === "admin" ? " (فروشگاه سایت)" : ""}</option>`).join("")}</select></div>
             <div class="field"><label class="field-label" for="pd-status">وضعیت</label><select class="select" id="pd-status" name="status">${Object.entries(PRODUCT_STATUS).map(([k, [l]]) => `<option value="${k}" ${k === (p.status || "active") ? "selected" : ""}>${l}</option>`).join("")}</select></div>` : ""}
+          ${isAdmin ? `
+            <label class="switch"><input type="checkbox" name="bnplOk" ${p.bnplOk !== false ? "checked" : ""}><span class="track"></span>خرید اعتباری و اقساطی برای این محصول مجاز باشد</label>
+            <div class="field"><label class="field-label" for="pd-bfee">افزایش قیمت در پرداخت اعتباری (٪، ۰ = بدون افزایش)</label><input class="input" id="pd-bfee" name="bnplFee" dir="ltr" inputmode="decimal" value="${faDigits(p.bnplFee || 0)}"></div>` : ""}
           <div class="field span-2"><span class="field-label">عکس کاور محصول</span>
             <div class="cover-pick">
               <span class="cover-prev" data-cover-prev style="${p.image ? `background-image:url('${fileUrl(p.image)}')` : ""}">${p.image ? "" : icon("image")}</span>
@@ -954,7 +957,7 @@
           label: isAdmin ? "ذخیره" : "ذخیره و ارسال برای بررسی", primary: true, onClick: (wrap) => {
             const f = wrap.querySelector("#product-form").elements;
             const data = { id: p.id || 0, title: f.title.value, category: f.category.value, tags: f.tags.value, price: f.price.value, discount: f.discount.value, desc: f.desc.value };
-            if (isAdmin) Object.assign(data, { sellerId: f.sellerId.value, status: f.status.value });
+            if (isAdmin) Object.assign(data, { sellerId: f.sellerId.value, status: f.status.value, bnplOk: f.bnplOk.checked ? 1 : 0, bnplFee: BX.enDigits(f.bnplFee.value) });
             if (f.removeCover?.checked) data.removeCover = 1;
             const files = [...f.files.files];
             if (f.cover.files[0]) files.cover = f.cover.files[0];
@@ -1037,6 +1040,7 @@
             <div class="mt-2">${BX.payOptions(Math.max(1000, amount - Math.max(0, me.wallet || 0)), {
               wallet: { note: `موجودی ${money(me.wallet)}`, checked: canWallet, disabled: !canWallet },
               gatewayNote: me.wallet ? `${money(Math.max(0, amount - me.wallet))} از درگاه` : "پرداخت آنلاین با همه کارت‌ها",
+              bnpl: { ok: true, fee: Number(S.settings.payment?.bnplFee || 0) },
             })}</div>`,
           actions: [{ label: "انصراف" }, { label: "پرداخت", primary: true, onClick: (wrap) => quiet(act("order.pay", { id: o.id, stage, method: wrap.querySelector("[name=method]:checked")?.value || "gateway" })) }],
         });

@@ -259,6 +259,39 @@ function test_pay_allowed(int $userId): bool
     if (!empty(setting('general', 'demoMode')) || !empty(setting('payment', 'testOpen'))) return true;
     return val('SELECT role FROM users WHERE id = ?', [$userId]) === 'admin';
 }
+// Credit/installment for this purchase: [allowed, % added]. Products and studio tools
+// have their own rule; service orders, X PRO and others use Settings → Payment.
+function bnpl_rule(string $purpose, array $ref): array
+{
+    if ($purpose === 'cart') {
+        $ids = array_map('intval', $ref['items'] ?? []);
+        if (!$ids) return [true, 0.0];
+        $tot = 0; $w = 0;
+        foreach (rows('SELECT price, discount, bnpl_ok, bnpl_fee FROM products WHERE id IN (' . implode(',', $ids) . ')') as $p) {
+            if (isset($p['bnpl_ok']) && !(int) $p['bnpl_ok']) return [false, 0.0];
+            $pr = max(1, final_price($p));
+            $tot += $pr; $w += $pr * (float) ($p['bnpl_fee'] ?? 0);
+        }
+        return [true, $tot ? round($w / $tot, 2) : 0.0];
+    }
+    if ($purpose === 'studio') {
+        $s = setting('studio');
+        if (!empty($ref['pageId'])) { $k = (string) val('SELECT kind FROM pages WHERE id = ?', [(int) $ref['pageId']]); $tool = 'page-' . $k; $key = $k === 'menu' ? 'pageMenu' : 'pageCard'; }
+        else { $tool = $key = (string) val('SELECT kind FROM studio_items WHERE id = ?', [(int) ($ref['itemId'] ?? 0)]); }
+        if (in_array($tool, (array) ($s['bnplOff'] ?? []), true)) return [false, 0.0];
+        return [true, (float) ($s['bnplFee_' . $key] ?? 0)];
+    }
+    return [true, (float) setting('payment', 'bnplFee')];
+}
+// Surcharge for paying through an online gateway (Settings → Payment), in Toman
+function gateway_fee(int $amount): int
+{
+    $p = setting('payment');
+    if (empty($p['feeEnabled']) || (float) $p['feePercent'] <= 0) return 0;
+    $f = (int) round($amount * (float) $p['feePercent'] / 100);
+    if ((int) $p['feeMax'] > 0) $f = min($f, (int) $p['feeMax']);
+    return max(0, $f);
+}
 // $method: 'wallet' is handled by the caller; 'gw:<id>' (or a gateway id) = that online gateway;
 // '' / 'gateway' = the default gateway; an installment provider id; 'test' = test gateway.
 function payment_start(int $userId, string $purpose, array $ref, int $amount, string $description, string $method = ''): string
@@ -266,9 +299,13 @@ function payment_start(int $userId, string $purpose, array $ref, int $amount, st
     if ($amount < 1000) fail('مبلغ پرداخت معتبر نیست.', 422);
     $method = strpos($method, 'gw:') === 0 ? substr($method, 3) : $method;
     $enabled = gw_enabled();
+    $fee = 0;
     if (isset(BNPL_PROVIDERS[$method])) {
         if ($purpose === 'charge') fail('شارژ کیف پول با پرداخت اقساطی ممکن نیست.', 422);
-        if (!in_array($method, bnpl_available($amount), true)) fail('این روش پرداخت برای این مبلغ در دسترس نیست.', 422);
+        [$allowed, $pct] = bnpl_rule($purpose, $ref);
+        if (!$allowed) fail('پرداخت اعتباری و اقساطی برای این خرید فعال نیست.', 422);
+        $fee = $pct > 0 ? (int) round($amount * $pct / 100) : 0;
+        if (!in_array($method, bnpl_available($amount + $fee), true)) fail('این روش پرداخت برای این مبلغ در دسترس نیست.', 422);
         $driver = $method;
     } elseif (isset(PAY_GATEWAYS[$method])) {
         if (!in_array($method, $enabled, true)) fail('این درگاه پرداخت فعال نیست.', 422);
@@ -281,7 +318,10 @@ function payment_start(int $userId, string $purpose, array $ref, int $amount, st
         $def = (string) setting('payment', 'default');
         $driver = in_array($def, $enabled, true) ? $def : $enabled[0];
     }
-    $id = insert('payments', ['user_id' => $userId, 'purpose' => $purpose, 'ref' => jenc($ref), 'amount' => $amount, 'driver' => $driver, 'status' => 'pending', 'created_at' => now()]);
+    if (!isset(BNPL_PROVIDERS[$driver])) $fee = gateway_fee($amount);
+    // the payment row holds the total charged; only amount − fee reaches the wallet/order
+    $amount += $fee;
+    $id = insert('payments', ['user_id' => $userId, 'purpose' => $purpose, 'ref' => jenc($ref), 'amount' => $amount, 'fee' => $fee, 'driver' => $driver, 'status' => 'pending', 'created_at' => now()]);
     $callback = base_url() . '/api/index.php?r=pay.callback&pid=' . $id;
     $mobile = (string) val('SELECT phone FROM users WHERE id = ?', [$userId]);
     if (isset(BNPL_PROVIDERS[$driver])) {
@@ -349,7 +389,7 @@ function payment_callback(): void
 function payment_apply(array $pay): string
 {
     $uid = (int) $pay['user_id'];
-    $amount = (int) $pay['amount'];
+    $amount = (int) $pay['amount'] - (int) ($pay['fee'] ?? 0); // the surcharge is not credited
     $ref = jdec($pay['ref'], []);
     if ($pay['purpose'] === 'charge') {
         wallet_add($uid, $amount);
