@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 17;
+const BX_SCHEMA_VERSION = 18;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -58,6 +58,13 @@ function bx_migrate(int $from): void
             q("UPDATE settings SET v = ? WHERE k = 'studio'", [jenc($st)]);
         }
         q('UPDATE doc_templates SET price = NULL WHERE price = 150000');
+    }
+    if ($from < 18) {
+        // the old single VAT % on invoices becomes Settings → Tax; past sales fill the ledger
+        $inv = setting('invoice');
+        if ((float) ($inv['vatPercent'] ?? 0) > 0) { $t = setting('tax'); $t['enabled'] = true; save_setting('tax', $t); }
+        require_once __DIR__ . '/tax.php';
+        if (!(int) val('SELECT COUNT(*) FROM tax_ledger')) tax_backfill();
     }
     if ($from < 16) {
         // one gateway → many: the old single gateway becomes the first gw_* entry
@@ -285,6 +292,20 @@ function bx_schema(): array
             status VARCHAR(16) NOT NULL DEFAULT 'pending',
             created_at DATETIME NOT NULL,
             INDEX (authority)
+        ) $t",
+        // v18 — VAT ledger: one row per sale / refund / gateway fee (see tax.php)
+        "CREATE TABLE IF NOT EXISTS tax_ledger (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            kind VARCHAR(12) NOT NULL,
+            user_id INT UNSIGNED NULL,
+            code VARCHAR(40) NULL,
+            title VARCHAR(250) NOT NULL,
+            amount BIGINT NOT NULL,
+            net BIGINT NOT NULL,
+            vat BIGINT NOT NULL DEFAULT 0,
+            rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            INDEX (created_at), INDEX (kind)
         ) $t",
         "CREATE TABLE IF NOT EXISTS tickets (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -381,6 +381,7 @@ function payment_callback(): void
         $back($hash, true, 'این پرداخت قبلاً تأیید شده است.');
     }
     update('payments', ['status' => 'paid', 'ref_id' => (string) $refId], 'id = ?', [$pid]);
+    if ((int) ($locked['fee'] ?? 0) > 0) { require_once __DIR__ . '/tax.php'; tax_record('fee', (int) $locked['user_id'], (int) $locked['fee'], 'کارمزد درگاه پرداخت', 'P-' . $pid); }
     $msg = payment_apply($locked);
     db()->commit();
     $back($hash, true, $msg);

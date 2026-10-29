@@ -14,6 +14,7 @@ require __DIR__ . '/lib/delivery.php';
 require __DIR__ . '/lib/studio.php';
 require __DIR__ . '/lib/studio_render.php';
 require __DIR__ . '/lib/pro.php';
+require __DIR__ . '/lib/tax.php';
 
 // A readable reason for host problems (limits, missing PHP extensions)
 function bx_error_reason(string $m): string

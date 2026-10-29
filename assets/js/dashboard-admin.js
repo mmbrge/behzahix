@@ -213,6 +213,101 @@
     }, "ورود"),
   });
 
+  // ============================================================ TAX (VAT report)
+  const TAX = { from: "", to: "", kind: "", fees: true, data: null };
+  const jLeap = (y) => ((((y - 474) % 2820 + 2820) % 2820 + 474 + 38) * 682) % 2816 < 682;
+  const jDays = (y, m) => (m <= 6 ? 31 : m <= 11 ? 30 : jLeap(y) ? 30 : 29);
+  const jFmt = (y, m, d) => `${y}/${String(m).padStart(2, "0")}/${String(d).padStart(2, "0")}`;
+  function taxPeriod(kind, today) {
+    const [y, m] = today.split("/").map(Number);
+    if (kind === "month") return [jFmt(y, m, 1), jFmt(y, m, jDays(y, m))];
+    if (kind === "last") { const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1; return [jFmt(py, pm, 1), jFmt(py, pm, jDays(py, pm))]; }
+    if (kind === "season") { const s = Math.floor((m - 1) / 3) * 3 + 1; return [jFmt(y, s, 1), jFmt(y, s + 2, jDays(y, s + 2))]; }
+    if (kind === "year") return [jFmt(y, 1, 1), jFmt(y, 12, jDays(y, 12))];
+    return ["", ""];
+  }
+  async function taxLoad() {
+    TAX.data = await BX.api("a.tax.report", { from: TAX.from, to: TAX.to, kind: TAX.kind, fees: TAX.fees });
+    if (!TAX.from && !TAX.to && TAX.data.today && !TAX.inited) { TAX.inited = true; [TAX.from, TAX.to] = taxPeriod("month", TAX.data.today); TAX.data = await BX.api("a.tax.report", { from: TAX.from, to: TAX.to, kind: TAX.kind, fees: TAX.fees }); }
+    const el = document.querySelector("[data-tax]");
+    if (el) el.innerHTML = taxView();
+  }
+  function taxView() {
+    const { box, table, tile, icon, esc, faDigits, toman } = h();
+    const d = TAX.data;
+    if (!d) return `<div class="card box skeleton" style="height:320px"></div>`;
+    const t = d.total;
+    const fa = (n) => faDigits(Number(n).toLocaleString("en-US"));
+    return `<div class="dash-grid">
+      ${!d.enabled ? `<div class="banner">${icon("info")}<span>محاسبه مالیات خاموش است؛ فروش‌ها ثبت می‌شوند ولی مالیات صفر است. اگر در نظام مالیات بر ارزش افزوده ثبت‌نام کرده‌اید، از <a class="brand" href="#settings/tax">تنظیمات ← مالیات</a> روشنش کنید و بعد «محاسبه دوباره» را بزنید.</span></div>` : ""}
+      <section class="card box tax-filter">
+        <div class="row" style="flex-wrap:wrap;gap:6px">${[["month", "این ماه"], ["last", "ماه قبل"], ["season", "این فصل"], ["year", "امسال"], ["all", "همه"]].map(([k, l]) => `<button type="button" class="btn btn-ghost btn-xs" data-act="tax-period" data-v="${k}">${l}</button>`).join("")}</div>
+        <div class="form-grid tax-filter-f mt-2">
+          <div class="field"><label class="field-label" for="tx-from">از تاریخ</label><input class="input" id="tx-from" dir="ltr" placeholder="۱۴۰۵/۰۷/۰۱" value="${esc(TAX.from)}"></div>
+          <div class="field"><label class="field-label" for="tx-to">تا تاریخ</label><input class="input" id="tx-to" dir="ltr" placeholder="۱۴۰۵/۰۷/۳۰" value="${esc(TAX.to)}"></div>
+          <div class="field"><label class="field-label" for="tx-kind">نوع</label><select class="select" id="tx-kind"><option value="">همه فروش‌ها</option>${Object.entries(d.kinds).map(([k, l]) => `<option value="${k}" ${k === TAX.kind ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
+          <label class="switch small"><input type="checkbox" id="tx-fees" ${TAX.fees ? "checked" : ""}><span class="track"></span>با کارمزد درگاه</label>
+          <button type="button" class="btn btn-primary btn-sm" data-act="tax-apply">${icon("search")} نمایش</button>
+        </div>
+      </section>
+      <div class="tiles">
+        ${tile("مبلغ کل فروش", toman(t.amount), "trend", `${faDigits(t.count)} ردیف`)}
+        ${tile("مبلغ بدون مالیات", toman(t.net), "wallet")}
+        ${tile("مالیات بر ارزش افزوده", toman(t.vat), "percent", d.enabled ? `نرخ فعلی ${faDigits(d.rateNow)}٪` : "خاموش")}
+        ${tile("دوره", `${faDigits(TAX.from || "ابتدا")}`, "calendar", `تا ${faDigits(TAX.to || "امروز")}`)}
+      </div>
+      ${box("فروش به تفکیک نوع", "chart", d.byKind.length ? `<ul class="hbars">${d.byKind.map((k) => `<li><span>${esc(k.title)}<br><small class="muted">${faDigits(k.count)} ردیف · مالیات ${toman(k.vat)}</small></span><span class="track"><span class="fill" style="display:block;width:${t.amount ? Math.max(2, Math.abs(k.amount) / Math.abs(t.amount) * 100) : 0}%"></span></span><b>${toman(k.amount)}</b></li>`).join("")}</ul>` : `<p class="muted small">در این دوره فروشی ثبت نشده است.</p>`)}
+      ${box("ریز فروش‌ها و مالیات", "list", `${table(["تاریخ و ساعت", "کد", "نوع", "شرح", "مشتری", "مبلغ کل", "بدون مالیات", "نرخ", "مالیات"], d.rows.map((r) => `<tr class="${r.amount < 0 ? "tax-neg" : ""}">
+          <td><b>${faDigits(r.date)}</b><br><small class="muted">${faDigits(r.time)}</small></td><td dir="ltr">${esc(r.code || "—")}</td><td><span class="badge">${esc(r.kindTitle)}</span></td>
+          <td>${esc(r.title)}</td><td>${esc(r.customer || "—")}${r.phone ? `<br><small class="muted" dir="ltr">${faDigits(r.phone)}</small>` : ""}</td>
+          <td dir="ltr" style="text-align:right">${fa(r.amount)}</td><td dir="ltr" style="text-align:right">${fa(r.net)}</td><td>${faDigits(r.rate)}٪</td><td dir="ltr" style="text-align:right"><b>${fa(r.vat)}</b></td></tr>`), "فروشی در این دوره نیست.")}
+        ${d.rows.length >= 500 ? `<p class="muted small mt-1">فقط ۵۰۰ ردیف آخر نمایش داده شد؛ خروجی اکسل همه ردیف‌ها را دارد.</p>` : ""}`,
+        `<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="tax-export">${icon("download")} خروجی اکسل</button><button class="btn btn-ghost btn-sm" data-act="tax-print">${icon("file")} چاپ</button><button class="btn btn-ghost btn-sm" data-act="tax-recalc">${icon("refresh")} محاسبه دوباره</button></div>`)}
+      <p class="muted small">${icon("info")} مبلغ‌ها به تومان است. قیمت‌های سایت شامل مالیات در نظر گرفته می‌شود (مالیات = مبلغ × نرخ ÷ (۱۰۰ + نرخ)). شارژ کیف پول فروش نیست و وقتی خرج شود ثبت می‌شود؛ بازگشت وجه با علامت منفی می‌آید.</p>
+    </div>`;
+  }
+  BXD.routes.tax = function () {
+    setTimeout(() => taxLoad().catch((e) => BX.toast(e.message, "bad")), 0);
+    return `<div data-tax>${taxView()}</div>`;
+  };
+  const taxRead = () => {
+    TAX.from = BX.enDigits(document.querySelector("#tx-from")?.value || "").trim();
+    TAX.to = BX.enDigits(document.querySelector("#tx-to")?.value || "").trim();
+    TAX.kind = document.querySelector("#tx-kind")?.value || "";
+    TAX.fees = document.querySelector("#tx-fees")?.checked !== false;
+  };
+  Object.assign(BXD.acts, {
+    "tax-apply": () => { taxRead(); taxLoad().catch((e) => BX.toast(e.message, "bad")); },
+    "tax-period": (el) => { taxRead(); [TAX.from, TAX.to] = taxPeriod(el.dataset.v, TAX.data?.today || ""); taxLoad().catch((e) => BX.toast(e.message, "bad")); },
+    "tax-recalc": () => BXD.ui.confirmBox("محاسبه دوباره مالیات", "مالیات همه ردیف‌های این دوره با تنظیمات و نرخ‌های فعلی دوباره حساب می‌شود.", async () => {
+      taxRead();
+      try { const r = await BX.api("a.tax.recalc", { from: TAX.from, to: TAX.to, kind: TAX.kind, fees: TAX.fees }); BX.toast(r.message, "ok"); taxLoad(); } catch (e) { BX.toast(e.message, "bad"); }
+    }, "محاسبه"),
+    "tax-export": async () => {
+      taxRead();
+      try {
+        const res = await fetch("api/index.php?r=a.tax.export", { method: "POST", credentials: "same-origin", headers: { "X-CSRF": BX.csrf(), "Content-Type": "application/json" }, body: JSON.stringify({ from: TAX.from, to: TAX.to, kind: TAX.kind, fees: TAX.fees }) });
+        if (!res.ok || (res.headers.get("Content-Type") || "").includes("json")) throw new Error("خروجی ساخته نشد.");
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(await res.blob());
+        a.download = `behix-vat-${TAX.from.replace(/\D/g, "") || "all"}-${TAX.to.replace(/\D/g, "") || "now"}.csv`;
+        document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      } catch (e) { BX.toast(e.message, "bad"); }
+    },
+    "tax-print": () => {
+      const d = TAX.data; if (!d) return;
+      const w = window.open("", "_blank"); if (!w) return BX.toast("اجازه باز شدن پنجره را بدهید.", "bad");
+      const n = (v) => BX.faDigits(Number(v).toLocaleString("en-US"));
+      w.document.write(`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>گزارش مالیات بر ارزش افزوده</title><style>@font-face{font-family:V;src:url("${new URL("assets/fonts/Vazirmatn.woff2", location.href).href}")}body{font-family:V,Tahoma;margin:24px;color:#111}h1{font-size:18px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #bbb;padding:5px 6px;text-align:right}th{background:#f3f3f3}.n{direction:ltr;text-align:left}tfoot td{font-weight:700;background:#fafafa}</style></head><body>
+        <h1>گزارش مالیات بر ارزش افزوده — ${BX.esc(BX.settings.general?.siteNameFa || "")}</h1><p>دوره: ${BX.faDigits(TAX.from || "ابتدا")} تا ${BX.faDigits(TAX.to || "امروز")}${d.enabled ? "" : " — محاسبه مالیات خاموش است"}</p>
+        <table><thead><tr><th>ردیف</th><th>تاریخ</th><th>ساعت</th><th>کد</th><th>نوع</th><th>شرح</th><th>مشتری</th><th>مبلغ کل</th><th>بدون مالیات</th><th>نرخ</th><th>مالیات</th></tr></thead><tbody>
+        ${d.rows.slice().reverse().map((r, i) => `<tr><td>${BX.faDigits(i + 1)}</td><td>${BX.faDigits(r.date)}</td><td>${BX.faDigits(r.time)}</td><td class="n">${BX.esc(r.code)}</td><td>${BX.esc(r.kindTitle)}</td><td>${BX.esc(r.title)}</td><td>${BX.esc(r.customer)}</td><td class="n">${n(r.amount)}</td><td class="n">${n(r.net)}</td><td>${BX.faDigits(r.rate)}٪</td><td class="n">${n(r.vat)}</td></tr>`).join("")}
+        </tbody><tfoot><tr><td colspan="7">جمع (تومان)</td><td class="n">${n(d.total.amount)}</td><td class="n">${n(d.total.net)}</td><td></td><td class="n">${n(d.total.vat)}</td></tr></tfoot></table>
+        <script>document.fonts.ready.then(function(){setTimeout(function(){print()},300)})<\/script></body></html>`);
+      w.document.close();
+    },
+  });
+
   // ============================================================ CATALOG
   BXD.routes.catalog = function (param) {
     const tab = param || "services";
@@ -603,7 +698,7 @@
       ["invoice", [
         ["sellerName", "نام فروشنده روی فاکتور (شخص یا شرکت)", "text"], ["economicCode", "کد اقتصادی", "ltr"], ["nationalId", "شناسه ملی / کد ملی", "ltr"], ["regNo", "شماره ثبت", "ltr"],
         ["address", "نشانی", "text"], ["postalCode", "کد پستی", "ltr"], ["phone", "تلفن", "ltr"],
-        ["vatPercent", "مالیات بر ارزش افزوده (٪) — اگر مشمول نیستید ۰ بگذارید", "number"], ["note", "توضیح پایین فاکتور", "textarea"],
+["note", "توضیح پایین فاکتور", "textarea"],
       ], "مشتری از صفحه هر سفارش یا خرید، پیش‌فاکتور/فاکتور را می‌بیند و چاپ یا PDF می‌کند. فیلدهای خالی از نام سایت و اطلاعات تماس پر می‌شوند."],
     ] },
     payment: { title: "درگاه پرداخت", icon: "wallet", groups: [
@@ -695,6 +790,14 @@
         ["shortGuestDaily", "سقف ساخت لینک کوتاه برای مهمان در هر روز", "number"], ["blockedDomains", "دامنه‌های ممنوع برای کوتاه‌سازی (هر خط یک دامنه، مثلاً example.com)", "lines"],
       ], "روشن یا خاموش کردن هر ابزار از بخش «ابزارها و لینک‌ها» انجام می‌شود."],
     ] },
+    tax: { title: "مالیات", icon: "percent", groups: [
+      ["tax", [
+        ["enabled", "در نظام مالیات بر ارزش افزوده ثبت‌نام کرده‌ام (مالیات روی فروش‌ها محاسبه شود)", "switch"],
+        ["rates", "نرخ‌ها — هر خط: «از تاریخ | درصد» (مثلاً ۱۴۰۳/۰۱/۰۱ | ۱۰). اگر نرخ عوض شد، یک خط جدید با تاریخ شروع اضافه کنید", "lines"],
+        ["fees", "کارمزد درگاه هم در گزارش مالیات بیاید", "switch"],
+        ["note", "یادداشت (مثلاً کد رهگیری ثبت‌نام یا شناسه حافظه مالیاتی)", "text"],
+      ], "طبق قانون مالیات بر ارزش افزوده (مصوب ۱۴۰۰، اجرا از ۱۴۰۲) نرخ عمومی ۹٪ است و قانون بودجه ۱۴۰۳ آن را به ۱۰٪ رساند. اگر قانون بودجه سال جدید نرخ را تغییر داد، فقط یک خط با تاریخ شروع اضافه کنید؛ فروش‌های قبل از آن تاریخ با نرخ قبلی می‌مانند. فقط کسب‌وکارهایی که در نظام مالیات بر ارزش افزوده ثبت‌نام کرده‌اند حق دریافت مالیات دارند؛ قیمت‌های سایت «با احتساب مالیات» در نظر گرفته می‌شود و سهم مالیات از هر فروش جدا محاسبه می‌شود. صورت‌حساب‌ها باید در «سامانه مودیان» هم ثبت شوند؛ خروجی اکسل گزارش «مالی ← مالیات» برای همین کار است. شماره اقتصادی و مشخصات فروشنده را در تب «فاکتور» وارد کنید."],
+    ] },
     tickets: { title: "تیکت‌ها", icon: "ticket", groups: [
       ["tickets", [["departments", "دپارتمان‌ها (هر خط یکی؛ اولی پیش‌فرض است)", "lines"]],
         "مشتری هنگام ثبت تیکت دپارتمان و اولویت را انتخاب می‌کند. در «تیکت‌ها» هر تیکت را می‌توانید به یک کارشناس (مدیر، شریک یا حسابدار) ارجاع دهید؛ کارشناس اعلان می‌گیرد و حتی بدون دسترسی کامل به بخش تیکت‌ها، تیکت‌های ارجاع‌شده به خودش را می‌بیند، پاسخ می‌دهد و می‌بندد."],
@@ -771,7 +874,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { tickets: "دپارتمان‌های تیکت", roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", bnpl_tara: "تارا", gw_zarinpal: "زرین‌پال", gw_zibal: "زیبال", gw_idpay: "آیدی‌پی", gw_payping: "پی‌پینگ", gw_nextpay: "نکست‌پی", gw_mellat: "بانک ملت (به‌پرداخت)", gw_saman: "بانک سامان (سپ)", gw_sadad: "بانک ملی (سداد)", gw_parsian: "بانک پارسیان (پک)", gw_pasargad: "بانک پاسارگاد (پپ)", gw_sepehr: "بانک صادرات (سپهر)", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "تنظیمات کلی پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { tax: "مالیات بر ارزش افزوده", tickets: "دپارتمان‌های تیکت", roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", bnpl_tara: "تارا", gw_zarinpal: "زرین‌پال", gw_zibal: "زیبال", gw_idpay: "آیدی‌پی", gw_payping: "پی‌پینگ", gw_nextpay: "نکست‌پی", gw_mellat: "بانک ملت (به‌پرداخت)", gw_saman: "بانک سامان (سپ)", gw_sadad: "بانک ملی (سداد)", gw_parsian: "بانک پارسیان (پک)", gw_pasargad: "بانک پاسارگاد (پپ)", gw_sepehr: "بانک صادرات (سپهر)", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "تنظیمات کلی پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">

@@ -393,7 +393,7 @@
       return `<div class="dash-grid ${all ? "" : "dash-grid-2"}">${box(all ? "تیکت‌ها و پیام‌های تماس" : "تیکت‌های من", "ticket", `${filters}<div class="${all ? "mt-2" : ""}">${table([...(all ? ["فرستنده"] : []), "موضوع", "دپارتمان", "اولویت", ...(all ? ["کارشناس"] : []), "وضعیت", "آخرین تغییر"], rows, "تیکتی وجود ندارد.")}</div>`,
         all && can("settings") ? `<a class="btn btn-ghost btn-sm" href="#settings/tickets">${icon("settings")} دپارتمان‌ها</a>` : "")}${form}</div>`;
     }
-    const TX_TYPE = { charge: "شارژ", payment: "پرداخت سفارش", purchase: "خرید فایل", earning: "درآمد پروژه", sale: "فروش فایل", payout: "تسویه", refund: "بازگشت وجه" };
+    const TX_TYPE = { charge: "شارژ", adjust: "اصلاح موجودی", payment: "پرداخت سفارش", purchase: "خرید فایل", earning: "درآمد پروژه", sale: "فروش فایل", payout: "تسویه", refund: "بازگشت وجه" };
     function txTable(tx, withUser = false) {
       return table([...(withUser ? ["کاربر"] : []), "شرح", "نوع", "مبلغ", "تاریخ"], tx.slice(0, 60).map((t) => `
         <tr>${withUser ? `<td>${userCell(userById(t.userId))}</td>` : ""}
@@ -706,6 +706,7 @@
       { id: "users", label: "کاربران", icon: "users", render: (p) => BXD.routes.users(p), count: () => S.users.filter((u) => u.status === "pending").length },
       { id: "catalog", label: "خدمات و محصولات", icon: "tag", render: (p) => BXD.routes.catalog(p), count: () => S.products.filter((p) => p.status === "pending").length },
       { id: "finance", label: "مالی و تسویه", icon: "wallet", render: adminFinance, count: () => S.payouts.filter((p) => p.status === "pending").length },
+      { id: "tax", perm: "finance", label: "مالیات و ارزش افزوده", icon: "percent", render: (p) => BXD.routes.tax(p) },
       { id: "tickets", label: "تیکت‌ها", icon: "ticket", render: () => ticketsView(true), count: () => S.tickets.filter((t) => t.status === "open").length },
       { id: "coupons", label: "کدهای تخفیف", icon: "percent", render: () => couponsView(false) },
       { id: "studio", label: "استودیو", icon: "sparkles", render: (p) => BXD.routes.studio(p) },
@@ -817,7 +818,7 @@
       </div>`;
     }
     const navFor = () => (me.role !== "customer" && me.role !== "admin" && me.status !== "active" ? PENDING_NAV
-      : isStaff() ? ADMIN.filter((n) => can(n.id) || (n.id === "tickets" && S.tickets.some((t) => t.assigneeId === me.id))) : NAVS[me.role]);
+      : isStaff() ? ADMIN.filter((n) => can(n.perm || n.id) || (n.id === "tickets" && S.tickets.some((t) => t.assigneeId === me.id))) : NAVS[me.role]);
 
     function shell() {
       const nav = navFor();

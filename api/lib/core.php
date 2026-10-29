@@ -345,9 +345,20 @@ function notify_admins(string $text, ?string $link = null): void
         if ($a['role'] === 'admin' || staff_can($a, $sec)) notify((int) $a['id'], $text, $link);
     }
 }
+if (!function_exists('table_exists')) {
+function table_exists(string $t): bool
+{
+    return (bool) val('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$t]);
+}
+}
 function tx(int $userId, string $type, int $amount, string $note): void
 {
     insert('transactions', ['user_id' => $userId, 'type' => $type, 'amount' => $amount, 'note' => mb_substr($note, 0, 250), 'status' => 'ok', 'created_at' => now()]);
+    // every sale (wallet → order, file, studio, subscription) and refund also goes to the VAT ledger
+    if ((($type === 'payment' || $type === 'purchase') && $amount < 0) || $type === 'refund') {
+        require_once __DIR__ . '/tax.php';
+        tax_record(tax_kind_of($type, $note), $userId, $type === 'refund' ? -abs($amount) : abs($amount), $note, tax_code_from($note));
+    }
 }
 function wallet_add(int $userId, int $amount): void
 {

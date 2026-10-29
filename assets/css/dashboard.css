@@ -628,3 +628,7 @@ tr.tk-urgent td:first-child { box-shadow: inset -3px 0 0 #ef4444; }
 @media (max-width: 700px) { .tk-manage { grid-template-columns: 1fr 1fr; } .tk-manage .field:nth-child(3) { grid-column: 1 / -1; } }
 .tk-sys { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px auto; padding: 4px 12px; border-radius: 999px; background: var(--hover); color: var(--muted); font-size: .74rem; width: fit-content; }
 .tk-sys .icon { width: 13px; height: 13px; }
+/* VAT report */
+.tax-filter-f { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto; gap: 10px; align-items: end; }
+@media (max-width: 900px) { .tax-filter-f { grid-template-columns: 1fr 1fr; } }
+tr.tax-neg td { color: #ef4444; }

@@ -101,6 +101,8 @@ function default_settings(): array
         // Seller details printed on invoices (empty = taken from site name / contact)
         'invoice' => ['sellerName' => '', 'economicCode' => '', 'nationalId' => '', 'regNo' => '', 'address' => '', 'postalCode' => '', 'phone' => '', 'vatPercent' => 0, 'note' => ''],
         // Security: admin two-step login by SMS, admin login alert, IP blocking after failed sign-ins
+        // VAT (tax.php): registered taxpayer on/off and the rate history «from (Jalali) | %»
+        'tax' => ['enabled' => false, 'rates' => ['1402/01/01 | 9', '1403/01/01 | 10'], 'fees' => true, 'note' => ''],
         // Ticket departments shown to customers (one per line in Settings → Tickets)
         'tickets' => ['departments' => ['پشتیبانی فنی', 'فروش و سفارش', 'مالی و پرداخت', 'همکاری (طراح و فروشنده)', 'پیشنهاد و انتقاد']],
         // What accountant and partner accounts may open (STAFF_SECTIONS keys); settings and security are admin-only

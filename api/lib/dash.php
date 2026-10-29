@@ -731,6 +731,10 @@ function a_order_markPaid(): void
 {
     $admin = require_staff('orders');
     $o = get_order(int_in('id'));
+    // paid outside the site (card to card, cash…): the rest still counts as a sale for VAT
+    $rest = max(0, price_of($o) - (int) $o['paid_amount']);
+    require_once __DIR__ . '/tax.php';
+    if ($rest > 0) tax_record('order', (int) $o['user_id'], $rest, 'پرداخت خارج از سایت ' . $o['code'], $o['code']);
     q('UPDATE orders SET paid = 1, paid_amount = ? WHERE id = ?', [price_of($o), $o['id']]);
     if ($o['designer_id'] && in_array($o['status'], ['new', 'review'], true)) order_event((int) $o['id'], 'in_progress');
     notify_order($o, 'پرداخت ' . $o['code'] . ' تأیید شد.', (int) $admin['id']);
@@ -812,7 +816,7 @@ function a_user_save(): void
     if ($adj !== 0 && !staff_can($admin, 'finance')) fail('اصلاح کیف پول فقط با دسترسی «مالی» ممکن است.', 403);
     if ($adj !== 0) {
         wallet_add($id, $adj);
-        tx($id, $adj > 0 ? 'charge' : 'payment', $adj, 'اصلاح موجودی توسط مدیر');
+        tx($id, 'adjust', $adj, 'اصلاح موجودی توسط مدیر'); // not a sale (no VAT row)
     }
     db()->commit();
     done('اطلاعات کاربر ذخیره شد.', ['id' => (string) $id]);
@@ -927,10 +931,6 @@ function a_demo_purge(): void
 
 // Clean slate before launch: wipes the chosen kinds of test data. Settings,
 // services/categories and admin accounts are always kept.
-function table_exists(string $t): bool
-{
-    return (bool) val('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$t]);
-}
 function wipe_files(string $kinds): void
 {
     $root = dirname(__DIR__, 2) . '/uploads/';

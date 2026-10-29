@@ -44,9 +44,11 @@ function r_invoice(): void
     $sub = array_sum(array_map(function ($l) { return $l['unit'] * $l['qty']; }, $lines));
     $off = array_sum(array_column($lines, 'off'));
     $net = $sub - $off;
-    $vatPct = (float) ($inv['vatPercent'] ?? 0);
-    $vat = $vatPct > 0 ? (int) round($net * $vatPct / 100) : 0;
-    $total = $net + $vat;
+    // Site prices include VAT (Settings → Tax): the share is shown, the total is unchanged
+    require_once __DIR__ . '/tax.php';
+    $vatPct = tax_rate_at($date);
+    [$base, $vat] = tax_split($net, $vatPct);
+    $total = $net;
     $due = max(0, $total - $paid);
     $fa = function ($n) { return fa_digits(number_format((int) $n)); };
     $jdate = function ($dt) {
@@ -157,7 +159,7 @@ function r_invoice(): void
     <div class="totals">
       <div><span>جمع کل</span><b><?= $fa($sub) ?></b></div>
       <?php if ($off): ?><div><span>تخفیف</span><b>−<?= $fa($off) ?></b></div><?php endif; ?>
-      <?php if ($vat): ?><div><span>مالیات بر ارزش افزوده (<?= fa_digits((string) $vatPct) ?>٪)</span><b><?= $fa($vat) ?></b></div><?php endif; ?>
+      <?php if ($vat): ?><div><span>مبلغ بدون مالیات</span><b><?= $fa($base) ?></b></div><div><span>مالیات بر ارزش افزوده (<?= fa_digits(rtrim(rtrim(number_format($vatPct, 2), '0'), '.')) ?>٪)</span><b><?= $fa($vat) ?></b></div><?php endif; ?>
       <div class="grand"><span>مبلغ قابل پرداخت</span><span><?= $fa($total) ?> تومان</span></div>
       <?php if ($paid && !$isFinal): ?><div><span>پرداخت‌شده</span><b><?= $fa($paid) ?></b></div><div class="due"><span>مانده</span><b><?= $fa($due) ?></b></div><?php endif; ?>
     </div>
