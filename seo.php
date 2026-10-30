@@ -47,7 +47,7 @@ try {
     if ($page === 'index') {
         $m['title'] = $seo['title'];
         $m['desc'] = $seo['description'];
-        $m['ld'][] = ['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => $site, 'url' => seo_url(), 'inLanguage' => 'fa-IR', 'publisher' => ['@id' => seo_url('#org')]];
+        $m['ld'][] = ['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => $site, 'alternateName' => array_values(array_diff(array_unique(array_filter([(string) setting('general', 'siteName'), (string) parse_url(seo_url(), PHP_URL_HOST)])), [$site])), 'url' => seo_url(), 'inLanguage' => 'fa-IR', 'publisher' => ['@id' => seo_url('#org')]];
     } elseif ($page === 'service') {
         $s = seo_service((string) ($_GET['id'] ?? ''));
         if (!$s) { $page = '404'; $status = 404; $html = file_get_contents(__DIR__ . '/404.html'); $m['noindex'] = true; }

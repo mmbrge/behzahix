@@ -42,8 +42,8 @@ function default_settings(): array
             'bundle' => ['2' => 10, '3' => 15, '4' => 20],
         ],
         'seo' => [
-            'title' => 'بهیکس | خلق ارزش دیجیتال با هوش مصنوعی',
-            'description' => 'طراحی سایت، استودیو برندینگ، تولید محتوای هوش مصنوعی و اتوماسیون کسب‌وکار.',
+            'title' => 'بهیکس | طراحی سایت، گرافیک، تیزر و خدمات اداری آنلاین',
+            'description' => 'بهیکس؛ طراحی سایت و فروشگاه، لوگو و هویت بصری، تیزر و موشن‌گرافیک، پاورپوینت، رزومه، اکسل و ترجمه، به‌علاوه استودیو آنلاین با تحویل فوری فایل.',
             // Per page: one line each «page | title | description» (page = services, shop, portfolio, designers, about, tools, blog, order, terms)
             'pages' => [],
             'ogImage' => '', 'googleVerify' => '', 'bingVerify' => '', 'gaId' => '', 'headCode' => '',

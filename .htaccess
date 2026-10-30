@@ -6,6 +6,10 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  # One address: www → bare domain, straight to HTTPS
+  RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+  RewriteCond %{REQUEST_URI} !^/\.well-known/
+  RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
   # Force HTTPS (needs an active SSL certificate: cPanel → SSL/TLS Status).
   # Skips requests already on HTTPS behind a CDN/proxy, certificate
   # validation files (.well-known) and local test servers.
@@ -14,9 +18,6 @@ Options -Indexes
   RewriteCond %{REQUEST_URI} !^/\.well-known/
   RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-  # One host only: send www to the bare domain (or swap to prefer www)
-  # RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
-  # RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
 
   # Short links: /s/CODE → link shortener redirect
   RewriteRule ^s/([A-Za-z0-9_-]+)/?$ api/index.php?r=go&c=$1 [L,QSA]
