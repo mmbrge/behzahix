@@ -137,8 +137,18 @@
 
   // ---------------------------------------------------------------- save / buy / download
   const draftKey = (kind) => `behix:studio:${kind}`;
-  STUDIO.saveDraft = (kind, data) => { try { localStorage.setItem(draftKey(kind), JSON.stringify(data)); } catch (e) { /* storage full */ } };
-  STUDIO.loadDraft = (kind) => { try { return JSON.parse(localStorage.getItem(draftKey(kind)) || "null"); } catch (e) { return null; } };
+  // DRAFT_V marks drafts saved by this release; older ones go through STUDIO.draftUpgrade[kind]
+  const DRAFT_V = "2";
+  STUDIO.draftUpgrade = {};
+  STUDIO.saveDraft = (kind, data) => { try { localStorage.setItem(draftKey(kind), JSON.stringify(data)); localStorage.setItem(draftKey(kind) + ":v", DRAFT_V); } catch (e) { /* storage full */ } };
+  STUDIO.loadDraft = (kind) => {
+    try {
+      const d = JSON.parse(localStorage.getItem(draftKey(kind)) || "null");
+      if (d && localStorage.getItem(draftKey(kind) + ":v") !== DRAFT_V && STUDIO.draftUpgrade[kind]) STUDIO.draftUpgrade[kind](d);
+      return d;
+    } catch (e) { return null; }
+  };
+  STUDIO.dropDraft = (kind) => { try { localStorage.removeItem(draftKey(kind)); localStorage.removeItem(draftKey(kind) + ":v"); } catch (e) { /* blocked */ } };
   const proName = () => BX.settings.pro?.name || "X PRO";
   const isPro = () => !!BX.me && (BX.me.pro || BX.me.role === "admin");
   function needLogin(kind) {
@@ -209,6 +219,7 @@
         <a class="icon-btn" href="#" aria-label="بازگشت به استودیو">${BX.icon("arrow-right")}</a>
         <span class="st-top-ic">${BX.icon(cfg.icon || "sparkles")}</span>
         <div class="grow"><b>${H.esc(cfg.title)}</b><small class="muted d-block" data-st-status></small></div>
+        <button type="button" class="btn btn-ghost btn-sm" data-st="new" title="شروع از طرح پیش‌فرض">${BX.icon("plus")}<span class="hide-sm"> طرح جدید</span></button>
         <button type="button" class="btn btn-ghost btn-sm" data-st="save">${BX.icon("check")}<span class="hide-sm"> ذخیره</span></button>
         <button type="button" class="btn btn-primary btn-sm" data-st="get"></button>
       </div>
@@ -331,6 +342,11 @@
     }
     view.querySelector('[data-st="save"]').onclick = () => save(false).catch((e) => { if (e.code === "pro_edit") { lock(); BX.toast(e.message, "info"); } else BX.toast(e.message, "bad"); });
     view.querySelector('[data-st="get"]').onclick = get;
+    // start over from the default design (clears the local draft; saved designs stay in «my designs»)
+    view.querySelector('[data-st="new"]').onclick = () => BX.modal({
+      title: "طرح جدید", body: `<p class="lh">طرح فعلی کنار گذاشته می‌شود و طرح پیش‌فرض باز می‌شود. ${item?.id ? "نسخه ذخیره‌شده همچنان در «ساخته‌های من» هست." : "اگر این طرح را لازم دارید، اول «ذخیره» را بزنید."}</p>`,
+      actions: [{ label: "انصراف" }, { label: "شروع طرح جدید", primary: true, onClick: () => { STUDIO.dropDraft(kind); location.hash = `#${cfg.route || kind}`; location.reload(); } }],
+    });
     view.addEventListener("click", (e) => { if (e.target.closest('[data-st="copy"]')) copy(); });
     return { paint: () => paint(data), data, save };
   };

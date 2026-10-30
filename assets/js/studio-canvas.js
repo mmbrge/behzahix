@@ -94,7 +94,10 @@
       ] },
       { title: "تصاویر", icon: "image", fields: [{ k: "photo", type: "image", label: "عکس اصلی / محصول", max: 1600 }, { k: "logo", type: "image", label: "لوگو", max: 600 }, { k: "dim", type: "range", label: "تیرگی روی عکس پس‌زمینه", min: 0, max: 80 }] },
     ];
-    const postDefaults = () => ({ tpl: "sale", size: "post", color: "#dc2626", color2: "#facc15", title: "حراج بزرگ پاییزه", subtitle: "فقط تا پایان هفته", body: "", badge: "۳۰٪", cta: "همین حالا خرید کنید", date: "", footer: "", photo: "asset:autumn-sale", logo: "", dim: 45 });
+    const POST_PHOTO = "asset:autumn-sale"; // ships with the site (assets/img/studio)
+    const postDefaults = () => ({ tpl: "sale", size: "post", color: "#dc2626", color2: "#facc15", title: "حراج بزرگ پاییزه", subtitle: "فقط تا پایان هفته", body: "", badge: "۳۰٪", cta: "همین حالا خرید کنید", date: "", footer: "", photo: POST_PHOTO, logo: "", dim: 45 });
+    // drafts from before the bundled photo: start again from the new default picture
+    STUDIO.draftUpgrade.post = (d) => { d.photo = POST_PHOTO; if (d.dim === undefined) d.dim = 45; };
     // Ready-made occasions (Iranian calendar) — one click fills the design
     const OCCASIONS = [
       ["نوروز", { tpl: "occasion", color: "#16a34a", color2: "#fde047", title: "نوروز مبارک", subtitle: "سال نو، روزهای نو", body: "بهار دل‌انگیز را به شما و خانواده محترمتان تبریک می‌گوییم.", badge: "", cta: "" }],
@@ -115,7 +118,8 @@
       return [open, d.title, d.subtitle, d.body, d.date && `🗓 ${d.date}`, d.cta && `👈 ${d.cta}`, d.footer && `📍 ${d.footer}`, "", `${HASHTAGS[d.tpl] || ""} ${site ? `#${site.replace(/\s+/g, "_")}` : ""}`].filter((x) => x !== undefined && x !== null && x !== false).join("\n").replace(/\n{3,}/g, "\n\n").trim();
     }
     function postSmart(el, d, refresh) {
-      const list = OCCASIONS.map(([l, p]) => [l, () => Object.assign(d, { body: "", badge: "", date: "", ...p })]);
+      // the sample sale photo doesn't suit greetings or job ads: those start without it
+      const list = OCCASIONS.map(([l, p]) => [l, () => Object.assign(d, { body: "", badge: "", date: "", ...p }, d.photo === POST_PHOTO && p.tpl !== "sale" ? { photo: "" } : {})]);
       el.innerHTML = STUDIO.chips("مناسبت و قالب آماده", list) + `<div class="row mt-1"><button type="button" class="btn btn-ghost btn-xs" data-cap>${BX.icon("sparkles")} کپشن و هشتگ پیشنهادی</button></div>`;
       STUDIO.bindChips(el.querySelector(".st-chips"), list, refresh);
       el.querySelector("[data-cap]").onclick = () => {
