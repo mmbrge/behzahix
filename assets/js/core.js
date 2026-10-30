@@ -644,10 +644,11 @@
   // ---------------------------------------------------------------- Theme
   function initTheme() {
     const root = document.documentElement;
+    // the phone's browser bar stays brand orange in both themes
     const meta = document.querySelector('meta[name="theme-color"]');
     const apply = (t) => {
       root.dataset.theme = t;
-      meta && meta.setAttribute("content", t === "light" ? "#f5f6fa" : "#07080c");
+      meta && meta.setAttribute("content", "#ff7a1a");
     };
     apply(root.dataset.theme === "light" ? "light" : "dark");
     document.addEventListener("click", (e) => {
