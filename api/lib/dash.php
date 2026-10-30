@@ -1355,7 +1355,7 @@ function a_review_delete(): void
 function post_out(array $p, bool $full = false): array
 {
     $o = ['id' => (int) $p['id'], 'slug' => $p['slug'], 'title' => $p['title'], 'excerpt' => (string) $p['excerpt'], 'cover' => $p['cover'], 'category' => $p['category'],
-        'tags' => jdec($p['tags'], []) ?: [], 'status' => $p['status'], 'views' => (int) $p['views'], 'seoTitle' => $p['seo_title'], 'seoDesc' => $p['seo_desc'],
+        'tags' => jdec($p['tags'], []) ?: [], 'status' => $p['status'], 'views' => (int) $p['views'], 'seoTitle' => $p['seo_title'], 'seoDesc' => $p['seo_desc'], 'focus' => (string) ($p['focus_kw'] ?? ''),
         'publishedAt' => ms($p['published_at']), 'updatedAt' => ms($p['updated_at'])];
     if ($full) $o['body'] = (string) $p['body'];
     return $o;
@@ -1394,7 +1394,7 @@ function a_post_save(): void
     $pub = str_in('publishedAt', 30);
     $pubAt = $pub !== '' && strtotime($pub) ? gmdate('Y-m-d H:i:s', strtotime($pub)) : null;
     $data = ['title' => $title, 'slug' => $slug, 'excerpt' => str_in('excerpt', 600), 'body' => seo_clean_html((string) in('body', '')), 'category' => str_in('category', 80),
-        'tags' => jenc($tags), 'status' => $status, 'seo_title' => str_in('seoTitle', 255), 'seo_desc' => str_in('seoDesc', 400), 'updated_at' => now()];
+        'tags' => jenc($tags), 'status' => $status, 'seo_title' => str_in('seoTitle', 255), 'seo_desc' => str_in('seoDesc', 400), 'focus_kw' => str_in('focus', 120), 'updated_at' => now()];
     $old = $id ? row('SELECT * FROM posts WHERE id = ?', [$id]) : null;
     if ($id && !$old) fail('مطلب پیدا نشد.', 404);
     if ($status === 'published') $data['published_at'] = $pubAt ?: ($old['published_at'] ?? null) ?: now();

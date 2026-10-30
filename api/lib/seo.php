@@ -302,14 +302,16 @@ function seo_post_ld(array $p): array
     return ['@context' => 'https://schema.org', '@type' => 'BlogPosting', 'headline' => mb_substr($p['title'], 0, 110), 'description' => seo_cut((string) ($p['seo_desc'] ?: $p['excerpt'] ?: $p['body']), 300),
         'datePublished' => gmdate('c', strtotime($p['published_at'] . ' UTC')), 'dateModified' => gmdate('c', strtotime($p['updated_at'] . ' UTC')),
         'mainEntityOfPage' => seo_url(seo_post_url($p)), 'image' => $p['cover'] ? [seo_img($p['cover'])] : [seo_url('assets/img/og.png')],
-        'author' => ['@type' => 'Organization', 'name' => seo_site(), 'url' => seo_url()], 'publisher' => ['@id' => seo_url('#org')], 'keywords' => implode('، ', jdec($p['tags'], []) ?: [])];
+        'author' => ['@type' => 'Organization', 'name' => seo_site(), 'url' => seo_url()], 'publisher' => ['@id' => seo_url('#org')], 'inLanguage' => 'fa-IR',
+        'wordCount' => count(preg_split('/\s+/u', trim(strip_tags((string) $p['body'])), -1, PREG_SPLIT_NO_EMPTY) ?: []),
+        'keywords' => implode('، ', array_values(array_unique(array_filter(array_merge([(string) ($p['focus_kw'] ?? '')], jdec($p['tags'], []) ?: [])))))];
 }
 
 // Allow-list HTML sanitizer for blog bodies (admin-written, still cleaned)
 function seo_clean_html(string $html): string
 {
     $html = preg_replace('#<(script|style|iframe|object|embed|form|input|button|svg|math)[^>]*>.*?</\1>#is', '', $html);
-    $html = strip_tags($html, '<p><br><h2><h3><h4><b><strong><i><em><u><s><ul><ol><li><a><img><blockquote><figure><figcaption><table><thead><tbody><tr><th><td><hr><code><pre><span><mark>');
+    $html = strip_tags($html, '<p><br><h2><h3><h4><b><strong><i><em><u><s><ul><ol><li><a><img><blockquote><figure><figcaption><table><thead><tbody><tr><th><td><hr><code><pre><span><mark><div><aside><sup><sub><small>');
     // keep only safe attributes
     $html = preg_replace_callback('#<([a-z0-9]+)(\s[^>]*)?>#i', function ($m) {
         $tag = strtolower($m[1]);
@@ -318,8 +320,14 @@ function seo_clean_html(string $html): string
             foreach ($am as $a) {
                 $name = strtolower($a[1]);
                 $v = $a[3] !== '' ? $a[3] : ($a[4] ?? '');
-                $allowed = ['a' => ['href', 'title', 'target', 'rel'], 'img' => ['src', 'alt', 'width', 'height', 'loading'], 'td' => ['colspan', 'rowspan'], 'th' => ['colspan', 'rowspan']][$tag] ?? [];
-                if (!in_array($name, $allowed, true)) continue;
+                $allowed = ['a' => ['href', 'title', 'target', 'rel'], 'img' => ['src', 'alt', 'width', 'height', 'loading'], 'td' => ['colspan', 'rowspan'], 'th' => ['colspan', 'rowspan'], 'h2' => ['id'], 'h3' => ['id']][$tag] ?? [];
+                // styled blocks of imported articles: only our own bx-* classes
+                if ($name === 'class') {
+                    $v = implode(' ', preg_grep('/^bx-[a-z0-9-]{1,30}$/', preg_split('/\s+/', trim($v)) ?: []));
+                    if ($v === '') continue;
+                } elseif ($name === 'id') {
+                    if (!preg_match('/^[\p{L}\p{N}_-]{1,60}$/u', $v)) continue;
+                } elseif (!in_array($name, $allowed, true)) continue;
                 if (in_array($name, ['href', 'src'], true) && preg_match('#^\s*(javascript|data|vbscript):#i', html_entity_decode($v))) continue;
                 $keep[] = $name . '="' . htmlspecialchars(html_entity_decode($v, ENT_QUOTES, 'UTF-8'), ENT_QUOTES, 'UTF-8') . '"';
             }

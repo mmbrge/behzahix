@@ -4,12 +4,13 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 18;
+const BX_SCHEMA_VERSION = 19;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
 {
     return [
+        ['posts', 'focus_kw', "VARCHAR(120) NOT NULL DEFAULT ''"], // v19 — blog focus keyword (SEO audit)
         ['products', 'image', 'VARCHAR(20) NULL'], // v3 — cover image (files.id, kind = cover)
         ['products', 'bnpl_ok', 'TINYINT(1) NOT NULL DEFAULT 1'], // v17 — credit/installment per product
         ['products', 'bnpl_fee', 'DECIMAL(5,2) NULL'], // % added when paid by credit (NULL = no extra)

@@ -106,6 +106,7 @@ if (isset($public[$route])) {
 }
 
 require __DIR__ . '/lib/dash.php';
+if (strpos($route, 'a.post.') === 0) require __DIR__ . '/lib/blog.php';
 if ($route === 'dash') {
     r_dash();
     exit;

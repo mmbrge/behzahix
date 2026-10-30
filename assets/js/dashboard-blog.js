@@ -32,16 +32,45 @@
           <td><div class="actions"><a class="btn btn-ghost btn-xs" href="#blog/${p.id}">${icon("edit")} ویرایش</a><a class="btn btn-ghost btn-xs" href="blog.html?p=${encodeURIComponent(p.slug)}" target="_blank">${icon("external")}</a>
             <button class="icon-btn icon-btn-sm" data-act="post-delete" data-id="${p.id}" aria-label="حذف">${icon("trash")}</button></div></td></tr>`),
         "هنوز مطلبی ننوشته‌اید. اولین مطلب را با موضوعی بنویسید که مشتری‌هایتان در گوگل جستجو می‌کنند."),
-        `<a class="btn btn-primary btn-sm" href="#blog/new">${icon("plus")} مطلب جدید</a><a class="btn btn-ghost btn-sm" href="blog.html" target="_blank">${icon("external")} وبلاگ</a>`)}
+        `<a class="btn btn-primary btn-sm" href="#blog/new">${icon("plus")} مطلب جدید</a><button type="button" class="btn btn-ghost btn-sm" data-act="post-import">${icon("upload")} ایمپورت مقاله</button><a class="btn btn-ghost btn-sm" href="blog.html" target="_blank">${icon("external")} وبلاگ</a>`)}
       <div class="banner banner--info">${icon("info")}<span><b>نکته سئو:</b> هر هفته ۱ تا ۲ مطلب ۸۰۰+ کلمه‌ای درباره سؤال‌های واقعی مشتری‌ها بنویسید (مثل «قیمت طراحی لوگو ۱۴۰۵»، «سایت فروشگاهی چقدر هزینه دارد»)، در متن به صفحه خدمت مرتبط لینک بدهید و عنوان‌های H2 بگذارید.</span></div>
     </div>`;
     BXD.labelTables?.(el);
   }
 
+  // SEO audit: score ring + checks (bad → warn → ok)
+  const auditHtml = (a) => {
+    const tone = a.score >= 80 ? "ok" : a.score >= 55 ? "warn" : "bad";
+    const ic = { ok: "check", warn: "info", bad: "cross" };
+    return `<div class="seo-score seo-score--${tone}" style="--p:${a.score}"><b>${faDigits(a.score)}</b><span>از ۱۰۰</span></div>
+      <ul class="seo-checks">${a.checks.map((c) => `<li class="is-${c.status}">${icon(ic[c.status])}<div><span>${esc(c.text)}</span>${c.tip && c.status !== "ok" ? `<small>${esc(c.tip)}</small>` : ""}</div></li>`).join("")}</ul>`;
+  };
+  function importPost() {
+    const inp = document.createElement("input");
+    inp.type = "file"; inp.accept = ".zip,.html,.htm";
+    inp.onchange = async () => {
+      const file = inp.files[0];
+      if (!file) return;
+      BX.toast("مقاله و تصاویرش در حال ایمپورت است…", "info");
+      try {
+        const files = []; files.file = file;
+        const r = await BX.api("a.post.import", {}, files);
+        BX.modal({
+          title: "مقاله ایمپورت شد",
+          body: `<p class="lh"><b>${esc(r.title)}</b><br><span class="muted small">${faDigits(r.images)} تصویر روی هاست ذخیره شد. ${esc(r.message)}</span></p>
+            ${r.warnings.length ? `<div class="banner mt-1">${icon("info")}<span>${r.warnings.map(esc).join("<br>")}</span></div>` : ""}
+            <div class="seo-audit mt-2">${auditHtml(r.audit)}</div>`,
+          actions: [{ label: "بستن", onClick: () => { listView(document.querySelector("[data-blog-admin]")); } }, { label: "باز کردن و انتشار", primary: true, onClick: () => { location.hash = `blog/${r.id}`; } }],
+        });
+      } catch (err) { BX.toast(err.message, "bad"); }
+    };
+    inp.click();
+  }
+
   const TOOLS = [["h2", "عنوان ۲", "H2"], ["h3", "عنوان ۳", "H3"], ["bold", "پررنگ", "B"], ["italic", "کج", "I"], ["ul", "فهرست", "•"], ["ol", "فهرست شماره‌دار", "۱."], ["quote", "نقل‌قول", "❝"], ["link", "لینک", "🔗"], ["image", "تصویر", "🖼"], ["clear", "حذف قالب", "⌫"], ["html", "کد HTML", "</>"]];
 
   async function editView(el, id) {
-    let p = { title: "", slug: "", excerpt: "", body: "", category: "", tags: [], status: "draft", seoTitle: "", seoDesc: "", cover: null, publishedAt: null };
+    let p = { title: "", slug: "", excerpt: "", body: "", category: "", tags: [], status: "draft", seoTitle: "", seoDesc: "", focus: "", cover: null, publishedAt: null };
     if (id !== "new") p = (await BX.api("a.post.get", { id })).post;
     const local = (ms) => { if (!ms) return ""; const d = new Date(ms - new Date().getTimezoneOffset() * 6e4); return d.toISOString().slice(0, 16); };
     const svcLinks = (BX.CATALOG || []).flatMap((c) => c.services).map((s) => `<option value="service.html?id=${esc(s.id)}">${esc(s.title)}</option>`).join("");
@@ -70,11 +99,13 @@
           <div class="field"><label class="field-label">خلاصه (در لیست وبلاگ)</label><textarea class="textarea" name="excerpt" rows="3" maxlength="600">${esc(p.excerpt)}</textarea></div>
         </div>
         <div class="card box"><h3 class="be-h">${icon("search")} سئو</h3>
+          <div class="field"><label class="field-label">کلمه کلیدی اصلی</label><input class="input" name="focus" value="${esc(p.focus || "")}" placeholder="مثلاً طراحی لوگو" maxlength="120"></div>
           <div class="field"><label class="field-label">آدرس (slug)</label><input class="input" name="slug" value="${esc(p.slug)}" placeholder="خودکار از عنوان" dir="auto"></div>
           <div class="field"><label class="field-label">عنوان در گوگل <small data-len="seoTitle"></small></label><input class="input" name="seoTitle" value="${esc(p.seoTitle)}" placeholder="خالی = عنوان مطلب" maxlength="255"></div>
           <div class="field"><label class="field-label">توضیحات متا <small data-len="seoDesc"></small></label><textarea class="textarea" name="seoDesc" rows="3" maxlength="400" placeholder="۱۲۰ تا ۱۶۰ کاراکتر؛ خالی = خلاصه">${esc(p.seoDesc)}</textarea></div>
           <div class="serp" data-serp></div>
         </div>
+        <div class="card box"><h3 class="be-h">${icon("shield")} بررسی سئو</h3><div class="seo-audit" data-audit><p class="muted small">در حال بررسی…</p></div></div>
       </aside>
     </form>`;
     const f = el.querySelector("[data-post-form]");
@@ -91,8 +122,23 @@
       const lens = { seoTitle: [f.elements.seoTitle.value || f.elements.title.value, 60], seoDesc: [f.elements.seoDesc.value, 160] };
       for (const [k, [v, max]] of Object.entries(lens)) { const s = f.querySelector(`[data-len="${k}"]`); s.textContent = `(${faDigits(v.length)}/${faDigits(max)})`; s.className = v.length > max ? "bad" : "muted"; }
     };
-    f.addEventListener("input", refresh);
+    // full SEO audit on the server (same rules as on import), a moment after typing stops
+    let auditSeq = 0;
+    const runAudit = async () => {
+      const E = f.elements, seq = ++auditSeq;
+      const hasCover = (!!p.cover || !!E.cover.files[0]) && !E.removeCover?.checked;
+      try {
+        const a = await BX.api("a.post.audit", { id: id === "new" ? 0 : id, title: E.title.value, slug: E.slug.value, seoTitle: E.seoTitle.value, seoDesc: E.seoDesc.value,
+          focus: E.focus.value, excerpt: E.excerpt.value, category: E.category.value, tags: E.tags.value, cover: hasCover ? 1 : 0, body: html.hidden ? body.innerHTML : html.value });
+        if (seq === auditSeq) f.querySelector("[data-audit]").innerHTML = auditHtml(a);
+      } catch (err) { f.querySelector("[data-audit]").innerHTML = `<p class="muted small">${esc(err.message)}</p>`; }
+    };
+    let auditT = 0;
+    const auditSoon = () => { clearTimeout(auditT); auditT = setTimeout(runAudit, 900); };
+    f.addEventListener("input", () => { refresh(); auditSoon(); });
+    f.addEventListener("change", auditSoon);
     refresh();
+    runAudit();
     // toolbar
     const exec = (cmd, val) => { body.focus(); document.execCommand(cmd, false, val); refresh(); };
     f.querySelector(".be-toolbar").addEventListener("click", async (e) => {
@@ -138,7 +184,7 @@
       e.preventDefault();
       const E = f.elements;
       const data = { id: id === "new" ? 0 : id, title: E.title.value, slug: E.slug.value, excerpt: E.excerpt.value, category: E.category.value, tags: E.tags.value,
-        seoTitle: E.seoTitle.value, seoDesc: E.seoDesc.value, status: E.published.checked ? "published" : "draft",
+        seoTitle: E.seoTitle.value, seoDesc: E.seoDesc.value, focus: E.focus.value, status: E.published.checked ? "published" : "draft",
         publishedAt: E.publishedAt.value ? new Date(E.publishedAt.value).toISOString() : "", body: html.hidden ? body.innerHTML : html.value };
       if (E.removeCover?.checked) data.removeCover = 1;
       const files = [];
@@ -160,6 +206,7 @@
     (param ? editView(el, param) : listView(el)).catch((err) => { el.innerHTML = `<div class="card empty">${icon("info")}<p>${esc(err.message)}</p></div>`; });
   };
   Object.assign(BXD.acts, {
+    "post-import": () => importPost(),
     "post-delete": (el) => BXD.ui.confirmBox("حذف مطلب", "مطلب و تصاویرش برای همیشه حذف می‌شود.", () => BX.api("a.post.delete", { id: el.dataset.id }).then(() => listView(document.querySelector("[data-blog-admin]"))), "حذف"),
   });
 })();

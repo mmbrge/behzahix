@@ -632,3 +632,17 @@ tr.tk-urgent td:first-child { box-shadow: inset -3px 0 0 #ef4444; }
 .tax-filter-f { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto; gap: 10px; align-items: end; }
 @media (max-width: 900px) { .tax-filter-f { grid-template-columns: 1fr 1fr; } }
 tr.tax-neg td { color: #ef4444; }
+/* Blog: SEO audit (score ring + checks) */
+.seo-score { --c: var(--ok, #16a34a); position: relative; display: grid; place-items: center; width: 92px; height: 92px; margin: 0 auto 12px; border-radius: 50%;
+  background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--inset) 0); }
+.seo-score::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--surface); }
+.seo-score b, .seo-score span { position: relative; line-height: 1.1; text-align: center; }
+.seo-score b { font-size: 1.6rem; font-weight: 900; margin-top: 14px; }
+.seo-score span { font-size: .65rem; color: var(--muted); margin-bottom: 18px; }
+.seo-score--warn { --c: #f59e0b; } .seo-score--bad { --c: #ef4444; }
+.seo-checks { display: flex; flex-direction: column; gap: 6px; font-size: .78rem; line-height: 1.8; }
+.seo-checks li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 10px; background: var(--inset); }
+.seo-checks li > .icon { flex: 0 0 16px; width: 16px; height: 16px; margin-top: 4px; }
+.seo-checks li.is-ok > .icon { color: #16a34a; } .seo-checks li.is-warn > .icon { color: #f59e0b; } .seo-checks li.is-bad > .icon { color: #ef4444; }
+.seo-checks small { display: block; color: var(--muted); font-size: .72rem; line-height: 1.7; }
+.modal .seo-audit { max-height: 46vh; overflow: auto; }
