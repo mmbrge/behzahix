@@ -187,10 +187,20 @@ function toman(int $n): string
 {
     return fa_digits(number_format($n)) . ' تومان';
 }
+// The address saved at install time; when it says http:// but the site is being
+// served over HTTPS (SSL turned on later) the https:// form is used, so links,
+// the sitemap and bank callbacks don't go through the http→https redirect,
+// which would drop the data a bank POSTs back.
+function config_url(): string
+{
+    $url = rtrim((string) (bx_config()['url'] ?? ''), '/');
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    if ($https && stripos($url, 'http://') === 0) $url = 'https://' . substr($url, 7);
+    return $url;
+}
 function base_url(): string
 {
-    $c = bx_config();
-    if (!empty($c['url'])) return rtrim($c['url'], '/');
+    if (config_url() !== '') return config_url();
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
     $dir = rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/api/index.php'))), '/');
     return ($https ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir;

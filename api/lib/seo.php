@@ -9,8 +9,7 @@ function seo_h($s): string
 }
 function seo_base(): string
 {
-    $c = bx_config();
-    if (!empty($c['url'])) return rtrim($c['url'], '/');
+    if (config_url() !== '') return config_url();
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
     $dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/seo.php')), '/');
     if (substr($dir, -4) === '/api') $dir = substr($dir, 0, -4);

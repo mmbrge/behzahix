@@ -1,7 +1,7 @@
 {
     "api/index.php": "419e81591fd597169fb717b7347525d1934ea94917a81bde10fef19d7539854e",
     "api/lib/chat.php": "c8f76f562a4362a8c795d62263bb1513d880b0da491d02c5b8b7e75eabff4fbe",
-    "api/lib/core.php": "85ebf8d20fc66672ec3b12d01913f620eafb2c8170d051bdf6f4ddbea7adb69e",
+    "api/lib/core.php": "0461d0a77df38e35796159669f0d34dde533f12eaf853320224f42e980b73c76",
     "api/lib/dash.php": "4e345be0277acbaa27e422784b971660dcfd34393854ef8e9af8a531d13e570a",
     "api/lib/defaults.php": "139f5074c5f5da37bf1f75a04371b667c52267353d6c46ab2d15ee4d5463b8f5",
     "api/lib/delivery.php": "8942f5077411e07596769c0c6c64805a34899b804e3939c725a1309fee69f4ba",
@@ -24,7 +24,7 @@
     "api/lib/render/tpl_slides.php": "bd4a1fb853cee7f1821968d915ef1f622231e8eea1a553dcf4de2618bee92c96",
     "api/lib/schema.php": "770e38a16a39e7a94d872544c9df97677448cb8e3700c4a92a310338531ec0ef",
     "api/lib/security.php": "e8035a8254503a65548ed8c2f81ee502edb4622cb578efdaad81c19856b7607c",
-    "api/lib/seo.php": "271b77cf04e2f310dc82819c841f0ee55f082a29101fc1036762e09191ba1e4f",
+    "api/lib/seo.php": "6bd2686dd7d1101e58dd721ebae25363c86a61860dac0e4e9faebfc73f57dbab",
     "api/lib/sms.php": "dff8c908d79de3dc1cee3e84e812fefd629ce83b87c907ea0362edeee74d3bbc",
     "api/lib/studio.php": "9c02efe21ee5fa0e613ae485f0e1f099e2eb9e2dad5480174d9489d7e20454dd",
     "api/lib/studio_render.php": "461932cc68fd6fb617501fd8c506c8a3aec93492c9c504a38d1dfe486bb6c8af",
