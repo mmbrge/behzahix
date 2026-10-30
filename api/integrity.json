@@ -25,7 +25,7 @@
     "api/lib/render/tpl_slides.php": "bd4a1fb853cee7f1821968d915ef1f622231e8eea1a553dcf4de2618bee92c96",
     "api/lib/schema.php": "6c6eaebd1cadc68084874061ee1d477be9e4fa7535ac71957825aeac65302b65",
     "api/lib/security.php": "e8035a8254503a65548ed8c2f81ee502edb4622cb578efdaad81c19856b7607c",
-    "api/lib/seo.php": "102ca21e5c68bcd000aaeabc3078db15e6ec613e0fbd180c5fb32d95ae114b5a",
+    "api/lib/seo.php": "4a5b4a57feb499f1e5cd19166b974f8c449c3db2eaa5810e971fe2c0047c3a85",
     "api/lib/sms.php": "dff8c908d79de3dc1cee3e84e812fefd629ce83b87c907ea0362edeee74d3bbc",
     "api/lib/studio.php": "9c02efe21ee5fa0e613ae485f0e1f099e2eb9e2dad5480174d9489d7e20454dd",
     "api/lib/studio_render.php": "461932cc68fd6fb617501fd8c506c8a3aec93492c9c504a38d1dfe486bb6c8af",

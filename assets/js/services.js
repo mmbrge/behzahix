@@ -4,7 +4,7 @@
   const BX = window.BX;
   const root = document.getElementById("service-sections");
   BX.ready.then(() => {
-  const { CATALOG, icon, toman, faDigits, initReveal, esc } = BX;
+  const { CATALOG, icon, num, faDigits, initReveal, esc } = BX;
 
   // Phones: a sticky chip bar jumps between categories; each category's cards swipe sideways
   const nav = `<nav class="svc-nav" aria-label="دسته‌های خدمات"><div>${CATALOG.map((c, i) => `<a href="#cat-${c.id}" style="--h:${c.hue}" class="${i ? "" : "is-on"}">${icon(c.icon)}${esc(c.title)}</a>`).join("")}</div></nav>`;
@@ -29,7 +29,7 @@
             <p class="muted small lh">${esc(s.desc)}</p>
             <ul class="svc-fields">${s.fields.slice(0, 4).map((f) => `<li>${icon("check")}${esc(f.label)}</li>`).join("")}</ul>
             <div class="row-between mt-2">
-              <span class="small muted">شروع قیمت<br><b class="brand">${toman(s.base)}</b></span>
+              <span class="svc-price"><small>شروع از</small><b>${num(s.base)}</b><small>تومان</small></span>
               <span class="svc-actions"><a href="service.html?id=${encodeURIComponent(s.id)}" class="btn btn-ghost btn-sm">جزئیات</a><a href="order.html?service=${s.id}" class="btn btn-primary btn-sm">ثبت سفارش ${icon("arrow")}</a></span>
             </div>
           </article>`).join("")}

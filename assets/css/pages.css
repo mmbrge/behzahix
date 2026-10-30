@@ -569,6 +569,12 @@
 .svc-fields li { display: inline-flex; align-items: center; gap: 4px; }
 .svc-fields .icon { width: 14px; height: 14px; color: var(--ok); }
 .service-detail .row-between:last-child { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); }
+/* starting price: one line, in a soft brand pill */
+.svc-price { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; padding: 6px 12px; border-radius: 999px;
+  background: linear-gradient(135deg, rgb(255 122 26 / .14), rgb(255 162 74 / .06)); border: 1px solid rgb(255 122 26 / .28); }
+.svc-price b { font-size: 1.05rem; font-weight: 900; letter-spacing: -.01em; background: linear-gradient(135deg, var(--brand-2), var(--brand) 60%, #e8550a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.svc-price small { font-size: .7rem; font-weight: 600; color: var(--muted); }
+a.service-detail .svc-price { align-self: flex-start; margin-top: 4px; }
 /* price + buttons: buttons never break into two lines; they move under the price when the card is narrow */
 .service-detail .row-between:last-child { flex-wrap: wrap; gap: 12px; }
 .svc-actions { display: flex; gap: 6px; margin-inline-start: auto; max-width: 100%; }

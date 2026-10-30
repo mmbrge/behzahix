@@ -145,7 +145,7 @@ function seo_service_html(array $s): string
       <a class="card service-detail" href="service.html?id=<?= $h(rawurlencode($r['id'])) ?>" data-reveal>
         <div class="row-between"><span class="svc-icon-lg"><svg class="icon"><use href="#i-<?= $h($r['icon']) ?>"/></svg></span><span class="badge"><?= fa_digits((string) $r['days']) ?> روز</span></div>
         <h3><?= $h($r['title']) ?></h3><p class="muted small lh"><?= $h(seo_cut($r['desc'], 110)) ?></p>
-        <span class="small muted">شروع قیمت <b class="brand"><?= fa_digits(number_format((int) $r['base'])) ?> تومان</b></span>
+        <span class="svc-price"><small>شروع از</small><b><?= fa_digits(number_format((int) $r['base'])) ?></b><small>تومان</small></span>
       </a><?php endforeach; ?></div>
   </section>
   <?php endif; ?>
