@@ -695,6 +695,7 @@
       ["seo", [
         ["title", "عنوان صفحه اصلی در گوگل (۵۰ تا ۶۰ کاراکتر)", "text"], ["description", "توضیحات متای صفحه اصلی (۱۲۰ تا ۱۶۰ کاراکتر)", "textarea"],
         ["pages", "عنوان و توضیحات سایر صفحات — هر خط: صفحه | عنوان | توضیحات (صفحه‌ها: services، shop، portfolio، designers، about، tools، blog، order، terms)", "lines"],
+        ["altNames", "نام‌های دیگر برند برای گوگل — هر خط یکی (مثلاً BEHIX، Behix، بهیکس دات آی آر)", "lines"],
         ["ogImage", "آدرس تصویر اشتراک‌گذاری (۱۲۰۰×۶۳۰؛ خالی = تصویر پیش‌فرض)", "ltr"],
         ["googleVerify", "کد تأیید Google Search Console (فقط مقدار content)", "ltr"], ["bingVerify", "کد تأیید Bing Webmaster", "ltr"],
         ["gaId", "شناسه Google Analytics 4 (مثل G-XXXXXXX)", "ltr"], ["headCode", "کد دلخواه داخل head همه صفحات (مثلاً Microsoft Clarity یا Yandex Metrica)", "code"],

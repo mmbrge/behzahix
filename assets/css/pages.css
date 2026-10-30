@@ -46,7 +46,8 @@
 .nav-item.is-open .mega, .nav-item:focus-within .mega { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); transition-delay: 0s; }
 /* invisible bridge from the link down to the panel */
 .nav-item.is-open > a { position: relative; }
-.nav-item.is-open > a::after { content: ""; position: absolute; inset: 100% -24px auto; height: 34px; }
+/* (::before, so the orange hover underline on ::after stays a thin line) */
+.nav-item.is-open > a::before { content: ""; position: absolute; inset: 100% -24px auto; height: 34px; background: transparent; }
 /* solid background (no backdrop blur): the blur over the animated hero was the main source of lag */
 .mega-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; padding: 14px;
@@ -568,6 +569,10 @@
 .svc-fields li { display: inline-flex; align-items: center; gap: 4px; }
 .svc-fields .icon { width: 14px; height: 14px; color: var(--ok); }
 .service-detail .row-between:last-child { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); }
+/* price + buttons: buttons never break into two lines; they move under the price when the card is narrow */
+.service-detail .row-between:last-child { flex-wrap: wrap; gap: 12px; }
+.svc-actions { display: flex; gap: 6px; margin-inline-start: auto; max-width: 100%; }
+.svc-actions .btn { white-space: nowrap; flex: 1 0 auto; padding-inline: 14px; }
 .dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; vertical-align: middle; border: 1px solid var(--line-strong); }
 .review-kv { padding: 16px; border-radius: 18px; background: var(--hover); }
 .review-kv dd { font-weight: 600; }

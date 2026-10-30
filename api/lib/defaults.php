@@ -46,6 +46,7 @@ function default_settings(): array
             'description' => 'بهیکس؛ طراحی سایت و فروشگاه، لوگو و هویت بصری، تیزر و موشن‌گرافیک، پاورپوینت، رزومه، اکسل و ترجمه، به‌علاوه استودیو آنلاین با تحویل فوری فایل.',
             // Per page: one line each «page | title | description» (page = services, shop, portfolio, designers, about, tools, blog, order, terms)
             'pages' => [],
+            'altNames' => [], // other names/spellings of the brand (structured data alternateName)
             'ogImage' => '', 'googleVerify' => '', 'bingVerify' => '', 'gaId' => '', 'headCode' => '',
             'orgType' => 'ProfessionalService', 'city' => 'تهران', 'priceRange' => '$$', 'noindex' => false,
         ],

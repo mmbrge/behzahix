@@ -30,7 +30,7 @@
             <ul class="svc-fields">${s.fields.slice(0, 4).map((f) => `<li>${icon("check")}${esc(f.label)}</li>`).join("")}</ul>
             <div class="row-between mt-2">
               <span class="small muted">شروع قیمت<br><b class="brand">${toman(s.base)}</b></span>
-              <span class="row" style="gap:6px"><a href="service.html?id=${encodeURIComponent(s.id)}" class="btn btn-ghost btn-sm">جزئیات</a><a href="order.html?service=${s.id}" class="btn btn-primary btn-sm">ثبت سفارش ${icon("arrow")}</a></span>
+              <span class="svc-actions"><a href="service.html?id=${encodeURIComponent(s.id)}" class="btn btn-ghost btn-sm">جزئیات</a><a href="order.html?service=${s.id}" class="btn btn-primary btn-sm">ثبت سفارش ${icon("arrow")}</a></span>
             </div>
           </article>`).join("")}
       </div>

@@ -32,6 +32,13 @@ function seo_site(): string
 {
     return (string) (setting('general', 'siteNameFa') ?: 'بهیکس');
 }
+// Other names of the brand for Google (Latin name, domain and Settings → SEO → other names)
+function seo_alt_names(): array
+{
+    $list = array_merge([(string) setting('general', 'siteName'), (string) parse_url(seo_url(), PHP_URL_HOST)], (array) (setting('seo', 'altNames') ?: []));
+    $list = array_map(function ($n) { return trim((string) $n); }, $list);
+    return array_values(array_diff(array_unique(array_filter($list)), [seo_site()]));
+}
 // «page | title | description» lines from the SEO settings
 function seo_page_meta(string $page): array
 {
@@ -53,7 +60,7 @@ function seo_org_ld(): array
     $so = array_values(array_filter((array) setting('socials')));
     $seo = setting('seo');
     $o = ['@context' => 'https://schema.org', '@type' => $seo['orgType'] ?: 'Organization', '@id' => seo_url('#org'), 'name' => seo_site(),
-        'alternateName' => (string) setting('general', 'siteName'), 'url' => seo_url(), 'logo' => seo_url('assets/img/icon-512.png'), 'image' => seo_url('assets/img/icon-512.png'),
+        'alternateName' => seo_alt_names(), 'url' => seo_url(), 'logo' => seo_url('assets/img/icon-512.png'), 'image' => seo_url('assets/img/icon-512.png'),
         'description' => (string) $seo['description']];
     if (!empty($c['phone'])) $o['telephone'] = $c['phone'];
     if (!empty($c['email'])) $o['email'] = $c['email'];
