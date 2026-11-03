@@ -149,10 +149,13 @@
     N = W < 640 ? 1400 : W < 1100 ? 2600 : 3400;
     shapes = [sphere(), ...items.map((it) => sampleText(it.word, /^[A-Za-z]+X$/.test(it.word)))];
     if (P.length !== N) {
-      P = Array.from({ length: N }, () => ({
-        x: W / 2 + (Math.random() - 0.5) * W * 1.4, y: H / 2 + (Math.random() - 0.5) * H * 1.4,
-        d: Math.random(), a: Math.random() * Math.PI * 2, s: 0.8 + Math.random() * 0.4,
-      }));
+      // first paint: particles already gathered around the orb (not scattered across the screen),
+      // so the hero looks complete almost at once
+      const R0 = Math.min(W, H) * 0.3;
+      P = Array.from({ length: N }, () => {
+        const ang = Math.random() * Math.PI * 2, rad = R0 * Math.sqrt(Math.random());
+        return { x: W / 2 + Math.cos(ang) * rad, y: H / 2 + Math.sin(ang) * rad, d: Math.random(), a: Math.random() * Math.PI * 2, s: 0.8 + Math.random() * 0.4 };
+      });
     }
     glyphs = Array.from({ length: W < 640 ? 10 : 22 }, () => ({
       g: GLYPHS[(Math.random() * GLYPHS.length) | 0], x: Math.random() * W, y: Math.random() * H,
@@ -181,12 +184,15 @@
 
   // Terminal-style typed caption
   let typeTimer;
+  let firstCaption = true;
   function showCaption(i) {
     const cap = section.querySelector(".morph-caption .txt");
     const text = i === 0 ? intro : items[i - 1]?.caption || "";
     clearInterval(typeTimer);
     let k = 0;
-    cap.textContent = "";
+    // the welcome line is shown whole on arrival (it is the page's main text); later lines are typed
+    if (firstCaption) { firstCaption = false; k = text.length; }
+    cap.textContent = text.slice(0, k);
     typeTimer = setInterval(() => {
       k += 1;
       cap.textContent = text.slice(0, k);
@@ -291,7 +297,7 @@
 
   // ------------------------------------------------------------ boot
   function readSettings() {
-    const home = window.BX?.settings?.home || {};
+    const home = window.BX?.settings?.home || window.BX_PRE?.home || {};
     if (Array.isArray(home.morphItems) && home.morphItems.some((x) => x && x.word)) {
       items = home.morphItems.filter((x) => x && x.word).map((x) => ({ word: String(x.word), caption: String(x.caption || "") }));
     } else if (Array.isArray(home.morphWords) && home.morphWords.length) {
@@ -318,11 +324,26 @@
     tStart = performance.now() - tDur; // start settled on the orb (particles fly in)
     running = true;
     requestAnimationFrame(frame);
-    schedule();
+    // the welcome state (orb + typed intro) stays until the visitor moves, scrolls, touches or types
+    // (or 8 s pass); then the words start. A page that keeps reshaping from the first second never
+    // looks «finished» to speed tests, which inflates Speed Index.
+    const wake = ["pointermove", "scroll", "wheel", "touchstart", "keydown"];
+    let woke = false, wakeT = 0;
+    const begin = (soon) => {
+      if (woke) return;
+      woke = true;
+      clearTimeout(wakeT);
+      wake.forEach((ev) => removeEventListener(ev, onWake));
+      if (soon) { clearTimeout(timer); timer = setTimeout(() => { if (visible && !document.hidden) next(); schedule(); }, 700); }
+      else schedule();
+    };
+    const onWake = () => begin(true);
+    wake.forEach((ev) => addEventListener(ev, onWake, { passive: true }));
+    wakeT = setTimeout(() => begin(true), 8000);
     section.querySelector(".morph-dots").addEventListener("click", (e) => {
       const btns = [...section.querySelectorAll(".morph-dots button")];
       const i = btns.indexOf(e.target.closest("button"));
-      if (i >= 0 && i !== to) { goTo(i); schedule(); }
+      if (i >= 0 && i !== to) { begin(false); goTo(i); schedule(); }
     });
     let rt;
     window.addEventListener("resize", () => {
@@ -368,5 +389,9 @@
   }
 
   const fontReady = document.fonts ? document.fonts.load('900 80px "Vazirmatn"').catch(() => {}) : Promise.resolve();
-  Promise.all([window.BX?.ready?.catch(() => {}) || Promise.resolve(), fontReady]).then(start);
+  // the page carries the hero settings (BX_PRE): start as soon as the font is in, without waiting for the boot request
+  const pre = window.BX_PRE;
+  if (pre?.theme?.brand) document.documentElement.style.setProperty("--brand", pre.theme.brand);
+  // one frame first, so the text is painted before the (heavy) first particle build runs
+  Promise.all([pre ? Promise.resolve() : window.BX?.ready?.catch(() => {}) || Promise.resolve(), fontReady]).then(() => requestAnimationFrame(() => setTimeout(start, 0)));
 })();

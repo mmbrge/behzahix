@@ -45,6 +45,8 @@ try {
     $titles = ['services' => 'خدمات', 'shop' => 'فروشگاه', 'portfolio' => 'نمونه‌کارها', 'designers' => 'طراحان', 'about' => 'درباره ما', 'tools' => 'ابزارهای رایگان', 'blog' => 'وبلاگ', 'order' => 'ثبت سفارش', 'terms' => 'قوانین', 'studio' => 'استودیو آنلاین'];
 
     if ($page === 'index') {
+        // hero animation settings (public) and brand colours, read by morph.js before the boot request returns
+        $m['head'] .= '<script>window.BX_PRE=' . json_encode(['home' => setting('home'), 'theme' => array_intersect_key((array) setting('theme'), ['brand' => 1, 'brand2' => 1])], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>';
         $m['title'] = $seo['title'];
         $m['desc'] = $seo['description'];
         $m['ld'][] = ['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => $site, 'alternateName' => seo_alt_names(), 'url' => seo_url(), 'inLanguage' => 'fa-IR', 'publisher' => ['@id' => seo_url('#org')]];
@@ -117,6 +119,12 @@ try {
         }
     } elseif ($page === 'services') {
         $inject['<div id="service-sections"></div>'] = '<div id="service-sections">' . seo_services_list() . '</div>';
+    } elseif ($page === 'terms') {
+        // the texts in the page itself: readable by Google and nothing jumps when they load
+        foreach (['terms' => ['قوانین و مقررات', 240], 'privacy' => ['حریم خصوصی', 140]] as $k => [$t, $hgt]) {
+            $body = seo_clean_html((string) setting('legal', $k, '')) ?: '<p>متنی ثبت نشده است.</p>';
+            $inject['data-legal="' . $k . '"><div class="skeleton" style="height:' . $hgt . 'px"></div>'] = 'data-legal="' . $k . '" data-ssr="1"><h2 class="legal-title">' . $t . '</h2>' . $body;
+        }
     } elseif ($page === 'shop') {
         $inject['<div data-view="shop"></div>'] = '<div data-view="shop">' . seo_shop_list() . '</div>';
     } elseif ($page === '404') {

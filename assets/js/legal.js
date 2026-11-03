@@ -2,6 +2,7 @@
 window.BX.ready.then(async function () {
   "use strict";
   for (const el of document.querySelectorAll("[data-legal]")) {
+    if (el.dataset.ssr) continue; // already in the page (seo.php)
     try {
       const r = await window.BX.api("page", { slug: el.dataset.legal });
       // Admin-authored HTML; scripts are not executed by innerHTML
