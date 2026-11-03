@@ -54,7 +54,7 @@ Options -Indexes
   </IfModule>
 </FilesMatch>
 <IfModule mod_rewrite.c>
-  RewriteRule ^(vendor|api/vendor|api/lib|api/fonts)(/|$) - [F,L]
+  RewriteRule ^(vendor|api/vendor|api/lib|api/fonts|dev)(/|$) - [F,L]
 </IfModule>
 
 AddType application/manifest+json .webmanifest
