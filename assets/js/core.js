@@ -828,7 +828,9 @@
     const lines = CODE.slice(offset).concat(CODE.slice(0, offset));
     const html = lines.map((parts, i) => {
       let h = `<span class="ln">${i + 1}</span>`;
-      for (let k = 0; k < parts.length; k += 2) h += parts[k] ? `<span class="${parts[k]}">${esc2(parts[k + 1])}</span>` : esc2(parts[k + 1]);
+      // every token in its own span (the line is a flex row): no decorative line is ever big enough
+      // to count as the page's «largest contentful paint»
+      for (let k = 0; k < parts.length; k += 2) h += `<span${parts[k] ? ` class="${parts[k]}"` : ""}>${esc2(parts[k + 1])}</span>`;
       return `<div>${h}</div>`;
     }).join("");
     return html + html; // doubled for a seamless loop

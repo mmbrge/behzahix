@@ -470,6 +470,10 @@ a.logo:hover .logo-a { animation-duration: 1.6s; }
 /* ---------- Scroll reveal (only when JS is running) ---------- */
 .js [data-reveal] { opacity: 0; translate: 0 28px; transition: opacity .8s var(--ease-out), translate .8s var(--ease-out); transition-delay: var(--d, 0ms); }
 .js [data-reveal].is-visible { opacity: 1; translate: 0 0; }
+/* the top block of a page fades in by itself (CSS only, from 1% so it is painted at once):
+   it doesn't wait for the scripts, which kept the main text out of the first paint (LCP) */
+.js .page-hero[data-reveal] { opacity: 1; translate: none; transition: none; animation: hero-in .8s var(--ease-out) both; }
+@keyframes hero-in { from { opacity: .01; translate: 0 22px; } }
 /* Services keep their hover transitions; only the reveal is delayed. */
 .js .service[data-reveal] {
   transition: transform .45s var(--ease-out), border-color .3s, box-shadow .45s, opacity .8s var(--ease-out), translate .8s var(--ease-out);
@@ -519,6 +523,8 @@ a.logo:hover .logo-a { animation-duration: 1.6s; }
   background-image: radial-gradient(rgb(255 255 255 / .07) 1px, transparent 1.4px); background-size: 26px 26px;
   -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 25%, transparent 85%); mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 25%, transparent 85%); }
 .code-col { position: absolute; top: 0; will-change: transform; width: min(440px, 40vw); font: 500 12.5px/1.95 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; white-space: pre; color: #94a3b8; opacity: .17; animation: code-up var(--dur, 90s) linear infinite; }
+/* each line is a flex row of tokens (see core.js); code reads left to right */
+.code-col > div { display: flex; direction: ltr; }
 .code-col:nth-child(1) { left: 2.5vw; }
 .code-col:nth-child(2) { right: 2.5vw; text-align: left; animation-delay: -40s; }
 .code-col .ln { display: inline-block; width: 2.4em; color: #475569; text-align: right; margin-right: 1.2em; user-select: none; }
