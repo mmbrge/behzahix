@@ -875,7 +875,8 @@ a.service-detail:hover { transform: translateY(-3px); border-color: rgb(255 122 
 .post-body .bx-cta b { color: #fff; }
 .post-body .bx-cta a { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; background: linear-gradient(140deg, var(--brand-2), var(--brand)); color: #fff; text-decoration: none; font-weight: 800; }
 .post-body table thead th { background: var(--inset); font-weight: 800; }
-.post-body .bx-table { overflow-x: auto; }
+.post-body .bx-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 640px) { .post-body .bx-table table { min-width: 560px; font-size: .8rem; line-height: 1.8; } .post-body .bx-table { margin-inline: -4px; } }
 .post-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
 .post-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; font-size: .8rem; color: var(--muted); }
 .post-meta span { display: inline-flex; align-items: center; gap: 5px; }

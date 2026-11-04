@@ -836,6 +836,17 @@
     }).join("");
     return html + html; // doubled for a seamless loop
   }
+  // Visit statistics, kept on the site itself (api/lib/stats.php): one hit per page, sent after the
+  // page has finished loading; not for the panel, automated browsers or the site's own team
+  function trackView() {
+    const page = document.body.dataset.page;
+    if (!page || page === "dashboard" || navigator.webdriver || ["admin", "accountant", "partner"].includes(BX.me?.role)) return;
+    const send = () => BX.api("hit", { path: location.pathname + location.search, title: document.title, ref: document.referrer,
+      utm: new URLSearchParams(location.search).get("utm_source") || "" }).catch(() => {});
+    if (document.readyState === "complete") setTimeout(send, 300);
+    else addEventListener("load", () => setTimeout(send, 300), { once: true });
+  }
+
   function initCodeBg() {
     if (document.body.dataset.page === "dashboard" || document.querySelector(".code-bg")) return;
     const bg = document.createElement("div");
@@ -1115,6 +1126,7 @@
       renderFooter();
       renderStats();
       initReveal();
+      trackView();
       document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = faDigits(new Date().getFullYear())));
     })
     .catch((err) => {

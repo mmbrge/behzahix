@@ -700,6 +700,7 @@
     // ============================================================ admin (core views)
     const ADMIN = [
       { id: "overview", label: "داشبورد کل", icon: "home", render: adminOverview },
+      { id: "stats", label: "آمار بازدید", icon: "chart", render: (p) => BXD.routes.stats(p) },
       { id: "orders", label: "سفارش‌ها", icon: "list", render: adminOrders, count: () => S.orders.filter((o) => o.status === "new").length },
       { id: "delivery", label: "تقویم تحویل", icon: "calendar", render: (p) => BXD.routes.delivery(p), count: () => S.deliveryToday || 0 },
       { id: "support", label: "پشتیبانی آنلاین", icon: "chat", render: (p) => BXD.routes.support(p), count: () => S.supportWaiting || 0 },

@@ -4,7 +4,7 @@
 if (!defined('BX')) { http_response_code(403); exit; }
 
 // Bump when tables are added; existing installs pick them up on the next request.
-const BX_SCHEMA_VERSION = 19;
+const BX_SCHEMA_VERSION = 20;
 
 // Columns added after the first release: [table, column, definition]
 function bx_columns(): array
@@ -293,6 +293,24 @@ function bx_schema(): array
             status VARCHAR(16) NOT NULL DEFAULT 'pending',
             created_at DATETIME NOT NULL,
             INDEX (authority)
+        ) $t",
+        // v20 — page views (stats.php): one row per page shown to a real visitor
+        "CREATE TABLE IF NOT EXISTS page_views (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            day DATE NOT NULL,
+            created_at DATETIME NOT NULL,
+            path VARCHAR(190) NOT NULL,
+            page VARCHAR(32) NOT NULL DEFAULT '',
+            post_id INT UNSIGNED NULL,
+            title VARCHAR(190) NOT NULL DEFAULT '',
+            visitor CHAR(16) NOT NULL,
+            new_visit TINYINT(1) NOT NULL DEFAULT 0,
+            source VARCHAR(32) NOT NULL DEFAULT '',
+            device VARCHAR(10) NOT NULL DEFAULT '',
+            browser VARCHAR(16) NOT NULL DEFAULT '',
+            os VARCHAR(16) NOT NULL DEFAULT '',
+            user_id INT UNSIGNED NULL,
+            INDEX (day), INDEX path_day (path, day), INDEX visitor_time (visitor, created_at), INDEX post_day (post_id, day)
         ) $t",
         // v18 — VAT ledger: one row per sale / refund / gateway fee (see tax.php)
         "CREATE TABLE IF NOT EXISTS tax_ledger (

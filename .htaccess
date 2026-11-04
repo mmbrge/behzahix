@@ -19,6 +19,8 @@ Options -Indexes
   RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+  # Short address for ads: /studio → studio.html (query kept, e.g. ?utm_source=telegram)
+  RewriteRule ^studio/?$ studio.html [R=301,L,QSA]
   # Short links: /s/CODE → link shortener redirect
   RewriteRule ^s/([A-Za-z0-9_-]+)/?$ api/index.php?r=go&c=$1 [L,QSA]
   # Studio hosted pages: /c/NAME → digital business card or QR menu

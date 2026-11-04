@@ -11,7 +11,8 @@ const ROLES = ['customer', 'designer', 'seller', 'admin', 'accountant', 'partner
 const STAFF_ROLES = ['admin', 'accountant', 'partner'];
 const STAFF_SECTIONS = ['overview' => 'داشبورد و آمار فروش', 'orders' => 'سفارش‌ها', 'delivery' => 'تقویم تحویل حضوری', 'support' => 'پشتیبانی آنلاین (چت)',
     'users' => 'کاربران (مشتری، طراح، فروشنده)', 'catalog' => 'خدمات، محصولات و نظرات', 'finance' => 'مالی، تراکنش‌ها و تسویه', 'tickets' => 'تیکت‌ها',
-    'coupons' => 'کدهای تخفیف', 'studio' => 'استودیو (فروش و قالب‌ها)', 'pro' => 'اشتراک X PRO', 'blog' => 'وبلاگ', 'tools' => 'ابزارها و لینک‌های کوتاه'];
+    'coupons' => 'کدهای تخفیف', 'studio' => 'استودیو (فروش و قالب‌ها)', 'pro' => 'اشتراک X PRO', 'blog' => 'وبلاگ', 'tools' => 'ابزارها و لینک‌های کوتاه',
+    'stats' => 'آمار بازدید سایت'];
 const USER_STATUSES = ['active', 'pending', 'blocked', 'rejected'];
 const ORDER_STATUSES = ['new', 'review', 'in_progress', 'awaiting', 'revision', 'done', 'cancelled'];
 const ORDER_LABELS = [
