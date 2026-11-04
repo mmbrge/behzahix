@@ -552,7 +552,8 @@
     const c = st.contact || {};
     const g = st.general || {};
     const legal = st.legal || {};
-    const badges = [legal.enamadCode, legal.samandehiCode, legal.extraBadgesCode].filter(Boolean);
+    // trust badges (eNamad, Samandehi…) are pictures from their own sites: loaded only when the footer comes near
+    const badges = [legal.enamadCode, legal.samandehiCode, legal.extraBadgesCode].filter(Boolean).map((b) => String(b).replace(/<img(?![^>]*\sloading=)/gi, '<img loading="lazy"'));
     el.className = "site-footer";
     // Link groups fold into accordions on phones
     const open = window.matchMedia("(min-width: 768px)").matches ? "open" : "";

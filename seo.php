@@ -152,7 +152,12 @@ try {
         . (!empty($seo['bingVerify']) ? '<meta name="msvalidate.01" content="' . seo_h($seo['bingVerify']) . '">' : '')
         . $m['head'] . implode('', array_map('seo_ld', $m['ld']));
     if (!empty($seo['gaId']) && preg_match('/^G-[A-Z0-9]+$/', $seo['gaId'])) {
-        $head .= '<script async src="https://www.googletagmanager.com/gtag/js?id=' . $seo['gaId'] . '"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date());gtag("config","' . $seo['gaId'] . '");</script>';
+        // Google's script is fetched only after the page has loaded (or on the first tap/scroll/key),
+        // so it never slows the page down; the queued pageview is sent when it arrives
+        $head .= '<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date());gtag("config","' . $seo['gaId'] . '");'
+            . '(function(){var d=0;function go(){if(d)return;d=1;var s=document.createElement("script");s.async=1;s.src="https://www.googletagmanager.com/gtag/js?id=' . $seo['gaId'] . '";document.head.appendChild(s)}'
+            . 'addEventListener("load",function(){window.requestIdleCallback?requestIdleCallback(go,{timeout:3000}):setTimeout(go,1500)});'
+            . '["pointerdown","keydown","scroll","touchstart"].forEach(function(e){addEventListener(e,go,{once:true,passive:true})})})();</script>';
     }
     if (!empty($seo['headCode'])) $head .= "\n" . $seo['headCode'];
     $html = str_replace('</head>', $head . "\n</head>", $html);
