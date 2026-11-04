@@ -499,6 +499,10 @@
 .tab.is-active { background: var(--surface); color: var(--fg); box-shadow: 0 4px 14px -4px rgb(0 0 0 / .3); }
 .role-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .role-cards .opt-card { padding: 12px 6px; }
+.auth-sending { display: inline-flex; align-items: center; gap: 6px; }
+.auth-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; margin-bottom: 14px; border-radius: 14px; background: rgb(255 122 26 / .1); border: 1px solid rgb(255 122 26 / .3); font-size: .88rem; line-height: 1.8; }
+.auth-note .icon { color: var(--brand); flex-shrink: 0; margin-top: 4px; }
+.auth-pop .h2-xs { font-size: 1.1rem; }
 .auth-phone { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--hover); font-size: .9rem; }
 .auth-phone > span { display: inline-flex; align-items: center; gap: 8px; }
 .auth-phone .icon { color: var(--brand); }

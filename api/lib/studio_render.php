@@ -114,7 +114,8 @@ function a_studio_export(): void
         } else {
             // the monthly free files come first, then the PRO allowance
             $q = studio_quota($u, $kind);
-            if ($q['freeLeft'] > 0) { usage_add('studio-free:' . $kind, (int) $u['id']); $via = 'free'; }
+            if ($q['festLeft'] > 0) { usage_add($q['festKey'], (int) $u['id']); $via = 'free'; }
+            elseif ($q['freeLeft'] > 0) { usage_add('studio-free:' . $kind, (int) $u['id']); $via = 'free'; }
             elseif (!$q['pro']) fail('برای دریافت فایل نهایی ابتدا طرح را خریداری کنید.', 402, 'unpaid');
             elseif ($q['proLeft'] <= 0) fail('سهمیه فایل این ماه اشتراک شما تمام شده است؛ می‌توانید همین طرح را جداگانه بخرید.', 402, 'quota');
             else usage_add($q['proKey'], (int) $u['id']);

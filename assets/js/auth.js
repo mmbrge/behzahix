@@ -6,11 +6,14 @@
    one-time SMS code when SMS (or api.ir OTP) is configured.
    ========================================================================== */
 
-window.BX.ready.then(function () {
+(function () {
   "use strict";
+  // Mounts the whole sign-in flow into `box`: the auth page itself, or a popup on any page
+  // (opts.onDone replaces the redirect to ?next=…, opts.popup hides the demo shortcuts' redirect).
+  function mountAuth(box, opts) {
+  opts = opts || {};
   const BX = window.BX;
   const { CATALOG, PRODUCT_CATEGORIES, api, icon, esc, enDigits, faDigits, toast, qs, avatar } = BX;
-  const box = document.getElementById("auth-main");
   const smsOn = Boolean(BX.settings.sms?.enabled);
   const demo = BX.demoAccounts || [];
   const nextRaw = qs("next") || "dashboard.html";
@@ -32,7 +35,7 @@ window.BX.ready.then(function () {
     adding: false, // creating another account type for a number that already has one
   };
 
-  const go = () => (location.href = next);
+  const go = () => (opts.onDone ? opts.onDone() : (location.href = next));
   const phoneOk = (p) => /^09\d{9}$/.test(p);
   // «۰۹۱۲ ۳۴۵ ۶۷۸۹»، «+98912…» or «912…» → 09123456789
   const normPhone = (v) => {
@@ -146,11 +149,13 @@ window.BX.ready.then(function () {
     setTimeout(() => box.querySelector("#r-name")?.focus(), 30);
   }
 
-  function otpView(phone, demoCode, onCode, again) {
+  // Shown the moment the code is requested; `sending` is the request to the SMS service, which
+  // can take a few seconds — the screen says so instead of looking stuck.
+  function otpView(phone, sending, onCode, again) {
     box.innerHTML = `
       <form class="form-grid" data-form="otp" novalidate style="text-align:center">
         <span class="success-icon" style="margin-inline:auto;background:rgb(255 122 26 / .12);color:var(--brand)">${icon("phone")}</span>
-        <div><h2 class="h2-xs">کد تأیید را وارد کنید</h2><p class="muted small mt-1">کد ۵ رقمی به <b dir="ltr">${faDigits(phone)}</b> ارسال شد.${demoCode ? `<br>(حالت نمایشی — کد: <b dir="ltr">${faDigits(demoCode)}</b>)` : ""}</p></div>
+        <div><h2 class="h2-xs">کد تأیید را وارد کنید</h2><p class="muted small mt-1" data-otp-msg><span class="auth-sending">${icon("loader")} در حال ارسال کد ۵ رقمی به <b dir="ltr">${faDigits(phone)}</b>…</span></p></div>
         <div class="otp">${[0, 1, 2, 3, 4].map((i) => `<input class="input" maxlength="1" inputmode="numeric" autocomplete="one-time-code" data-otp="${i}" aria-label="رقم ${faDigits(i + 1)}">`).join("")}</div>
         <button class="btn btn-primary btn-block" type="submit">تأیید</button>
         <div class="row-between small"><button type="button" class="brand" data-resend disabled>ارسال دوباره (<span data-left>۶۰</span>)</button><button type="button" class="brand" data-back>${icon("arrow-right")} بازگشت</button></div>
@@ -192,6 +197,7 @@ window.BX.ready.then(function () {
     });
     // resend after a minute (the server refuses sooner)
     const resend = box.querySelector("[data-resend]");
+    const msg = box.querySelector("[data-otp-msg]");
     let left = 60;
     const t = setInterval(() => {
       if (!resend.isConnected) return clearInterval(t);
@@ -201,6 +207,17 @@ window.BX.ready.then(function () {
     }, 1000);
     resend.addEventListener("click", () => again && again());
     box.querySelector("[data-back]").addEventListener("click", () => render());
+    Promise.resolve(sending).then((r) => {
+      if (!msg.isConnected) return;
+      msg.innerHTML = `${icon("check")} کد ۵ رقمی به <b dir="ltr">${faDigits(phone)}</b> ارسال شد.${r?.demoCode ? `<br>(حالت نمایشی — کد: <b dir="ltr">${faDigits(r.demoCode)}</b>)` : ""}`;
+    }, (err) => {
+      if (!msg.isConnected) return;
+      // «the last code is still valid» (sent less than a minute ago): that code can still be typed
+      const still = err.status === 429 && /کد قبلی/.test(err.message || "");
+      msg.innerHTML = still ? `کد قبلی که به <b dir="ltr">${faDigits(phone)}</b> پیامک شد هنوز معتبر است؛ همان را وارد کنید.`
+        : `<span class="bad">${esc(err.message || "ارسال کد ناموفق بود.")}</span>`;
+      if (!still) { clearInterval(t); resend.disabled = false; resend.textContent = "ارسال دوباره کد"; toast(err.message, "bad"); }
+    });
   }
 
   // Signed in already: offer the other account types of the same number
@@ -231,9 +248,13 @@ window.BX.ready.then(function () {
     els[0] && els[0].focus && els[0].focus();
     toast(msg, "bad");
   };
-  const busy = (form, on) => {
+  // The submit button answers at once: disabled, spinning, with what is happening
+  const busy = (form, on, label) => {
     const b = form.querySelector("button[type=submit]");
-    if (b) b.disabled = on;
+    if (!b) return;
+    b.disabled = on;
+    if (on) { if (!b.dataset.html) b.dataset.html = b.innerHTML; b.classList.add("is-loading"); b.innerHTML = `${icon("loader")} ${label || "لطفاً صبر کنید…"}`; }
+    else if (b.dataset.html) { b.classList.remove("is-loading"); b.innerHTML = b.dataset.html; delete b.dataset.html; }
   };
   const welcome = (r) => { toast(r?.me?.name ? `خوش آمدید ${r.me.name}` : "وارد شدید.", "ok"); setTimeout(go, 300); };
   // The server asks which account when one password/code opens several
@@ -257,14 +278,13 @@ window.BX.ready.then(function () {
     if (qs("mode") === "register" && st.exists && freeRoles().some((x) => x.v === st.regRole)) st.adding = true;
   }
 
-  async function sendLoginCode() {
-    const r = await api("auth.otp.send", { phone: st.phone, purpose: "login" });
-    otpView(st.phone, r.demoCode, async (code) => {
+  function sendLoginCode() {
+    otpView(st.phone, api("auth.otp.send", { phone: st.phone, purpose: "login" }), async (code) => {
       const res = await api("auth.otp.login", { phone: st.phone, code, role: st.role });
       if (handleChoose(res)) return;
       if (res.need2fa) return twoStep(res.message);
       welcome(res);
-    }, () => sendLoginCode().catch((err) => toast(err.message, "bad")));
+    }, sendLoginCode);
   }
 
   box.addEventListener("click", async (e) => {
@@ -324,9 +344,11 @@ window.BX.ready.then(function () {
       e.preventDefault();
       const phone = normPhone(f.elements.phone.value);
       if (!phoneOk(phone)) return invalid([f.elements.phone], "شماره موبایل معتبر وارد کنید (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
-      busy(f, true);
+      busy(f, true, "در حال بررسی شماره…");
       try {
         await lookup(phone);
+        // SMS code is the default sign-in: go straight to the code screen (the code is sent meanwhile)
+        if (st.exists && st.otp && st.method === "otp" && st.accounts.length <= 1 && !st.adding) return sendLoginCode();
         render();
       } catch (err) {
         busy(f, false);
@@ -335,13 +357,12 @@ window.BX.ready.then(function () {
     }
     if (f.dataset.form === "otp-ask") {
       e.preventDefault();
-      busy(f, true);
-      try { await sendLoginCode(); } catch (err) { busy(f, false); toast(err.message, "bad"); }
+      sendLoginCode();
     }
     if (f.dataset.form === "login") {
       e.preventDefault();
       if (!f.elements.password.value) return invalid([f.elements.password], "رمز عبور را وارد کنید.");
-      busy(f, true);
+      busy(f, true, "در حال ورود…");
       try {
         const r = await api("auth.login", { phone: st.phone, password: f.elements.password.value, role: st.role });
         busy(f, false);
@@ -376,11 +397,14 @@ window.BX.ready.then(function () {
         toast("حساب شما ساخته شد.", "ok");
         setTimeout(go, 400);
       };
+      // the code screen opens only once the server accepted the form (e.g. not a duplicate account)
       const sendCode = async () => {
-        const r = await api("auth.otp.send", { phone: st.phone, purpose: "register", role });
-        otpView(st.phone, r.demoCode, finish, () => sendCode().catch((err) => toast(err.message, "bad")));
+        const sending = api("auth.otp.send", { phone: st.phone, purpose: "register", role });
+        if (box.querySelector("[data-form=otp]")) return otpView(st.phone, sending, finish, sendCode);
+        const r = await sending;
+        otpView(st.phone, r, finish, sendCode);
       };
-      busy(f, true);
+      busy(f, true, smsOn ? "در حال ارسال کد تأیید…" : "در حال ساخت حساب…");
       try {
         if (smsOn) await sendCode();
         else await finish();
@@ -393,4 +417,21 @@ window.BX.ready.then(function () {
   });
 
   render();
-});
+  }
+
+  window.BX.mountAuth = mountAuth;
+  // Sign-in popup for any page: the same steps as auth.html, then onDone (default: reload the page)
+  window.BX.loginModal = function (o) {
+    o = o || {};
+    return window.BX.modal({
+      title: o.title || "ورود یا ثبت‌نام",
+      body: `${o.note ? `<div class="auth-note">${o.note}</div>` : ""}<div class="auth-pop" data-auth-pop></div>`,
+      onOpen: (w, close) => mountAuth(w.querySelector("[data-auth-pop]"), { popup: true, onDone: () => { close(); (o.onDone || (() => location.reload()))(); } }),
+      onClose: o.onClose,
+    });
+  };
+  window.BX.ready.then(function () {
+    const box = document.getElementById("auth-main");
+    if (box) mountAuth(box);
+  });
+})();

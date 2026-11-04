@@ -191,6 +191,8 @@ a.logo:hover .logo-a { animation-duration: 1.6s; }
 .btn-sm { padding: 8px 20px; font-size: 0.875rem; }
 .btn-block { width: 100%; }
 .btn.is-disabled { opacity: .5; pointer-events: none; }
+.btn.is-loading { cursor: progress; opacity: .85; }
+.btn.is-loading .icon, .auth-sending .icon { animation: spin .8s linear infinite; }
 
 .icon-btn {
   position: relative; display: grid; place-items: center; overflow: hidden;

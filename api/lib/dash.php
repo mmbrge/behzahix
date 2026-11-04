@@ -1171,6 +1171,21 @@ function a_settings_save(): void
         foreach (['brand', 'brand2'] as $k) if (!preg_match('/^#[0-9a-fA-F]{6}$/', $current[$k])) $current[$k] = $defaults['theme'][$k];
         if (!in_array($current['defaultTheme'], ['dark', 'light'], true)) $current['defaultTheme'] = 'dark';
     }
+    if ($group === 'fest') {
+        if (!in_array($current['mode'], ['discount', 'free', 'quota'], true)) $current['mode'] = 'discount';
+        $current['percent'] = max(0, min(100, (int) $current['percent']));
+        $current['count'] = max(0, min(99, (int) $current['count']));
+        $current['days'] = max(0, min(366, (int) $current['days']));
+        $current['title'] = mb_substr(trim((string) $current['title']), 0, 60);
+        $current['tools'] = array_values(array_intersect(FEST_TOOLS, (array) $current['tools']));
+        // a festival (re)starts when switched on or its length changes: the end is counted from now
+        $old = setting('fest');
+        $running = !empty($old['on']) && !empty($old['start']) && (empty($old['until']) || strtotime($old['until'] . ' UTC') > time());
+        if (!empty($current['on']) && (!$running || (int) $old['days'] !== $current['days'] || ($old['mode'] ?? '') !== $current['mode'])) {
+            $current['start'] = now();
+            $current['until'] = $current['days'] ? gmdate('Y-m-d H:i:s', time() + $current['days'] * 86400) : '';
+        }
+    }
     if ($group === 'pro') {
         $current['plans'] = array_values(array_filter(array_map(function ($x) {
             if (!is_array($x) || trim((string) ($x['title'] ?? '')) === '') return null;

@@ -26,7 +26,44 @@ function studio_require_on(string $id): void
 }
 const PAGE_RESERVED = ['admin', 'api', 'www', 'behix', 'login', 'dashboard', 'shop', 'blog', 'test', 'support'];
 
-function studio_price(string $kind, ?array $item = null): int
+// The running festival, or null (switched off, not started or over)
+const FEST_TOOLS = ['resume', 'card', 'post', 'doc', 'slides', 'page-card', 'page-menu'];
+function studio_fest(): ?array
+{
+    $f = setting('fest');
+    if (empty($f['on']) || !in_array($f['mode'] ?? '', ['discount', 'free', 'quota'], true)) return null;
+    if (!empty($f['until']) && strtotime($f['until'] . ' UTC') <= time()) return null;
+    if ($f['mode'] === 'discount' && (int) $f['percent'] <= 0) return null;
+    if ($f['mode'] === 'quota' && (int) $f['count'] <= 0) return null;
+    return $f;
+}
+// The festival when it covers this tool (resume, card, post, doc, slides, page-card, page-menu)
+function studio_fest_for(string $tool): ?array
+{
+    $f = studio_fest();
+    return $f && in_array($tool, (array) ($f['tools'] ?? []), true) ? $f : null;
+}
+// A price after the festival: discount or free (the «N free files» festival leaves prices alone)
+function studio_fest_price(string $tool, int $base): int
+{
+    $f = studio_fest_for($tool);
+    if (!$f || $base <= 0) return max(0, $base);
+    if ($f['mode'] === 'free') return 0;
+    if ($f['mode'] === 'discount') {
+        // round down to a tidy price (whole thousands for normal prices) — never above the exact discount
+        $v = $base * (100 - min(100, (int) $f['percent'])) / 100;
+        return max(0, (int) ($v >= 10000 ? floor($v / 1000) * 1000 : floor($v / 100) * 100));
+    }
+    return $base;
+}
+function studio_fest_out(): ?array
+{
+    $f = studio_fest();
+    if (!$f) return null;
+    return ['title' => (string) $f['title'], 'mode' => $f['mode'], 'percent' => (int) $f['percent'], 'count' => (int) $f['count'],
+        'tools' => array_values(array_intersect(FEST_TOOLS, (array) $f['tools'])), 'until' => !empty($f['until']) ? ms($f['until']) : null];
+}
+function studio_base_price(string $kind, ?array $item = null): int
 {
     $s = setting('studio');
     if ($kind === 'doc' && $item) {
@@ -35,6 +72,10 @@ function studio_price(string $kind, ?array $item = null): int
         if ($p !== null && $p !== false) return (int) $p;
     }
     return max(0, (int) ($s[$kind] ?? 0));
+}
+function studio_price(string $kind, ?array $item = null): int
+{
+    return studio_fest_price($kind, studio_base_price($kind, $item));
 }
 // Free final files of one tool left in the last 30 days. A person listed in
 // Settings → Studio («phone | count» or «phone | tool | count») gets their own
@@ -59,7 +100,18 @@ function studio_quota(array $u, string $kind): array
     }
     if ($own !== null) $free = max(0, $own);
     $uid = (int) $u['id'];
-    $q = ['free' => $free, 'freeLeft' => max(0, $free - usage_count('studio-free:' . $kind, $uid, 30)), 'pro' => false, 'proLimit' => 0, 'proLeft' => 0, 'proKey' => ''];
+    $q = ['free' => $free, 'freeLeft' => max(0, $free - usage_count('studio-free:' . $kind, $uid, 30)), 'pro' => false, 'proLimit' => 0, 'proLeft' => 0, 'proKey' => '',
+        'fest' => 0, 'festLeft' => 0, 'festKey' => ''];
+    // festival «N free files per person»: counted per festival (its start time is in the key)
+    $f = studio_fest_for($kind);
+    if ($f && $f['mode'] === 'quota') {
+        $q['festKey'] = 'fest:' . $kind . ':' . base_convert((string) (strtotime($f['start'] . ' UTC') ?: 0), 10, 36); // ≤ 32 chars (usage_log.k)
+        $q['fest'] = (int) $f['count'];
+        $q['festLeft'] = max(0, $q['fest'] - usage_count($q['festKey'], $uid, 400));
+        // the editor shows one «free files left» number: festival files come first
+        $q['free'] += $q['fest'];
+        $q['freeLeft'] += $q['festLeft'];
+    }
     if (pro_active($u)) {
         $lim = (int) ($s['pro_' . $kind] ?? 0);
         $q['pro'] = true;
@@ -71,7 +123,7 @@ function studio_quota(array $u, string $kind): array
 function studio_quotas(?array $u): array
 {
     $out = [];
-    if ($u) foreach (STUDIO_KINDS as $k => $t) { $q = studio_quota($u, $k); unset($q['proKey']); $out[$k] = $q; }
+    if ($u) foreach (STUDIO_KINDS as $k => $t) { $q = studio_quota($u, $k); unset($q['proKey'], $q['festKey']); $out[$k] = $q; }
     return $out;
 }
 
@@ -269,9 +321,13 @@ function r_studio_info(): void
     studio_seed_docs();
     $s = setting('studio');
     $docs = array_map(function ($d) use ($s) {
-        return ['id' => (int) $d['id'], 'title' => $d['title'], 'category' => $d['category'], 'desc' => $d['descr'], 'body' => $d['body'], 'price' => $d['price'] !== null ? (int) $d['price'] : (int) $s['doc']];
+        $base = $d['price'] !== null ? (int) $d['price'] : (int) $s['doc'];
+        return ['id' => (int) $d['id'], 'title' => $d['title'], 'category' => $d['category'], 'desc' => $d['descr'], 'body' => $d['body'], 'price' => studio_fest_price('doc', $base), 'basePrice' => $base];
     }, rows('SELECT * FROM doc_templates WHERE active = 1 ORDER BY sort, id'));
-    out(['enabled' => !empty($s['enabled']), 'prices' => array_intersect_key($s, array_flip(['resume', 'card', 'post', 'doc', 'slides', 'pageCardMonth', 'pageCardYear', 'pageMenuMonth', 'pageMenuYear'])),
+    $base = array_map('intval', array_intersect_key($s, array_flip(['resume', 'card', 'post', 'doc', 'slides', 'pageCardMonth', 'pageCardYear', 'pageMenuMonth', 'pageMenuYear'])));
+    $prices = [];
+    foreach ($base as $k => $v) $prices[$k] = studio_fest_price(strpos($k, 'pageCard') === 0 ? 'page-card' : (strpos($k, 'pageMenu') === 0 ? 'page-menu' : $k), $v);
+    out(['enabled' => !empty($s['enabled']), 'prices' => $prices, 'basePrices' => $base, 'fest' => studio_fest_out(),
         'trialDays' => (int) $s['trialDays'], 'docs' => $docs, 'formats' => STUDIO_FORMATS, 'off' => array_values((array) ($s['off'] ?? [])), 'quota' => studio_quotas(me())]);
 }
 
@@ -301,8 +357,8 @@ function a_studio_save(): void
         $id = insert('studio_items', ['user_id' => $u['id'], 'kind' => $kind, 'title' => $title, 'data' => $json, 'thumb' => $thumb, 'paid' => 0, 'price' => 0, 'created_at' => now(), 'updated_at' => now()]);
     }
     $it = row('SELECT * FROM studio_items WHERE id = ?', [$id]);
-    $q = studio_quota($u, $kind); unset($q['proKey']);
-    out(['item' => studio_item_out($it), 'price' => $it['paid'] ? 0 : studio_price($kind, $it), 'quota' => $q]);
+    $q = studio_quota($u, $kind); unset($q['proKey'], $q['festKey']);
+    out(['item' => studio_item_out($it), 'price' => $it['paid'] ? 0 : studio_price($kind, $it), 'basePrice' => studio_base_price($kind, $it), 'quota' => $q]);
 }
 function a_studio_list(): void
 {
@@ -316,7 +372,7 @@ function a_studio_get(): void
     $u = require_user();
     $it = row('SELECT * FROM studio_items WHERE id = ?', [int_in('id')]);
     if (!$it || ((int) $it['user_id'] !== (int) $u['id'] && !staff_can($u, 'studio'))) fail('طرح پیدا نشد.', 404);
-    out(['item' => studio_item_out($it, true), 'price' => $it['paid'] ? 0 : studio_price($it['kind'], $it)]);
+    out(['item' => studio_item_out($it, true), 'price' => $it['paid'] ? 0 : studio_price($it['kind'], $it), 'basePrice' => studio_base_price($it['kind'], $it)]);
 }
 // New unpaid draft from an existing design (how non-members change a bought design)
 function a_studio_copy(): void
@@ -347,7 +403,7 @@ function a_studio_buy(): void
     if ($it['paid']) out(['done' => true]);
     studio_require_on($it['kind']);
     $price = studio_price($it['kind'], $it);
-    if ($price <= 0) { studio_mark_paid((int) $it['id'], 0); out(['done' => true]); }
+    if ($price <= 0) { update('studio_items', ['paid' => 1, 'price' => 0, 'paid_at' => now(), 'via' => 'free'], 'id = ?', [$it['id']]); out(['done' => true]); }
     $wallet = (int) val('SELECT wallet FROM users WHERE id = ?', [$u['id']]);
     if ($wallet >= $price) {
         db()->beginTransaction();
@@ -388,7 +444,7 @@ function page_plan_price(string $kind, string $plan): int
 {
     $s = setting('studio');
     $key = 'page' . ucfirst($kind) . ($plan === 'year' ? 'Year' : 'Month');
-    return max(0, (int) ($s[$key] ?? 0));
+    return studio_fest_price('page-' . $kind, max(0, (int) ($s[$key] ?? 0)));
 }
 function page_extend(int $pageId, int $uid, string $plan, bool $alreadyCharged): void
 {
@@ -400,7 +456,10 @@ function page_extend(int $pageId, int $uid, string $plan, bool $alreadyCharged):
         tx($uid, 'purchase', -$price, 'اشتراک ' . (PAGE_KINDS[$p['kind']] ?? 'صفحه') . ' (' . ($plan === 'year' ? 'سالانه' : 'ماهانه') . ') — ' . $p['slug']);
     }
     $base = $p['expires_at'] && strtotime($p['expires_at'] . ' UTC') > time() ? strtotime($p['expires_at'] . ' UTC') : time();
-    update('pages', ['expires_at' => gmdate('Y-m-d H:i:s', $base + ($plan === 'year' ? 365 : 30) * 86400)], 'id = ?', [$pageId]);
+    $len = ($plan === 'year' ? 365 : 30) * 86400;
+    // free in a festival: the period runs from today and doesn't stack on repeated clicks
+    $end = $price <= 0 && !$alreadyCharged ? max($base, time() + $len) : $base + $len;
+    update('pages', ['expires_at' => gmdate('Y-m-d H:i:s', $end)], 'id = ?', [$pageId]);
 }
 function page_slug_ok(string $slug, int $exceptId = 0): string
 {

@@ -39,16 +39,48 @@
         <body>${html}<script>document.fonts.ready.then(function(){setTimeout(function(){window.print()},300)})<\/script></body></html>`);
       w.document.close();
     },
-    // Resize an image file to a data URL (keeps PNG transparency for logos)
+    // HEIC/HEIF (iPhone and many Android cameras): by type, name or the file's own header
+    async isHeic(file) {
+      if (/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name || "")) return true;
+      try {
+        const b = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+        const tag = String.fromCharCode(...b.slice(4, 12));
+        return /^ftyp(heic|heix|hevc|hevx|heim|heis|hevm|hevs|mif1|msf1)$/.test(tag);
+      } catch (e) { return false; }
+    },
+    // A file the browser can draw: HEIC is converted to JPEG with the decoder on the site itself
+    // (assets/vendor/heic2any.min.js, loaded only when needed); Safari decodes HEIC natively
+    async decodable(file) {
+      if (!(await H.isHeic(file))) return file;
+      try { (await createImageBitmap(file)).close(); return file; } catch (e) { /* not natively: convert */ }
+      BX.toast("در حال تبدیل عکس HEIC گوشی…", "info");
+      if (!window.heic2any) {
+        await new Promise((ok, no) => { const s = document.createElement("script"); s.src = "assets/vendor/heic2any.min.js"; s.onload = ok; s.onerror = () => no(new Error("مبدل عکس HEIC بارگذاری نشد؛ دوباره امتحان کنید.")); document.head.appendChild(s); });
+      }
+      const out = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+      return new File([Array.isArray(out) ? out[0] : out], (file.name || "photo").replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+    },
+    // Resize an image file to a data URL (keeps PNG transparency for logos). Big photos are decoded
+    // with createImageBitmap (less memory, EXIF rotation applied); HEIC is converted first.
     async readImage(file, max = 900) {
-      const url = URL.createObjectURL(file);
-      const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
-      const r = Math.min(1, max / Math.max(img.width, img.height));
+      if (!file || (file.type && !/^image\//.test(file.type) && !/\.hei[cf]$/i.test(file.name || ""))) throw new Error("فایل انتخاب‌شده تصویر نیست؛ یک عکس JPG، PNG، WebP یا HEIC انتخاب کنید.");
+      const f = await H.decodable(file);
+      let src, w, h, url = null;
+      try {
+        src = await createImageBitmap(f, { imageOrientation: "from-image" });
+        w = src.width; h = src.height;
+      } catch (e) {
+        url = URL.createObjectURL(f);
+        src = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("این عکس باز نشد. اگر عکس خیلی بزرگ یا از فرمت خاصی است، آن را با گالری گوشی به JPG ذخیره کنید یا یک اسکرین‌شات از آن بگیرید و دوباره امتحان کنید.")); i.src = url; });
+        w = src.naturalWidth; h = src.naturalHeight;
+      }
+      const r = Math.min(1, max / Math.max(w, h));
       const c = document.createElement("canvas");
-      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      return /png|gif|webp/.test(file.type) ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.86);
+      c.width = Math.max(1, Math.round(w * r)); c.height = Math.max(1, Math.round(h * r));
+      c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+      if (src.close) src.close();
+      if (url) URL.revokeObjectURL(url);
+      return /png|gif|webp/.test(f.type) ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.86);
     },
     lines: (s) => String(s || "").split("\n").map((x) => x.trim()).filter(Boolean),
   });
@@ -70,7 +102,7 @@
     if (f.type === "tpl") return `<div class="field span-2">${lab}<div class="st-tpls">${f.options.map(([o, l, sw]) => `<button type="button" class="st-tpl ${o === v ? "is-on" : ""}" data-tpl="${path}" data-v="${o}"><i style="background:${sw || "var(--brand)"}"></i>${l}</button>`).join("")}</div></div>`;
     if (f.type === "image") {
       const src = v ? (f.upload ? `api/index.php?r=file&id=${encodeURIComponent(v)}` : /^asset:[a-z0-9-]+$/.test(v) ? `assets/img/studio/${v.slice(6)}.jpg` : v) : "";
-      return `<div class="field${span}">${lab}<div class="st-img">${src ? `<img src="${src}" alt="">` : `<span>${BX.icon("image")}</span>`}<label class="btn btn-ghost btn-xs">${BX.icon("upload")} ${v ? "تغییر" : "انتخاب"}<input type="file" accept="image/*" data-img="${path}" data-max="${f.max || 900}" ${f.upload ? "data-upload" : ""} hidden></label>${v ? `<button type="button" class="btn btn-ghost btn-xs" data-clear="${path}">حذف</button>` : ""}</div>${help}</div>`;
+      return `<div class="field${span}">${lab}<div class="st-img">${src ? `<img src="${src}" alt="">` : `<span>${BX.icon("image")}</span>`}<label class="btn btn-ghost btn-xs">${BX.icon("upload")} ${v ? "تغییر" : "انتخاب"}<input type="file" accept="image/*,.heic,.heif" data-img="${path}" data-max="${f.max || 900}" ${f.upload ? "data-upload" : ""} hidden></label>${v ? `<button type="button" class="btn btn-ghost btn-xs" data-clear="${path}">حذف</button>` : ""}</div>${help}</div>`;
     }
     if (f.type === "list") {
       const arr = Array.isArray(v) ? v : [];
@@ -151,12 +183,32 @@
   STUDIO.dropDraft = (kind) => { try { localStorage.removeItem(draftKey(kind)); localStorage.removeItem(draftKey(kind) + ":v"); } catch (e) { /* blocked */ } };
   const proName = () => BX.settings.pro?.name || "X PRO";
   const isPro = () => !!BX.me && (BX.me.pro || BX.me.role === "admin");
+  // Sign-in popup (auth.js is loaded on first use); after signing in the page reloads on the same tool
+  STUDIO.login = function (note, kind) {
+    const fallback = () => { location.href = `auth.html?next=${encodeURIComponent(`studio.html${kind ? `#${kind}` : location.hash}`)}`; };
+    const open = () => BX.loginModal({ title: "ورود یا ثبت‌نام", note: `${BX.icon("lock")}<span>${note}</span>` });
+    if (BX.loginModal) return open();
+    const v = (document.querySelector('script[src*="studio.js"]')?.src.match(/\?v=[\w.-]+/) || [""])[0];
+    const sc = document.createElement("script");
+    sc.src = `assets/js/auth.js${v}`;
+    sc.onload = () => (BX.loginModal ? open() : fallback());
+    sc.onerror = fallback;
+    document.head.appendChild(sc);
+  };
   function needLogin(kind) {
-    BX.modal({
-      title: "ورود برای ذخیره و دریافت فایل",
-      body: `<p class="lh">طرح شما روی همین دستگاه ذخیره شد. برای دریافت فایل نهایی وارد شوید (فقط با شماره موبایل)؛ بعد از ورود دوباره به همین صفحه برمی‌گردید.</p>`,
-      actions: [{ label: "بعداً" }, { label: "ورود / ثبت‌نام", primary: true, onClick: () => { location.href = `auth.html?next=${encodeURIComponent(`studio.html#${kind}`)}`; } }],
-    });
+    STUDIO.login("طرح شما روی همین دستگاه ذخیره شد. برای دریافت فایل نهایی وارد شوید (فقط با شماره موبایل)؛ بعد از ورود همین‌جا ادامه می‌دهید.", kind);
+  }
+  // Paid tools need an account from the start: the editor is shown locked and the sign-in popup opens
+  function gate(v, b) {
+    [...v.children].forEach((c) => { c.inert = true; c.classList.add("st-gated"); });
+    const g = document.createElement("div");
+    g.className = "card st-gate";
+    g.innerHTML = `<span class="st-gate-ic">${BX.icon("lock")}</span><div class="grow"><b>برای استفاده از «${H.esc(b.title)}» ابتدا وارد شوید</b><p class="muted small lh">این ابزار برای ساخت و دریافت فایل نهایی به حساب کاربری نیاز دارد. ورود و ثبت‌نام فقط با شماره موبایل است و بعد از ورود، همین‌جا شروع می‌کنید.</p></div>
+      <button type="button" class="btn btn-primary btn-sm" data-gate>${BX.icon("user")} ورود / ثبت‌نام</button>`;
+    v.prepend(g);
+    const ask = () => STUDIO.login(`برای استفاده از «${H.esc(b.title)}» ابتدا وارد حساب خود شوید یا با شماره موبایل ثبت‌نام کنید.`);
+    g.querySelector("[data-gate]").addEventListener("click", ask);
+    ask();
   }
   // The server answers JSON; a host error page or PHP notice in front of it becomes a readable message
   STUDIO.readJson = async function (res) {
@@ -186,10 +238,10 @@
   STUDIO.preview = function (el, kind, layout) {
     let seq = 0, ctl = null;
     const wrap = { card: "st-prev st-prev--card", post: "st-prev st-prev--post", slides: "st-prev st-prev--slides", pages: "st-prev st-prev--pages" }[layout] || "st-prev";
-    el.innerHTML = `<div class="${wrap}"><div class="st-prev-imgs" data-imgs><div class="st-prev-ph skeleton"></div></div><div class="st-prev-busy" data-busy hidden>${BX.icon("loader")}</div></div>
+    el.innerHTML = `<div class="${wrap}"><div class="st-prev-imgs" data-imgs><div class="st-prev-ph skeleton"></div></div><div class="st-prev-busy" data-busy hidden role="status" aria-live="polite"><div>${BX.icon("loader")}<b>در حال اعمال تغییرات…</b><small>چند لحظه صبر کنید تا پیش‌نمایش به‌روز شود</small></div></div></div>
       <p class="muted small center mt-1" data-note>${BX.icon("shield")} پیش‌نمایش کم‌کیفیت و واترمارک‌دار؛ فایل نهایی روی سرور و بعد از خرید ساخته می‌شود.</p>`;
     const imgs = el.querySelector("[data-imgs]"), busy = el.querySelector("[data-busy]");
-    return async (data) => {
+    const paint = async (data) => {
       const my = ++seq;
       ctl?.abort(); ctl = new AbortController();
       busy.hidden = false;
@@ -205,6 +257,9 @@
         if (e.name !== "AbortError" && my === seq) imgs.innerHTML = `<div class="card empty">${BX.icon("info")}<p>${H.esc(e.message)}</p></div>`;
       } finally { if (my === seq) busy.hidden = true; }
     };
+    // shown the moment something is typed, before the debounced request starts
+    paint.pending = () => { busy.hidden = false; };
+    return paint;
   };
   // Shared editor shell for file builders (resume, doc, card, post, slides)
   STUDIO.editor = function (view, cfg) {
@@ -212,6 +267,8 @@
     let item = cfg.item || null; // {id, paid, title}
     let quota = S.info?.quota?.[kind] || null; // monthly free / PRO files left
     let price = cfg.price ?? (S.info?.prices?.[kind] || 0);
+    let basePrice = cfg.basePrice ?? (S.info?.basePrices?.[kind] || price);
+    const fest = STUDIO.festFor(kind);
     const data = cfg.data;
     const savedJson = JSON.stringify(data);
     view.innerHTML = `
@@ -223,6 +280,7 @@
         <button type="button" class="btn btn-ghost btn-sm" data-st="save">${BX.icon("check")}<span class="hide-sm"> ذخیره</span></button>
         <button type="button" class="btn btn-primary btn-sm" data-st="get"></button>
       </div>
+      ${fest ? `<div class="st-fest st-fest--sm card"><span class="st-fest-ic">🎉</span><div class="grow"><b>${H.esc(fest.title || "جشنواره استودیو")}: ${STUDIO.festLabel(fest)}${fest.mode === "quota" ? " برای هر نفر" : ""}</b>${fest.until ? `<small class="muted d-block">تا ${BX.date(fest.until)} · ${STUDIO.festLeft(fest)}</small>` : ""}</div></div>` : ""}
       <div class="st-lock card" data-lock hidden></div>
       <div class="st-edit ${cfg.wide ? "is-wide" : ""}">
         <div class="st-form card" data-st-form>${cfg.smart ? `<div class="st-smart" data-smart></div>` : ""}<div data-fields>${STUDIO.form.render(schema, data)}</div></div>
@@ -235,7 +293,7 @@
     const status = () => {
       const freeLeft = quota?.freeLeft || 0;
       view.querySelector("[data-st-status]").textContent = item?.paid ? (item.via === "pro" ? `دریافت‌شده با ${proName()} — دانلود نامحدود` : item.via === "free" ? "دریافت رایگان — دانلود نامحدود" : "خریداری شده — دانلود نامحدود")
-        : freeLeft ? `پیش‌نمایش رایگان · ${H.fa(freeLeft)} فایل نهایی رایگان این ماه` : `پیش‌نمایش رایگان · فایل نهایی ${H.money(price)}${isPro() && (!quota || quota.proLeft > 0) ? ` یا رایگان با ${proName()}` : ""}`;
+        : freeLeft ? `پیش‌نمایش رایگان · ${H.fa(freeLeft)} فایل نهایی رایگان${quota?.festLeft ? " (جشنواره)" : " این ماه"}` : `پیش‌نمایش رایگان · فایل نهایی ${H.money(price)}${isPro() && (!quota || quota.proLeft > 0) ? ` یا رایگان با ${proName()}` : ""}`;
       view.querySelector('[data-st="get"]').innerHTML = item?.paid ? `${BX.icon("download")} دانلود` : `${BX.icon("download")} دریافت<span class="hide-sm"> فایل نهایی</span>`;
     };
     // a bought design is locked for non-members (they can save a new copy)
@@ -246,7 +304,7 @@
       if (locked) box.innerHTML = `${BX.icon("lock")}<div class="grow"><b>این طرح خریداری شده است</b><p class="muted small">تغییرات روی فایل خریداری‌شده ذخیره نمی‌شود. با اشتراک ${proName()} طرح‌هایتان را هر وقت خواستید ویرایش کنید، یا از همین طرح یک نسخه جدید بسازید.</p></div>
         <button class="btn btn-ghost btn-sm" data-st="copy">نسخه جدید</button><a class="btn btn-primary btn-sm" href="dashboard.html#pro">${BX.icon("star")} ${proName()}</a>`;
     };
-    const onChange = (d, structural) => { structural ? paint(data) : paintSoon(); autosave(); lock(); };
+    const onChange = (d, structural) => { paint.pending(); structural ? paint(data) : paintSoon(); autosave(); lock(); };
     STUDIO.form.bind(formEl, schema, data, onChange);
     cfg.smart?.(view.querySelector("[data-smart]"), data, () => { formEl.innerHTML = STUDIO.form.render(schema, data); onChange(data, true); });
     status();
@@ -254,7 +312,7 @@
     async function save(quiet) {
       if (!BX.me) { STUDIO.saveDraft(kind, data); needLogin(cfg.route || kind); return null; }
       const r = await BX.api("a.studio.save", { id: item?.id || 0, kind, title: (cfg.titleOf ? cfg.titleOf(data) : "") || cfg.title, data });
-      item = r.item; price = r.price; if (r.quota) quota = r.quota;
+      item = r.item; price = r.price; if (r.basePrice != null) basePrice = r.basePrice; if (r.quota) quota = r.quota;
       if (location.hash.split("/")[1] !== String(item.id)) history.replaceState(null, "", `#${cfg.route || kind}/${item.id}`);
       if (!quiet) BX.toast("طرح ذخیره شد؛ از پنل «ساخته‌های من» هم در دسترس است.", "ok");
       status();
@@ -302,7 +360,7 @@
         if (quota?.freeLeft > 0 && BX.me?.role !== "admin") {
           return BX.modal({
             title: "دریافت رایگان فایل نهایی",
-            body: `<div class="st-buy"><p class="lh">${H.fa(quota.freeLeft)} از ${H.fa(quota.free)} فایل رایگان این ماه برای «${H.esc(cfg.title)}» برایتان باقی مانده است. این فایل بدون واترمارک و با کیفیت کامل ساخته می‌شود و همیشه از «ساخته‌های من» قابل دانلود است.</p></div>`,
+            body: `<div class="st-buy"><p class="lh">${H.fa(quota.freeLeft)} از ${H.fa(quota.free)} فایل رایگان ${quota.festLeft ? `(${H.esc(fest?.title || "جشنواره")})` : "این ماه"} برای «${H.esc(cfg.title)}» برایتان باقی مانده است. این فایل بدون واترمارک و با کیفیت کامل ساخته می‌شود و همیشه از «ساخته‌های من» قابل دانلود است.</p></div>`,
             actions: [{ label: "انصراف" }, { label: "دریافت رایگان", primary: true, onClick: () => { item.paid = true; item.via = "free"; quota.freeLeft--; status(); formats(); } }],
           });
         }
@@ -317,7 +375,7 @@
           title: "دریافت فایل نهایی",
           body: `<div class="st-buy"><p class="lh">فایل بدون واترمارک و با کیفیت چاپ ${cfg.deliverText || ""} روی سرور ساخته می‌شود و همیشه از پنل «ساخته‌های من» قابل دانلود است.</p>
             ${isPro() && quota?.pro && quota.proLeft <= 0 ? `<p class="muted small">سهمیه فایل این ماه اشتراک ${proName()} برای این ابزار تمام شده است؛ این طرح را می‌توانید جداگانه بخرید.</p>` : ""}
-            <div class="st-buy-price"><span>مبلغ</span><b>${H.money(price)}</b></div>
+            <div class="st-buy-price"><span>مبلغ${fest && basePrice > price ? ` <small class="st-fest-tag">${STUDIO.festLabel(fest)}</small>` : ""}</span><b>${basePrice > price ? `<s class="muted">${H.money(basePrice)}</s> ` : ""}${H.money(price)}</b></div>
             ${price && wallet ? `<p class="muted small">موجودی کیف پول: ${BX.toman(wallet)}${wallet >= price ? " — از کیف پول کسر می‌شود." : " — مابقی از درگاه پرداخت می‌شود."}</p>` : ""}
             <a class="st-upsell" href="dashboard.html#pro">${BX.icon("star")}<span><b>${proName()}</b> — ماهی ${H.money(S.pro?.plans?.[0]?.price || 0)}: ${H.fa(S.pro?.studioFiles || 15)} فایل در ماه + ویرایش نامحدود طرح‌ها + کارت ویزیت دیجیتال</span></a></div>`,
           actions: [{ label: "انصراف" }, { label: price ? "پرداخت و دریافت" : "دریافت رایگان", primary: true, onClick: async () => {
@@ -355,7 +413,7 @@
   STUDIO.open = async function (view, kind, idPart, defaults, start) {
     let item = null, data = null;
     if (idPart && /^\d+$/.test(idPart) && BX.me) {
-      try { const r = await BX.api("a.studio.get", { id: idPart }); item = r.item; data = r.item.data; item.price = r.price; }
+      try { const r = await BX.api("a.studio.get", { id: idPart }); item = r.item; data = r.item.data; item.price = r.price; item.basePrice = r.basePrice; }
       catch (e) { BX.toast(e.message, "bad"); }
     }
     if (!data) data = STUDIO.loadDraft(kind) || defaults();
@@ -380,15 +438,43 @@
   // tools the admin switched off (Settings → Studio); admins still see them
   const isOff = (id) => (S.info?.off || []).includes(id);
   const isAdmin = () => BX.me?.role === "admin";
+  // ---------------------------------------------------------------- festival (Settings → Studio)
+  const TOOL_NAMES = Object.fromEntries(CARDS.map(([id, t]) => [id, t]));
+  STUDIO.festFor = (tool) => { const f = S.info?.fest; return f && f.tools.includes(tool) && (!f.until || f.until > Date.now()) ? f : null; };
+  // «۳۰٪ تخفیف» / «رایگان» / «۲ فایل رایگان»
+  STUDIO.festLabel = (f) => f.mode === "free" ? "رایگان" : f.mode === "quota" ? `${H.fa(f.count)} فایل رایگان` : `${H.fa(f.percent)}٪ تخفیف`;
+  STUDIO.festLeft = (f) => {
+    if (!f.until) return "";
+    const ms = f.until - Date.now(), d = Math.floor(ms / 864e5), hr = Math.floor((ms % 864e5) / 36e5);
+    return d > 0 ? `${H.fa(d)} روز${hr ? ` و ${H.fa(hr)} ساعت` : ""} مانده` : hr > 0 ? `${H.fa(hr)} ساعت مانده` : "ساعت‌های پایانی";
+  };
+  function festBanner() {
+    const f = S.info?.fest;
+    if (!f || (f.until && f.until <= Date.now()) || !f.tools.length) return "";
+    const live = f.tools.filter((t) => !isOff(t));
+    const all = live.length >= CARDS.filter(([id, , , , pk]) => pk !== "free" && !isOff(id)).length;
+    const what = f.mode === "free" ? "رایگان" : f.mode === "quota" ? `${H.fa(f.count)} فایل نهایی رایگان برای هر نفر` : `${H.fa(f.percent)}٪ تخفیف`;
+    const on = all ? "همه ابزارهای استودیو" : live.map((t) => `«${TOOL_NAMES[t] || t}»`).join("، ");
+    return `<div class="card st-fest mb-3" data-reveal><span class="st-fest-ic">🎉</span><div class="grow"><b>${H.esc(f.title || "جشنواره استودیو")}</b>
+      <p class="small lh">${f.mode === "quota" ? `${what} از ${on}` : `${on}: ${what}`}${f.until ? ` — تا ${BX.date(f.until)}` : ""}</p></div>${f.until ? `<span class="st-fest-left">${BX.icon("clock")} ${STUDIO.festLeft(f)}</span>` : ""}</div>`;
+  }
   function hub(view) {
-    const p = S.info?.prices || {};
-    const priceTag = (k) => k === "free" ? "رایگان" : k === "pageCard" ? `از ${BX.toman(p.pageCardMonth || 0)} در ماه` : k === "pageMenu" ? `از ${BX.toman(p.pageMenuMonth || 0)} در ماه` : (p[k] ? `فایل نهایی ${BX.toman(p[k])}` : "رایگان");
+    const p = S.info?.prices || {}, base = S.info?.basePrices || {};
+    const was = (k, v) => base[k] > v ? `<s>${BX.toman(base[k])}</s> ` : "";
+    const priceTag = (id, k) => {
+      const f = STUDIO.festFor(id);
+      if (f && f.mode === "free") return "🎉 رایگان در جشنواره";
+      if (f && f.mode === "quota") return `🎉 ${H.fa(f.count)} فایل رایگان`;
+      if (k === "free") return "رایگان";
+      if (k === "pageCard" || k === "pageMenu") return `از ${was(`${k}Month`, p[`${k}Month`])}${BX.toman(p[`${k}Month`] || 0)} در ماه`;
+      return p[k] ? `${f ? "🎉 " : "فایل نهایی "}${was(k, p[k])}${BX.toman(p[k])}` : "رایگان";
+    };
     const list = CARDS.filter(([id]) => !isOff(id) || isAdmin());
-    view.innerHTML = `<div class="studio-grid">${list.map(([id, t, ic, d, pk, hue], i) => `
+    view.innerHTML = `${festBanner()}<div class="studio-grid">${list.map(([id, t, ic, d, pk, hue], i) => `
       <a class="card st-card ${isOff(id) ? "is-off" : ""}" href="#${id}" style="--h:${hue};--d:${i * 50}ms" data-reveal>
         <span class="st-card-ic">${BX.icon(ic)}</span>
         <h2>${t}</h2><p class="muted small lh">${d}</p>
-        <div class="row-between"><span class="badge ${pk === "free" ? "badge--ok" : "badge--brand"}">${priceTag(pk)}</span>${isOff(id) ? '<span class="badge badge--bad">خاموش برای کاربران</span>' : `<span class="st-go">شروع ${BX.icon("arrow")}</span>`}</div>
+        <div class="row-between"><span class="badge ${pk === "free" || STUDIO.festFor(id) ? "badge--ok" : "badge--brand"}">${priceTag(id, pk)}</span>${STUDIO.festFor(id) && STUDIO.festFor(id).mode === "discount" ? `<span class="st-fest-tag">${STUDIO.festLabel(STUDIO.festFor(id))}</span>` : ""}${isOff(id) ? '<span class="badge badge--bad">خاموش برای کاربران</span>' : `<span class="st-go">شروع ${BX.icon("arrow")}</span>`}</div>
       </a>`).join("") || `<div class="card empty">${BX.icon("info")}<p>فعلاً ابزاری فعال نیست.</p></div>`}</div>
       <div class="card st-how mt-3" data-reveal>
         <div><b>۱</b><span>قالب را انتخاب کنید و فرم را پر کنید</span></div>
@@ -413,7 +499,8 @@
     window.scrollTo({ top: 0 });
     v.innerHTML = `<div class="card skeleton" style="height:480px"></div>`;
     document.title = `${builders[id].title} | استودیو ${BX.settings.general?.siteNameFa || "بهیکس"}`;
-    try { await builders[id].render(v, param); } catch (e) { console.error(e); v.innerHTML = `<div class="card empty">${BX.icon("info")}<p>${H.esc(e.message)}</p><a class="btn btn-ghost btn-sm" href="#">بازگشت</a></div>`; }
+    try { await builders[id].render(v, param); } catch (e) { console.error(e); v.innerHTML = `<div class="card empty">${BX.icon("info")}<p>${H.esc(e.message)}</p><a class="btn btn-ghost btn-sm" href="#">بازگشت</a></div>`; return; }
+    if (!BX.me && !builders[id].free) gate(v, builders[id]);
   }
   BX.ready.then(async () => {
     try { S.info = await BX.api("studio.info"); } catch (e) { S.info = { prices: {}, docs: [] }; }
@@ -552,7 +639,7 @@
           ...keys.map((k) => ({ k: `values.${k}`, label: H.esc(k), type: /شرح|متن|توضیح|دلیل|تعهدات|موارد/.test(k) ? "textarea" : "text", span: /شرح|متن|توضیح|نشانی|دلیل|تعهدات|موارد/.test(k) })),
         ] }, { title: "ظاهر سند", icon: "palette", open: false, fields: [{ k: "color", type: "color", label: "رنگ نوار بالای سند", swatches: ["#1f2937", "#ff7a1a", "#2563eb", "#059669", "#7c3aed", "#b45309"] }, { k: "frame", type: "check", label: "قاب دور صفحه" }] }];
         const ed = STUDIO.editor(v, {
-          kind: "doc", route: "doc", title: tpl.title, icon: "book", schema, data, item, price: item ? item.price : tpl.price, deliverText: "(PDF و فایل Word قابل ویرایش)",
+          kind: "doc", route: "doc", title: tpl.title, icon: "book", schema, data, item, price: item ? item.price : tpl.price, basePrice: item ? item.basePrice : tpl.basePrice, deliverText: "(PDF و فایل Word قابل ویرایش)",
           titleOf: () => tpl.title, layout: "pages",
         });
         // re-run the auto-fill when a field changes and refresh the dependent inputs
@@ -582,6 +669,7 @@
   STUDIO.quotaWall = (out, msg) => { out.innerHTML = `<div class="card st-wall">${BX.icon("star")}<h3>${H.esc(msg)}</h3><p class="muted lh">اشتراک ${proName()}: ابزارهای ویژه تقریباً نامحدود، ${H.fa(S.pro?.studioFiles || 15)} فایل استودیو در ماه، ویرایش نامحدود طرح‌ها، کارت ویزیت دیجیتال و نشان PRO کنار نام شما.</p><a class="btn btn-primary" href="dashboard.html#pro">${BX.icon("star")} مشاهده اشتراک‌ها</a></div>`; };
 
   STUDIO.register("names", {
+    free: true,
     title: "ایده نام برند",
     render(v) {
       v.innerHTML = `<div class="st-top card"><a class="icon-btn" href="#" aria-label="بازگشت">${BX.icon("arrow-right")}</a><span class="st-top-ic">${BX.icon("sparkles")}</span><div class="grow"><b>ایده نام برند</b><small class="muted d-block" data-q>هر بار نتیجه جدید</small></div></div>
@@ -613,6 +701,7 @@
 
   // ================================================================ SEO AUDIT (free)
   STUDIO.register("seo", {
+    free: true,
     title: "بررسی سئوی سایت",
     render(v) {
       v.innerHTML = `<div class="st-top card"><a class="icon-btn" href="#" aria-label="بازگشت">${BX.icon("arrow-right")}</a><span class="st-top-ic">${BX.icon("search")}</span><div class="grow"><b>بررسی سئوی سایت</b><small class="muted d-block" data-q>۱۸ مورد کلیدی سئو و سرعت</small></div></div>

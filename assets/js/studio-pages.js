@@ -13,7 +13,8 @@
     // images on hosted pages are uploaded (public files), not inlined
     STUDIO.upload = async (file) => {
       if (!BX.me) throw new Error("برای آپلود تصویر ابتدا وارد شوید.");
-      if (file.size > 3 * 1024 * 1024) throw new Error("حجم تصویر حداکثر ۳ مگابایت باشد.");
+      // the photo is shrunk in the browser first, so a big camera photo is fine
+      if (file.size > 40 * 1024 * 1024) throw new Error("حجم این عکس خیلی زیاد است (بیش از ۴۰ مگابایت).");
       const small = await H.readImage(file, 1000);
       const blob = await (await fetch(small)).blob();
       const files = [];
@@ -84,14 +85,17 @@
         <div class="st-edit">
           <div class="st-form card" data-st-form>${STUDIO.form.render(schema, data)}</div>
           <div class="st-preview">
-            <div class="st-phone"><iframe name="pgprev-${kind}" title="پیش‌نمایش" loading="lazy"></iframe></div>
+            <div class="st-phone st-prev"><iframe name="pgprev-${kind}" title="پیش‌نمایش" loading="lazy"></iframe><div class="st-prev-busy" data-busy role="status" aria-live="polite"><div>${BX.icon("loader")}<b>در حال اعمال تغییرات…</b><small>چند لحظه صبر کنید</small></div></div></div>
             <form method="post" action="p.php" target="pgprev-${kind}" data-pf hidden><input name="preview" value="1"><input name="kind" value="${kind}"><input name="data"></form>
             <div class="card st-pgbox" data-pg-box></div>
           </div>
         </div>`;
       const formEl = v.querySelector("[data-st-form]");
       const pf = v.querySelector("[data-pf]");
-      const refresh = H.debounce(() => { pf.elements.data.value = JSON.stringify(data); pf.submit(); }, 400);
+      const busy = v.querySelector("[data-busy]");
+      v.querySelector("iframe").addEventListener("load", () => { busy.hidden = true; });
+      const send = H.debounce(() => { pf.elements.data.value = JSON.stringify(data); pf.submit(); }, 400);
+      const refresh = () => { busy.hidden = false; send(); };
       const autosave = H.debounce(() => STUDIO.saveDraft(`page-${kind}`, data), 600);
       // the full address, under the field, as it will be shared
       const slugIn = formEl.querySelector('[data-p="slug"]');
@@ -106,10 +110,14 @@
       refresh();
       const box = v.querySelector("[data-pg-box]");
       const status = v.querySelector("[data-pg-status]");
+      const fest = STUDIO.festFor?.(`page-${kind}`);
+      const bp = STUDIO.S.info?.basePrices || {}, K = kind === "card" ? "pageCard" : "pageMenu";
+      const planPrice = (pl) => { const b = bp[`${K}${pl === "year" ? "Year" : "Month"}`] || 0, v = prices[pl] || 0; return `${b > v ? `<s class="muted">${BX.toman(b)}</s> ` : ""}${H.money(v)}`; };
+      const festNote = () => fest && fest.mode !== "quota" ? `<p class="st-fest st-fest--sm"><span class="st-fest-ic">🎉</span><span><b>${H.esc(fest.title || "جشنواره استودیو")}: ${STUDIO.festLabel(fest)}</b>${fest.until ? ` — ${STUDIO.festLeft(fest)}` : ""}</span></p>` : "";
       function paintBox() {
         if (!page) {
-          status.textContent = `${H.fa(STUDIO.S.info?.trialDays || 0)} روز آزمایش رایگان، سپس ${BX.toman(prices.month || 0)} در ماه`;
-          box.innerHTML = `<p class="small lh">${BX.icon("info")} بعد از «ذخیره و انتشار»، صفحه شما با آدرس اختصاصی فعال می‌شود${STUDIO.S.info?.trialDays ? ` و ${H.fa(STUDIO.S.info.trialDays)} روز رایگان است` : ""}. هر زمان می‌توانید اطلاعات و قیمت‌ها را تغییر دهید.</p>`;
+          status.textContent = `${H.fa(STUDIO.S.info?.trialDays || 0)} روز آزمایش رایگان، سپس ${prices.month ? `${BX.toman(prices.month)} در ماه` : "رایگان"}`;
+          box.innerHTML = `${festNote()}<p class="small lh">${BX.icon("info")} بعد از «ذخیره و انتشار»، صفحه شما با آدرس اختصاصی فعال می‌شود${STUDIO.S.info?.trialDays ? ` و ${H.fa(STUDIO.S.info.trialDays)} روز رایگان است` : ""}. هر زمان می‌توانید اطلاعات و قیمت‌ها را تغییر دهید.</p>`;
           return;
         }
         const left = page.expiresAt ? Math.ceil((page.expiresAt - Date.now()) / 864e5) : 0;
@@ -117,9 +125,9 @@
         box.innerHTML = `
           <div class="row-between"><b>آدرس صفحه</b>${page.active ? '<span class="badge badge--ok">فعال</span>' : '<span class="badge badge--bad">غیرفعال</span>'}</div>
           <div class="st-url"><a href="${H.esc(page.url)}" target="_blank" rel="noopener" dir="ltr">${H.esc(page.url.replace(/^https?:\/\//, ""))}</a><button type="button" class="btn btn-ghost btn-xs" data-pg="copy">کپی</button></div>
-          <div class="st-plans">
-            <button type="button" class="st-plan" data-pg="buy" data-plan="month"><b>ماهانه</b><span>${BX.toman(prices.month || 0)}</span></button>
-            <button type="button" class="st-plan is-best" data-pg="buy" data-plan="year"><b>سالانه</b><span>${BX.toman(prices.year || 0)}</span><small>${prices.month ? `${H.fa(Math.max(0, Math.round((1 - prices.year / (prices.month * 12)) * 100)))}٪ صرفه‌جویی` : ""}</small></button>
+          ${festNote()}<div class="st-plans">
+            <button type="button" class="st-plan" data-pg="buy" data-plan="month"><b>ماهانه</b><span>${planPrice("month")}</span></button>
+            <button type="button" class="st-plan is-best" data-pg="buy" data-plan="year"><b>سالانه</b><span>${planPrice("year")}</span><small>${prices.month ? `${H.fa(Math.max(0, Math.round((1 - prices.year / (prices.month * 12)) * 100)))}٪ صرفه‌جویی` : ""}</small></button>
           </div>
           <div class="st-qr"><canvas data-qr width="600" height="600"></canvas><div>
             <p class="small lh">این QR را روی ${kind === "menu" ? "میزها، ویترین و منوی چاپی" : "کارت ویزیت، ویترین و امضای ایمیل"} قرار دهید؛ با اسکن، صفحه شما باز می‌شود.</p>
@@ -133,7 +141,7 @@
         if (!b) return;
         const act = b.dataset.pg;
         if (act === "save") {
-          if (!BX.me) { STUDIO.saveDraft(`page-${kind}`, data); location.href = `auth.html?next=${encodeURIComponent(`studio.html#page-${kind}`)}`; return; }
+          if (!BX.me) { STUDIO.saveDraft(`page-${kind}`, data); STUDIO.login("طرح شما روی همین دستگاه ذخیره شد. برای انتشار صفحه وارد شوید؛ بعد از ورود همین‌جا ادامه می‌دهید.", `page-${kind}`); return; }
           if (!String(data.slug || "").trim()) return BX.toast("آدرس صفحه را وارد کنید (مثلاً cafe-nova).", "bad");
           if (!String(data.name || "").trim()) return BX.toast("نام را وارد کنید.", "bad");
           try {

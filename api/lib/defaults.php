@@ -127,6 +127,10 @@ function default_settings(): array
             'resume' => 69000, 'card' => 135000, 'post' => 69000, 'doc' => 75000, 'slides' => 195000,
             'pageCardMonth' => 45000, 'pageCardYear' => 399000, 'pageMenuMonth' => 255000, 'pageMenuYear' => 2550000,
         ],
+        // Studio festival (Settings → Studio): for the chosen tools, until a date — a % discount,
+        // completely free, or N free final files per person. `until` is set from `days` on save.
+        'fest' => ['on' => false, 'title' => 'جشنواره استودیو', 'mode' => 'discount', 'percent' => 30, 'count' => 1,
+            'tools' => ['resume', 'card', 'post', 'doc', 'slides', 'page-card', 'page-menu'], 'days' => 7, 'start' => '', 'until' => ''],
         // «X PRO» membership
         'pro' => [
             'enabled' => true, 'name' => 'X PRO',

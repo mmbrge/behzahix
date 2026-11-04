@@ -679,6 +679,16 @@
         ["bnplFee_resume", "افزایش قیمت در پرداخت اعتباری — رزومه (٪)", "number"], ["bnplFee_card", "— کارت ویزیت چاپی (٪)", "number"], ["bnplFee_post", "— پست و پوستر (٪)", "number"],
         ["bnplFee_doc", "— قرارداد و سند (٪)", "number"], ["bnplFee_slides", "— پاورپوینت (٪)", "number"], ["bnplFee_pageCard", "— کارت ویزیت دیجیتال (٪)", "number"], ["bnplFee_pageMenu", "— منوی QR (٪)", "number"],
       ], "همه محصولات استودیو کاملاً خودکار و بدون سرویس خارجی ساخته و تحویل می‌شوند. پیش‌نمایش رایگان است و فایل نهایی بعد از پرداخت (کیف پول یا درگاه) دانلود می‌شود. قالب‌های قرارداد را در «استودیو ← قالب‌های سند» اضافه کنید. اگر ابزاری خطا داد، «پنل ← استودیو ← بررسی سلامت» را بزنید تا علت (نسخه PHP، کتابخانه GD و…) مشخص شود."],
+      ["fest", [
+        ["until", "", "festState"],
+        ["on", "جشنواره فعال باشد", "switch"],
+        ["title", "عنوان جشنواره (روی استودیو نمایش داده می‌شود، مثلاً «جشنواره یلدا»)", "text"],
+        ["mode", "نوع جشنواره", "select", [["discount", "تخفیف درصدی روی قیمت‌ها"], ["free", "کاملاً رایگان (بدون محدودیت تعداد)"], ["quota", "چند فایل رایگان برای هر کاربر"]]],
+        ["days", "مدت جشنواره (روز، از لحظه ذخیره — ۰ = تا وقتی خاموشش کنید)", "number"],
+        ["percent", "درصد تخفیف (برای «تخفیف درصدی»)", "number"],
+        ["count", "تعداد فایل رایگان هر کاربر از هر ابزار در کل جشنواره (برای «چند فایل رایگان»)", "number"],
+        ["tools", "ابزارهای مشمول جشنواره (همه، یکی یا چندتا)", "checks", [["resume", "رزومه‌ساز"], ["card", "کارت ویزیت چاپی"], ["post", "پست، استوری و پوستر"], ["doc", "قرارداد و نامه رسمی"], ["slides", "پاورپوینت‌ساز"], ["page-card", "کارت ویزیت دیجیتال"], ["page-menu", "منوی QR رستوران"]]],
+      ], "مثال‌ها: «۳۰٪ تخفیف روی همه ابزارها به مدت ۷ روز»، «فقط رزومه‌ساز رایگان به مدت ۳ روز»، «از هر ابزار ۲ فایل رایگان برای هر نفر به مدت ۱۰ روز». بعد از پایان مدت، جشنواره خودکار تمام می‌شود و قیمت‌ها به حالت قبل برمی‌گردد. با تغییر مدت یا نوع جشنواره، زمان پایان از همان لحظه دوباره حساب می‌شود. برای صفحه‌های دیجیتال (کارت ویزیت دیجیتال و منوی QR) تخفیف و رایگان روی اشتراک ماهانه و سالانه اعمال می‌شود؛ «چند فایل رایگان» فقط برای ابزارهای فایل است. جشنواره در بالای استودیو و روی هر ابزار نمایش داده می‌شود."],
     ] },
     delivery: { title: "تحویل حضوری", icon: "calendar", groups: [
       ["delivery", [
@@ -825,6 +835,14 @@
     const name = `${group}.${k}`;
     if (type === "switch") return `<label class="switch span-2"><input type="checkbox" name="${name}" ${value ? "checked" : ""}><span class="track"></span>${label}</label>`;
     if (type === "sep") return `<h3 class="span-2 form-sep">${label}</h3>`;
+    // where the studio festival stands now (its end is set from «days» when saved)
+    if (type === "festState") {
+      const f = h().S.settings.fest || {};
+      const end = value ? Date.parse(String(value).replace(" ", "T") + "Z") : 0;
+      const left = end ? Math.ceil((end - Date.now()) / 864e5) : 0;
+      const st = !f.on ? ["muted", "الان جشنواره‌ای در جریان نیست"] : end && end <= Date.now() ? ["bad", "تمام شده — برای شروع دوباره، مدت را عوض کنید یا خاموش و روشن کنید"] : end ? ["ok", `در حال اجرا تا ${BX.date(end)} (${faDigits(left)} روز مانده)`] : ["ok", "در حال اجرا (بدون تاریخ پایان)"];
+      return `<p class="span-2 fest-state"><span class="badge badge--${st[0] === "muted" ? "warn" : st[0]}">${st[0] === "muted" ? "خاموش" : st[0] === "bad" ? "پایان" : "فعال"}</span> ${esc(st[1])}</p>`;
+    }
     // switches per option; the setting stores the options turned OFF
     if (type === "checks") return `<div class="field span-2"><span class="field-label">${label}</span><div class="checks-grid" data-checks="${name}">${extra.map(([v, l]) => `<label class="switch"><input type="checkbox" value="${v}" ${(value || []).includes(v) ? "checked" : ""}><span class="track"></span>${l}</label>`).join("")}</div></div>`;
     if (type === "onlist") return `<div class="field span-2"><span class="field-label">${label}</span><div class="checks-grid" data-onlist="${name}">${extra.map(([v, l]) => `<label class="switch"><input type="checkbox" value="${v}" ${(value || []).includes(v) ? "" : "checked"}><span class="track"></span>${l}</label>`).join("")}</div></div>`;
@@ -883,7 +901,7 @@
     if (tab === "smsTpl") return head + smsTemplatesView();
     const t = SETTINGS[tab];
     return `${head}<div class="dash-grid">${t.groups.map(([group, fields, note]) => box(
-      { tax: "مالیات بر ارزش افزوده", tickets: "دپارتمان‌های تیکت", roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", bnpl_tara: "تارا", gw_zarinpal: "زرین‌پال", gw_zibal: "زیبال", gw_idpay: "آیدی‌پی", gw_payping: "پی‌پینگ", gw_nextpay: "نکست‌پی", gw_mellat: "بانک ملت (به‌پرداخت)", gw_saman: "بانک سامان (سپ)", gw_sadad: "بانک ملی (سداد)", gw_parsian: "بانک پارسیان (پک)", gw_pasargad: "بانک پاسارگاد (پپ)", gw_sepehr: "بانک صادرات (سپهر)", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "تنظیمات کلی پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
+      { tax: "مالیات بر ارزش افزوده", tickets: "دپارتمان‌های تیکت", roles: "دسترسی شریک و حسابدار", general: "اطلاعات سایت", studio: "استودیو و قیمت‌ها", fest: "جشنواره و تخفیف استودیو", delivery: "تقویم تحویل حضوری", seo: "سئو", chat: "گفتگوی آنلاین", invoice: "مشخصات فاکتور", shop: "فروشگاه", about: "آمار صفحات", referral: "دعوت از دوستان", cart: "سبد خرید رهاشده", tools: "ابزارهای رایگان", bnpl_snapppay: "اسنپ‌پی", bnpl_digipay: "دیجی‌پی", bnpl_azki: "ازکی وام", bnpl_torobpay: "ترب‌پی", bnpl_tara: "تارا", gw_zarinpal: "زرین‌پال", gw_zibal: "زیبال", gw_idpay: "آیدی‌پی", gw_payping: "پی‌پینگ", gw_nextpay: "نکست‌پی", gw_mellat: "بانک ملت (به‌پرداخت)", gw_saman: "بانک سامان (سپ)", gw_sadad: "بانک ملی (سداد)", gw_parsian: "بانک پارسیان (پک)", gw_pasargad: "بانک پاسارگاد (پپ)", gw_sepehr: "بانک صادرات (سپهر)", seo: "سئو", contact: "اطلاعات تماس", socials: "شبکه‌های اجتماعی", home: "صفحه اصلی", legal: "قوانین و نمادها", commission: "کارمزد", orders: "تنظیمات سفارش", payment: "تنظیمات کلی پرداخت", sms: "سرویس پیامک", theme: "رنگ و ظاهر", uploads: "آپلود فایل" }[group] || group,
       t.icon,
       `${note ? `<p class="field-hint mb-2">${note}</p>` : ""}
        <form class="form-grid form-grid-2" data-form="settings" data-group="${group}">
@@ -940,7 +958,7 @@
     const spec = Object.values(SETTINGS).flatMap((t) => t.groups).find(([g]) => g === group)[1];
     const out = {};
     for (const [k, , type] of spec) {
-      if (type === "sep") continue;
+      if (type === "sep" || type === "festState") continue;
       const name = `${group}.${k}`;
       const el = form.elements[name];
       if (type === "switch") out[k] = el.checked;
